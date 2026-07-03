@@ -39,15 +39,17 @@ switch ($cmd) {
 
     case 'force_stop':
         $sock = "/tmp/microvm-{$name}.sock";
-        // Kill the process directly
-        $pid = trim(shell_exec("pgrep -f 'api-sock.*$sock\|api-socket.*$sock' 2>/dev/null"));
+        // Kill the process - search for the socket path in cmdline
+        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
         if ($pid) {
             exec("kill -9 $pid 2>&1");
             sleep(1);
             @unlink($sock);
             echo json_encode(['success' => true, 'message' => "Force killed VM $name (PID: $pid)"]);
         } else {
-            echo json_encode(['success' => false, 'error' => "Process not found for $name"]);
+            // Try removing stale socket
+            @unlink($sock);
+            echo json_encode(['success' => true, 'message' => "No process found, cleaned stale socket"]);
         }
         break;
 

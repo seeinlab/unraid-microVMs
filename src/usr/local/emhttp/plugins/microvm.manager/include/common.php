@@ -35,8 +35,8 @@ function microvm_list_vms() {
         if (file_exists($sock)) {
             $engine = $config['engine'] ?? 'cloud-hypervisor';
             if ($engine === 'firecracker') {
-                // FC: check if process with this socket is alive
-                $running = !empty(trim(shell_exec("pgrep -f 'api-sock $sock' 2>/dev/null")));
+                // FC: check if process with this VM name is alive
+                $running = !empty(trim(shell_exec("pgrep -f 'microvm-{$vm['name']}' 2>/dev/null")));
             } else {
                 // CH: use ch-remote ping
                 exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
