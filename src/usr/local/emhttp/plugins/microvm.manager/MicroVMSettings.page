@@ -73,14 +73,14 @@ _(Autostart VMs on array start)_:
   </select>
 
 &nbsp;
-: <input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">
+: <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 
 </form>
 
 <div class="title"><span class="left"><i class="title fa fa-power-off"></i>_(Service Control)_</span></div>
 
 &nbsp;
-: <input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>><input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>><input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')"><span id="svcStatus" style="margin-left:15px;"></span>
+: <span class="inline-block"><input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>><input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>><input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')"></span><span id="svcStatus" style="margin-left:15px;"></span>
 
 <script>
 function done() { location = '/Settings'; }
