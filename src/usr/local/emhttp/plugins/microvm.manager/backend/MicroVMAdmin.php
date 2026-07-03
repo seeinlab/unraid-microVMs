@@ -1,10 +1,19 @@
 <?php
 // backend/MicroVMAdmin.php - AJAX command handler
+error_reporting(0); // Suppress warnings from mixing with JSON output
+
 $plugin = "microvm.manager";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
 header('Content-Type: application/json');
+
+// Log function
+function microvm_log($msg) {
+    $logfile = '/var/log/microvm-manager.log';
+    $ts = date('Y-m-d H:i:s');
+    file_put_contents($logfile, "[$ts] $msg\n", FILE_APPEND);
+}
 
 $cfg = microvm_load_config();
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
@@ -70,6 +79,7 @@ switch ($cmd) {
         break;
 
     case 'create':
+        microvm_log("CREATE: " . json_encode($_POST));
         $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['name'] ?? ''));
         if (empty($name)) {
             echo json_encode(['success' => false, 'error' => 'Invalid name']);
@@ -98,8 +108,10 @@ switch ($cmd) {
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
             // Pull OCI image and create rootfs
+            microvm_log("Pulling OCI: $ociImage");
             $tmpTar = "/tmp/microvm-$name.tar";
             exec("crane export " . escapeshellarg($ociImage) . " " . escapeshellarg($tmpTar) . " 2>&1", $pullOutput, $pullRet);
+            microvm_log("crane exit: $pullRet, output: " . implode(" ", $pullOutput));
             if ($pullRet !== 0) {
                 echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
                 break;
@@ -167,7 +179,8 @@ INIT;
         ];
         file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
 
-        echo json_encode(['success' => true, 'message' => "VM '$name' created. Click Start to boot.", 'config' => $config]);
+        microvm_log("VM created: $name at $vmPath");
+        echo json_encode(['success' => true, 'message' => "VM '$name' created. Click Start to boot."]);
         break;
 
     case 'create_json':
