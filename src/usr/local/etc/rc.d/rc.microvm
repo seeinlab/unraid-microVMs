@@ -105,18 +105,48 @@ start_vm() {
     ip link set "tap-$name" up 2>/dev/null
   fi
   
-  $CH_BIN \
-    --api-socket "$sock" \
-    --kernel "$kernel" \
-    --disk "path=$disk" \
-    --cmdline "$cmdline" \
-    --cpus "boot=$cpus,max=$max_cpus" \
-    --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
-    --net "tap=tap-$name,mac=$mac" \
-    --serial off --console off \
-    -v >> "/var/log/microvm-${name}.log" 2>&1 &
+  # Detect engine
+  local engine=$(cat "$config" | grep -oP '"engine"\s*:\s*"\K[^"]+')
+  engine=${engine:-cloud-hypervisor}
   
-  log "Started VM: $name (PID: $!)"
+  if [ "$engine" = "firecracker" ]; then
+    # Generate Firecracker native config file
+    local fc_cfg="/tmp/microvm-${name}-fc.json"
+    cat > "$fc_cfg" << FCEOF
+{
+  "boot-source": {
+    "kernel_image_path": "$kernel",
+    "boot_args": "$cmdline"
+  },
+  "drives": [
+    {"drive_id": "rootfs", "path_on_host": "$disk", "is_root_device": true, "is_read_only": false}
+  ],
+  "network-interfaces": [
+    {"iface_id": "eth0", "guest_mac": "$mac", "host_dev_name": "tap-$name"}
+  ],
+  "machine-config": {
+    "vcpu_count": $cpus,
+    "mem_size_mib": $memory
+  }
+}
+FCEOF
+    /usr/local/bin/firecracker --api-sock "$sock" --config-file "$fc_cfg" \
+      >> "/var/log/microvm-${name}.log" 2>&1 &
+  else
+    # Cloud Hypervisor
+    $CH_BIN \
+      --api-socket "$sock" \
+      --kernel "$kernel" \
+      --disk "path=$disk" \
+      --cmdline "$cmdline" \
+      --cpus "boot=$cpus,max=$max_cpus" \
+      --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
+      --net "tap=tap-$name,mac=$mac" \
+      --serial off --console off \
+      -v >> "/var/log/microvm-${name}.log" 2>&1 &
+  fi
+  
+  log "Started VM: $name (engine=$engine, PID: $!)"
 }
 
 stop_vm() {

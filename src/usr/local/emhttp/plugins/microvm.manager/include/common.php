@@ -33,8 +33,15 @@ function microvm_list_vms() {
         // Check if VM is running
         $running = false;
         if (file_exists($sock)) {
-            exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
-            $running = ($ret === 0);
+            $engine = $config['engine'] ?? 'cloud-hypervisor';
+            if ($engine === 'firecracker') {
+                // FC: check if process with this socket is alive
+                $running = !empty(trim(shell_exec("pgrep -f 'api-sock $sock' 2>/dev/null")));
+            } else {
+                // CH: use ch-remote ping
+                exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
+                $running = ($ret === 0);
+            }
         }
 
         $vms[] = [
