@@ -38,10 +38,10 @@ $kernel_exists = file_exists($kernel_path);
 </table>
 
 <?php if (!$kernel_exists): ?>
-<p class="notice">
-  <b>No kernel found.</b> Download one first:<br>
-  <code>curl -fsSL -o <?=$kernel_path?> https://github.com/cloud-hypervisor/linux/releases/download/ch-release-v6.2-20240908/vmlinux</code>
-</p>
+<div class="notice" style="margin:10px 0; padding:10px;">
+  <b>No kernel found.</b> Run on Unraid terminal:<br>
+  <span style="font-family:monospace; font-size:0.9em;">curl -fsSL -o <?=htmlspecialchars($kernel_path)?> https://github.com/cloud-hypervisor/linux/releases/download/ch-release-v6.2-20240908/vmlinux</span>
+</div>
 <?php endif; ?>
 
 <table class="unraid vm-table">
