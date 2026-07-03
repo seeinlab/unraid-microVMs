@@ -12,8 +12,8 @@ require_once "$docroot/plugins/$plugin/include/common.php";
 $cfg = microvm_load_config();
 $vms = microvm_list_vms();
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
-$kernel_path = "$vmdir/kernels/vmlinux";
-$kernel_exists = file_exists($kernel_path);
+$kernel_path = "$vmdir/kernels";
+$kernel_exists = is_file("$vmdir/kernels/cloud-hypervisor/vmlinux") || is_file("$vmdir/kernels/firecracker/vmlinux");
 ?>
 
 <style>
@@ -149,7 +149,9 @@ img.vm-icon-stopped { opacity:0.4; }
 <?php if (!$kernel_exists): ?>
 <div class="notice" style="margin:10px 0 15px; padding:12px;">
   <b>Kernel not found.</b> Download via terminal:<br>
-  <span style="font-family:monospace;font-size:0.85em;">curl -fsSL -o <?=htmlspecialchars($kernel_path)?> https://github.com/nichmr/linux/releases/download/ch-release-v6.14-20250701/vmlinux</span>
+  <span style="font-family:monospace;font-size:0.85em;">mkdir -p <?=htmlspecialchars($kernel_path)?>/cloud-hypervisor <?=htmlspecialchars($kernel_path)?>/firecracker<br>
+  curl -fsSL -o <?=htmlspecialchars($kernel_path)?>/cloud-hypervisor/vmlinux https://github.com/cloud-hypervisor/linux/releases/download/ch-release-v6.2-20240908/vmlinux<br>
+  curl -fsSL -o <?=htmlspecialchars($kernel_path)?>/firecracker/vmlinux https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.11/x86_64/vmlinux-5.10.225</span>
 </div>
 <?php endif; ?>
 
