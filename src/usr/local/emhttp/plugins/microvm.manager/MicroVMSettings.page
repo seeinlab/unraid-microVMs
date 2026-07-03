@@ -119,7 +119,7 @@ if (is_dir($vmdir)) {
 
 <table class="unraid tablesorter"><thead><tr><td>_(Service Control)_</td></tr></thead></table>
 
-<form method="POST" action="/update.php" target="progressFrame">
+<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},3000)">
 <input type="hidden" name="#command" value="/plugins/microvm.manager/start.sh">
 <dl>
   <dt>_(Start MicroVM service)_:</dt>
@@ -127,7 +127,7 @@ if (is_dir($vmdir)) {
 </dl>
 </form>
 
-<form method="POST" action="/update.php" target="progressFrame">
+<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},3000)">
 <input type="hidden" name="#command" value="/plugins/microvm.manager/stop.sh">
 <dl>
   <dt>_(Stop MicroVM service)_ (graceful shutdown all VMs):</dt>
@@ -135,7 +135,7 @@ if (is_dir($vmdir)) {
 </dl>
 </form>
 
-<form method="POST" action="/update.php" target="progressFrame">
+<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},5000)">
 <input type="hidden" name="#command" value="/plugins/microvm.manager/restart.sh">
 <dl>
   <dt>_(Restart service)_:</dt>
