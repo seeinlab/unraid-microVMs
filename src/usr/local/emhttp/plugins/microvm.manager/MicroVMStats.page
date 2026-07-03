@@ -67,22 +67,6 @@ $vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null
   <div class="stat-card"><div class="number"><?=$vmdir_size?></div><div class="label">Disk Used</div></div>
 </div>
 
-<table class="tablesorter shift ups">
-<thead><tr><td>Host Resources</td></tr></thead>
-</table>
-
-<table class="tablesorter shift ups">
-<tbody>
-  <tr><td style="width:200px;">Host CPUs</td><td><?=$host_cpus?> threads</td></tr>
-  <tr><td>Host Memory</td><td><?=$host_mem_used?>M / <?=$host_mem?>M (<?=round($host_mem_used/$host_mem*100)?>%)</td></tr>
-  <tr><td>VM Storage</td><td><?=$vmdir?> (<?=$vmdir_size?>)</td></tr>
-  <tr><td>Cloud Hypervisor</td><td><?=$ch_version?></td></tr>
-  <tr><td>ch-remote</td><td><?=$ch_remote_version?></td></tr>
-  <tr><td>crane</td><td><?=$crane_version?></td></tr>
-  <tr><td>Bridge</td><td><?=htmlspecialchars($cfg['BRIDGE'] ?? 'br0')?></td></tr>
-</tbody>
-</table>
-
 <?php if ($running_vms > 0): ?>
 <table class="tablesorter shift ups">
 <thead><tr><td>Running VM Details</td></tr></thead>
