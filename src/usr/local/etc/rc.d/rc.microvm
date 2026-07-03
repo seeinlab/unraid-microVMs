@@ -158,30 +158,58 @@ FCEOF
 stop_vm() {
   local name="$1"
   local sock="/tmp/microvm-${name}.sock"
+  local vmdir="$VMDIR/$name"
   
   # Kill any ttyd console relay for this VM
-  local ttyd_pid_file="/tmp/ttyd-microvm-${name}.pid"
+  local ttyd_pid_file="/var/tmp/ttyd-microvm-${name}.pid"
   if [ -f "$ttyd_pid_file" ]; then
     kill $(cat "$ttyd_pid_file") 2>/dev/null
     rm -f "$ttyd_pid_file"
     log "Stopped console relay for: $name"
   fi
+  # Also kill log viewer ttyd
+  local ttyd_log_pid="/var/tmp/ttyd-microvm-${name}-log.pid"
+  if [ -f "$ttyd_log_pid" ]; then
+    kill $(cat "$ttyd_log_pid") 2>/dev/null
+    rm -f "$ttyd_log_pid"
+  fi
   
-  if [ -S "$sock" ]; then
-    $REMOTE_BIN --api-socket "$sock" power-button 2>/dev/null
-    log "Sent ACPI power-button to: $name"
-    
-    # Wait for graceful shutdown (max 30s)
-    local timeout=30
-    local elapsed=0
-    while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
-      sleep 1
-      elapsed=$((elapsed + 1))
-    done
-    
+  # Detect engine
+  local engine="cloud-hypervisor"
+  if [ -f "$vmdir/config.json" ]; then
+    engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$vmdir/config.json" 2>/dev/null)
+    engine=${engine:-cloud-hypervisor}
+  fi
+  
+  if [ "$engine" = "firecracker" ]; then
+    # Firecracker: no ACPI, kill the process directly
+    local pid=$(pgrep -f "microvm-${name}" 2>/dev/null | head -1)
+    if [ -n "$pid" ]; then
+      kill "$pid" 2>/dev/null
+      sleep 2
+      # Force kill if still alive
+      kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+      log "Killed Firecracker VM: $name (PID: $pid)"
+    fi
+    rm -f "$sock"
+  else
+    # Cloud Hypervisor: graceful ACPI shutdown
     if [ -S "$sock" ]; then
-      $REMOTE_BIN --api-socket "$sock" shutdown-vmm 2>/dev/null
-      log "Force shutdown: $name"
+      $REMOTE_BIN --api-socket "$sock" power-button 2>/dev/null
+      log "Sent ACPI power-button to: $name"
+      
+      # Wait for graceful shutdown (max 30s)
+      local timeout=30
+      local elapsed=0
+      while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
+        sleep 1
+        elapsed=$((elapsed + 1))
+      done
+      
+      if [ -S "$sock" ]; then
+        $REMOTE_BIN --api-socket "$sock" shutdown-vmm 2>/dev/null
+        log "Force shutdown: $name"
+      fi
     fi
   fi
 }
