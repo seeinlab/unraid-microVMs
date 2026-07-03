@@ -54,7 +54,7 @@ $kernel_exists = file_exists($kernel_path);
     $ip = htmlspecialchars($vm['config']['ip'] ?? '-');
   ?>
   <tr class="vm-row">
-    <td><b><?=$name?></b></td>
+    <td><img src="/plugins/microvm.manager/images/<?=($vm['config']['engine'] ?? 'cloud-hypervisor')?>.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:8px;"><b><?=$name?></b></td>
     <td><span class="vm-state-<?=$state?>"><?=$state?></span></td>
     <td><?=$cpus?></td>
     <td><?=$mem?> MB</td>
