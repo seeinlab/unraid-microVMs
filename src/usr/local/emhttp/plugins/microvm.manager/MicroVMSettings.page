@@ -57,25 +57,16 @@ $crane_status = $crane_bin ? '<span style="color:#4CAF50;">✓</span>' : '<span 
 <?php endif; ?>
 
 _(Cloud Hypervisor)_:
-: <?=$ch_version ?: '<span style="color:#f44336;">Not installed</span>'?><?=$remote_version ? " + $remote_version" : ''?> <?=$ch_status?>
+: <?=$ch_version ?: '<span style="color:#f44336;">Not installed</span>'?><?=$remote_version ? " + $remote_version" : ''?><?php if(is_file("$vmdir/kernels/cloud-hypervisor/vmlinux")):?> — kernel: kernels/cloud-hypervisor/vmlinux<?php endif;?> <?=$ch_status?>
 
 _(Firecracker)_:
-: <?=$fc_version ?: '<span style="opacity:0.5;">Not installed</span>'?> <?=$fc_status?>
+: <?=$fc_version ?: '<span style="opacity:0.5;">Not installed</span>'?><?php if(is_file("$vmdir/kernels/firecracker/vmlinux")):?> — kernel: kernels/firecracker/vmlinux<?php endif;?> <?=$fc_status?>
 
 _(OCI Image Tool)_:
 : crane <?=$crane_version ?: '<span style="opacity:0.5;">Not installed (optional)</span>'?> <?=$crane_status?>
 
 _(KVM)_:
-: <?=$kvm_available ? '/dev/kvm available <span style="color:#4CAF50;">✓</span>' : '<span style="color:#f44336;">✗ Not available</span>'?>
-
-_(Kernel)_:
-: <?php
-$ch_kernel = is_file("$vmdir/kernels/cloud-hypervisor/vmlinux");
-$fc_kernel = is_file("$vmdir/kernels/firecracker/vmlinux");
-if ($ch_kernel) echo "kernels/cloud-hypervisor/vmlinux <span style='color:#4CAF50;'>✓</span><br>";
-if ($fc_kernel) echo "kernels/firecracker/vmlinux <span style='color:#4CAF50;'>✓</span>";
-if (!$ch_kernel && !$fc_kernel) echo '<span style="color:#f44336;">✗ No kernels found</span>';
-?>
+: /dev/kvm <?=$kvm_available ? 'available <span style="color:#4CAF50;">✓</span>' : '<span style="color:#f44336;">✗ Not available</span>'?>
 
 <div class="title"><span class="left"><i class="title fa fa-gears"></i>_(General Settings)_</span></div>
 
