@@ -1,4 +1,4 @@
-Menu="microVMs:1"
+Menu="MicroVMs:1"
 Title="microVMs"
 Tag="server"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"

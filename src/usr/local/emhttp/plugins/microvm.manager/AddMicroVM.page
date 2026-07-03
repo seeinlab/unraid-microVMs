@@ -15,7 +15,7 @@ $default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
 $nproc = trim(shell_exec('nproc'));
 ?>
 
-<div class="title"><span class="left"><a href="/microVMs" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
+<div class="title"><span class="left"><a href="/MicroVMs" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
 
 <form id="microvm_add_form" onsubmit="return submitForm()">
 
@@ -184,7 +184,7 @@ function submitForm() {
       var result = JSON.parse(data);
       if (result.success) {
         showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
-        setTimeout(function(){ location = '/microVMs'; }, 3000);
+        setTimeout(function(){ location = '/MicroVMs'; }, 3000);
       } else {
         showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
       }
@@ -205,12 +205,12 @@ function createFromJson() {
     var r = JSON.parse(data);
     if (r.success) {
       showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
-      setTimeout(function(){ location = '/microVMs'; }, 2000);
+      setTimeout(function(){ location = '/MicroVMs'; }, 2000);
     } else {
       showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
     }
   });
 }
 
-function done() { location = '/microVMs'; }
+function done() { location = '/MicroVMs'; }
 </script>
