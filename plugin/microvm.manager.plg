@@ -1,12 +1,12 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN>
-<PLUGIN name="microvm.manager" author="seein" version="2026.07.03.1"
+<PLUGIN name="microvm.manager" author="seein" version="2026.07.03.39"
   pluginURL="https://raw.githubusercontent.com/seein/unraid-microVMs/main/plugin/microvm.manager.plg"
   launch="Settings/MicroVMManager"
   min="6.12.0">
 
 <CHANGES><![CDATA[
-### 2026.07.03.1
+### 2026.07.03.39
 - Initial release
 - Cloud Hypervisor v52.0 support
 - Create, start, stop, resize, snapshot VMs
@@ -34,8 +34,8 @@
 </FILE>
 
 <!-- Download plugin package (for local install, replace URL with file path) -->
-<FILE Name="/boot/config/plugins/microvm.manager/microvm.manager-2026.07.03.1.tgz">
-<LOCAL>/boot/config/plugins/microvm.manager/microvm.manager-2026.07.03.1.tgz</LOCAL>
+<FILE Name="/boot/config/plugins/microvm.manager/microvm.manager-2026.07.03.39.tgz">
+<LOCAL>/boot/config/plugins/microvm.manager/microvm.manager-2026.07.03.39.tgz</LOCAL>
 </FILE>
 
 <!-- INSTALL -->
@@ -43,7 +43,7 @@
 <INLINE>
 <![CDATA[
 PLUGIN="microvm.manager"
-VERSION="2026.07.03.1"
+VERSION=2026.07.03.39
 
 # Remove old plugin files
 rm -rf /usr/local/emhttp/plugins/${PLUGIN}

@@ -208,7 +208,7 @@ img.vm-icon-stopped { opacity:0.4; }
         <div class="ctx-menu">
           <?php if ($state === 'running'): ?>
             <a href="#" onclick="vmAction('stop','<?=$name?>');return false;"><i class="fa fa-stop red-text"></i>Stop</a>
-            <a href="#" onclick="vmResize('<?=$name?>');return false;"><i class="fa fa-expand"></i>Resize</a>
+            <a href="#" onclick="vmResize('<?=$name?>','<?=$engine?>');return false;"><i class="fa fa-expand"></i>Resize</a>
             <a href="#" onclick="vmAction('snapshot','<?=$name?>');return false;"><i class="fa fa-camera"></i>Snapshot</a>
             <div class="ctx-divider"></div>
             <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
@@ -267,14 +267,21 @@ function vmAction(action, name) {
   });
 }
 
-function vmResize(name) {
+function vmResize(name, engine) {
   document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
+  if (engine === 'firecracker') {
+    alert('Live resize is not supported for Firecracker engine.\nRecreate the VM with new resource settings.');
+    return;
+  }
   var cpus = prompt('New CPU count:', '2');
   if (!cpus) return;
-  var mem = prompt('New memory in bytes (e.g. 536870912 = 512MB):', '536870912');
-  if (!mem) return;
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
-    showOutput('Resize: ' + (typeof data === 'object' ? JSON.stringify(data) : data));
+  var memMB = prompt('New memory (MB):', '512');
+  if (!memMB) return;
+  var memBytes = parseInt(memMB) * 1048576;
+  showOutput('Resizing ' + name + ': ' + cpus + ' CPUs, ' + memMB + 'MB...');
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
+    var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
+    showOutput('Result: ' + msg);
     setTimeout(function(){ location.reload(); }, 2000);
   });
 }

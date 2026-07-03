@@ -53,6 +53,16 @@ switch ($cmd) {
         break;
 
     case 'resize':
+        // Only Cloud Hypervisor supports live resize via ch-remote
+        $configFile = "$vmdir/$name/config.json";
+        if (file_exists($configFile)) {
+            $vmConfig = json_decode(file_get_contents($configFile), true);
+            $vmEngine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+            if ($vmEngine === 'firecracker') {
+                echo json_encode(['success' => false, 'error' => 'Live resize not supported for Firecracker engine. Recreate VM with new config.']);
+                break;
+            }
+        }
         $cpus = $_POST['cpus'] ?? null;
         $memory = $_POST['memory'] ?? null;
         $result = microvm_resize_vm($name, $cpus, $memory);
