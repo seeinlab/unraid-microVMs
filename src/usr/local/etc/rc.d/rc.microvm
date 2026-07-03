@@ -76,6 +76,35 @@ start_vm() {
   max_cpus=${max_cpus:-$((cpus * 2))}
   memory=${memory:-${DEFAULT_MEMORY:-256}}
   
+  # Resolve /mnt/user/ paths to actual tier paths (CH can't read FUSE/shfs)
+  # /mnt/user/X → find actual file on /mnt/disk*, /mnt/cache, /mnt/*tier
+  resolve_path() {
+    local path="$1"
+    if [[ "$path" == /mnt/user/* ]]; then
+      local rel="${path#/mnt/user/}"
+      # Search all actual mount points for the file
+      for base in /mnt/cache /mnt/mtier /mnt/ztier /mnt/rtier /mnt/disk1 /mnt/disk2 /mnt/disk3 /mnt/disk4; do
+        if [ -f "$base/$rel" ]; then
+          echo "$base/$rel"
+          return
+        fi
+      done
+    fi
+    echo "$path"
+  }
+  
+  kernel=$(resolve_path "$kernel")
+  disk=$(resolve_path "$disk")
+  
+  log "Starting $name: kernel=$kernel disk=$disk cpus=$cpus mem=${memory}M"
+
+  # Create TAP if not exists
+  if ! ip link show "tap-$name" &>/dev/null; then
+    ip tuntap add "tap-$name" mode tap 2>/dev/null
+    ip link set "tap-$name" master "$BRIDGE" 2>/dev/null
+    ip link set "tap-$name" up 2>/dev/null
+  fi
+  
   $CH_BIN \
     --api-socket "$sock" \
     --kernel "$kernel" \

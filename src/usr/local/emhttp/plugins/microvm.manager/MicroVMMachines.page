@@ -90,7 +90,8 @@ function addMicroVM() {
 function vmAction(action, name) {
   showOutput('Running: ' + action + ' ' + name + '...');
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
-    showOutput('Done: ' + data);
+    var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
+    showOutput('Done: ' + msg);
     setTimeout(function(){ location.reload(); }, 3000);
   });
 }
@@ -107,8 +108,13 @@ function vmResize(name) {
 
 function vmInfo(name) {
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
-    try { data = JSON.stringify(JSON.parse(data), null, 2); } catch(e) {}
-    swal({title: name, text: '<pre style="text-align:left;max-height:400px;overflow:auto;">' + data + '</pre>', html: true});
+    var text;
+    if (typeof data === 'object') {
+      text = JSON.stringify(data, null, 2);
+    } else {
+      try { text = JSON.stringify(JSON.parse(data), null, 2); } catch(e) { text = data; }
+    }
+    swal({title: name, text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:12px;">' + text + '</pre>', html: true});
   });
 }
 
