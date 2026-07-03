@@ -380,13 +380,63 @@ INIT;
         break;
 
     case 'logs':
-        // Return last 100 lines of VM log
+        // Return last 100 lines of VM log (AJAX)
         $logFile = "$vmdir/$name/vm.log";
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $lines]);
         } else {
             echo json_encode(['success' => true, 'log' => "(no log file found at $logFile)"]);
+        }
+        break;
+
+    case 'logs_terminal':
+        // Open log viewer via ttyd + unix socket (proxied at /logterminal/)
+        $logFile = "$vmdir/$name/vm.log";
+        if (!file_exists($logFile)) {
+            echo json_encode(['success' => false, 'error' => "No log file at $logFile"]);
+            break;
+        }
+
+        $ttydBin = '/usr/local/bin/ttyd';
+        if (!is_executable($ttydBin)) {
+            echo json_encode(['success' => false, 'error' => 'ttyd not installed']);
+            break;
+        }
+
+        $sockName = "microvm-{$name}.log";
+        $sockPath = "/var/tmp/{$sockName}.sock";
+        $pidFile = "/var/tmp/ttyd-microvm-{$name}-log.pid";
+
+        // Kill existing
+        if (file_exists($pidFile)) {
+            $oldPid = trim(file_get_contents($pidFile));
+            if ($oldPid && file_exists("/proc/$oldPid")) {
+                exec("kill $oldPid 2>/dev/null");
+                usleep(300000);
+            }
+            @unlink($pidFile);
+        }
+        @unlink($sockPath);
+
+        // Start ttyd with tail -f on the log file
+        $cmd = sprintf(
+            'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
+            "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
+            '-i %s tail -f -n 90 %s > /dev/null 2>&1 & echo $!',
+            $ttydBin,
+            escapeshellarg($sockPath),
+            escapeshellarg($logFile)
+        );
+        $pid = trim(shell_exec($cmd));
+        if ($pid) file_put_contents($pidFile, $pid);
+
+        usleep(500000);
+
+        if (file_exists($sockPath)) {
+            echo json_encode(['success' => true, 'url' => "/logterminal/{$sockName}/"]);
+        } else {
+            echo json_encode(['success' => false, 'error' => "Failed to start log viewer"]);
         }
         break;
 

@@ -330,17 +330,15 @@ function vmInfo(name) {
 }
 
 function vmLogs(name) {
-  // Open log viewer in popup window like Unraid's libvirt VM logs
-  // Uses Unraid's built-in logterminal page pattern
-  var logPath = '<?=$vmdir?>/' + name + '/vm.log';
-  var url = '/logterminal/' + name + '/';
-  // Unraid's log viewer uses: /usr/local/emhttp/webGui/scripts/run_cmd tail -f -n 90 <logpath>
-  // We'll use the same pattern
-  var cmdUrl = '/webGui/scripts/run_cmd tail -f -n 90 ' + logPath + ' (microvm-' + name + ')';
-  var w = 900, h = 600;
-  var left = (screen.width - w) / 2;
-  var top = (screen.height - h) / 2;
-  window.open(cmdUrl, 'microvm_log_' + name, 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes');
+  // Start a ttyd log viewer via backend, then open the logterminal URL
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'logs_terminal', name: name}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success && data.url) {
+      window.open(data.url, 'microvm_log_' + name, 'width=900,height=600,resizable=yes,scrollbars=yes');
+    } else {
+      swal({title: 'Logs Error', text: data.error || 'Failed to open logs', type: 'error'});
+    }
+  });
 }
 
 function vmDelete(name) {
