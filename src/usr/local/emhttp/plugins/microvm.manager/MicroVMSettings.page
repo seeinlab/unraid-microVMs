@@ -2,7 +2,6 @@ Menu="OtherSettings"
 Icon="microvm.manager.png"
 Title="microVM Manager"
 Tag="microchip"
-Markdown="false"
 ---
 <?php
 $plugin = "microvm.manager";
@@ -11,123 +10,77 @@ require_once "$docroot/plugins/$plugin/include/common.php";
 
 $cfg = microvm_load_config();
 
-// Check binaries
 $ch_version = trim(shell_exec('cloud-hypervisor --version 2>/dev/null') ?: 'Not installed');
 $remote_version = trim(shell_exec('ch-remote --version 2>/dev/null') ?: 'Not installed');
 $crane_version = trim(shell_exec('crane version 2>/dev/null') ?: 'Not installed');
 
-// Service status
-$service_running = exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output, $status_ret);
+exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output, $status_ret);
 $is_running = ($status_ret === 0);
 
-// Count VMs
 $vm_count = 0;
-$vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
 if (is_dir($vmdir)) {
     foreach (glob("$vmdir/*/config.json") as $f) $vm_count++;
 }
 ?>
 
-<form method="POST" action="/update.php" target="progressFrame">
+<div class="title"><span class="left"><i class="title fa fa-fire"></i>_(Service Status)_</span><span class="right"><?=$is_running ? '<span style="color:#4CAF50;">Status: <b>Running</b></span>' : '<span style="color:#f44336;">Status: <b>Stopped</b></span>'?></span></div>
+
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="microvm.manager/microvm.manager.cfg">
-<input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
+<input type="hidden" name="#command" value="/plugins/microvm.manager/restart.sh">
 
-<table class="unraid tablesorter"><thead><tr><td>_(Service Status)_</td></tr></thead></table>
+_(Cloud Hypervisor)_:
+: <?=$ch_version?>
 
-<dl>
-  <dt>_(Cloud Hypervisor)_:</dt>
-  <dd><?=$ch_version?></dd>
-</dl>
-<dl>
-  <dt>_(ch-remote)_:</dt>
-  <dd><?=$remote_version?></dd>
-</dl>
-<dl>
-  <dt>_(crane)_:</dt>
-  <dd><?=$crane_version?></dd>
-</dl>
-<dl>
-  <dt>_(Service)_:</dt>
-  <dd><?=$is_running ? '<span class="green"><b>Running</b></span>' : '<span class="red"><b>Stopped</b></span>'?></dd>
-</dl>
-<dl>
-  <dt>_(Configured VMs)_:</dt>
-  <dd><?=$vm_count?></dd>
-</dl>
+_(ch-remote)_:
+: <?=$remote_version?>
 
-<table class="unraid tablesorter"><thead><tr><td>_(General Settings)_</td></tr></thead></table>
+_(crane)_:
+: <?=$crane_version?>
 
-<dl>
-  <dt>_(Enable microVM Manager)_:</dt>
-  <dd>
-    <select name="SERVICE">
-      <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
-      <?=mk_option($cfg['SERVICE'] ?? 'disable', 'enable', _('Yes'))?>
-    </select>
-  </dd>
-</dl>
+_(Configured VMs)_:
+: <?=$vm_count?>
 
-<dl>
-  <dt>_(VM Storage Location)_:</dt>
-  <dd>
-    <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/appdata/microvm')?>"
-      data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
-  </dd>
-</dl>
+<div class="title"><span class="left"><i class="title fa fa-gears"></i>_(General Settings)_</span></div>
 
-<dl>
-  <dt>_(Network Bridge)_:</dt>
-  <dd>
-    <select name="BRIDGE">
-      <?php foreach(glob('/sys/class/net/br*') as $br): $name=basename($br); ?>
-      <?=mk_option($cfg['BRIDGE'] ?? 'br0', $name, $name)?>
-      <?php endforeach; ?>
-    </select>
-  </dd>
-</dl>
+_(Enable microVM Manager)_:
+: <select name="SERVICE">
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', 'enable', _('Yes'))?>
+  </select>
 
-<dl>
-  <dt>_(Default vCPUs)_:</dt>
-  <dd><input type="number" name="DEFAULT_CPUS" min="1" max="<?=exec('nproc')?>" value="<?=htmlspecialchars($cfg['DEFAULT_CPUS'] ?? '1')?>"></dd>
-</dl>
+_(VM Storage Location)_:
+: <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
 
-<dl>
-  <dt>_(Default Memory)_ (MB):</dt>
-  <dd><input type="number" name="DEFAULT_MEMORY" min="64" step="64" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>"></dd>
-</dl>
+_(Network Bridge)_:
+: <select name="BRIDGE">
+  <?php foreach(glob('/sys/class/net/br*') as $br): $name=basename($br); ?>
+  <?=mk_option($cfg['BRIDGE'] ?? 'br0', $name, $name)?>
+  <?php endforeach; ?>
+  </select>
 
-<dl>
-  <dt>_(Autostart VMs on array start)_:</dt>
-  <dd>
-    <select name="AUTOSTART">
-      <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'no', _('No'))?>
-      <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'yes', _('Yes'))?>
-    </select>
-  </dd>
-</dl>
+_(Default vCPUs)_:
+: <input type="number" name="DEFAULT_CPUS" min="1" max="<?=exec('nproc')?>" value="<?=htmlspecialchars($cfg['DEFAULT_CPUS'] ?? '1')?>">
 
-<table class="unraid tablesorter"><thead><tr><td>_(Actions)_</td></tr></thead></table>
+_(Default Memory)_ (MB):
+: <input type="number" name="DEFAULT_MEMORY" min="64" step="64" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>">
 
-<dl>
-  <dt>&nbsp;</dt>
-  <dd>
-    <input type="submit" name="#apply" value="_(Apply)_">
-    <input type="button" value="_(Done)_" onclick="done()">
-  </dd>
-</dl>
+_(Autostart VMs on array start)_:
+: <select name="AUTOSTART">
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'no', _('No'))?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'yes', _('Yes'))?>
+  </select>
+
+&nbsp;
+: <input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">
+
 </form>
 
-<table class="unraid tablesorter"><thead><tr><td>_(Service Control)_</td></tr></thead></table>
+<div class="title"><span class="left"><i class="title fa fa-power-off"></i>_(Service Control)_</span></div>
 
-<dl>
-  <dt>&nbsp;</dt>
-  <dd>
-    <input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>>
-    <input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>>
-    <input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')">
-    <span id="svcStatus" style="margin-left:15px;"></span>
-  </dd>
-</dl>
+&nbsp;
+: <input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>><input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>><input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')"><span id="svcStatus" style="margin-left:15px;"></span>
 
 <script>
 function done() { location = '/Settings'; }
@@ -136,7 +89,7 @@ function serviceCmd(action) {
   $('#btnStart,#btnStop,#btnRestart').prop('disabled', true);
   $.post('/plugins/microvm.manager/backend/MicroVMAdmin.php', {cmd: 'service', action: action}, function(data) {
     var msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data;
-    $('#svcStatus').html('<span style="color:#4CAF50;">' + msg + '</span>');
+    $('#svcStatus').html('<span style="color:#4CAF50;">Done</span>');
     setTimeout(function(){ location.reload(); }, 2000);
   }).fail(function() {
     $('#svcStatus').html('<span style="color:#f44336;">Failed</span>');
