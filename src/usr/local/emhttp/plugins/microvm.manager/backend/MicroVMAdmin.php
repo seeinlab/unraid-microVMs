@@ -275,6 +275,7 @@ INIT;
     case 'console':
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
         $logFile = "$vmdir/$name/vm.log";
+        if (!file_exists($logFile)) $logFile = "/var/log/microvm-{$name}.log";
         $sock = "/tmp/microvm-{$name}.sock";
 
         // Check VM is running
@@ -340,7 +341,7 @@ INIT;
         $cmd = sprintf(
             'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
             "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
-            '-i %s %s > /dev/null 2>&1 & echo $!',
+            '-i %s /usr/local/bin/microvm-console %s > /dev/null 2>&1 & echo $!',
             $ttydBin,
             escapeshellarg($sockPath),
             escapeshellarg($ptyPath)
@@ -382,19 +383,24 @@ INIT;
     case 'logs':
         // Return last 100 lines of VM log (AJAX)
         $logFile = "$vmdir/$name/vm.log";
+        if (!file_exists($logFile)) $logFile = "/var/log/microvm-{$name}.log";
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $lines]);
         } else {
-            echo json_encode(['success' => true, 'log' => "(no log file found at $logFile)"]);
+            echo json_encode(['success' => false, 'error' => "No log file found for '$name'"]);
         }
         break;
 
     case 'logs_terminal':
         // Open log viewer via ttyd + unix socket (proxied at /logterminal/)
         $logFile = "$vmdir/$name/vm.log";
+        // Fallback to old path if new path doesn't exist
         if (!file_exists($logFile)) {
-            echo json_encode(['success' => false, 'error' => "No log file at $logFile"]);
+            $logFile = "/var/log/microvm-{$name}.log";
+        }
+        if (!file_exists($logFile)) {
+            echo json_encode(['success' => false, 'error' => "No log file found for '$name'"]);
             break;
         }
 

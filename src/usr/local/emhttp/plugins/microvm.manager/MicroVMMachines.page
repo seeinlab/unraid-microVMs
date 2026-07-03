@@ -16,6 +16,9 @@ $kernel_path = "$vmdir/kernels";
 $kernel_exists = is_file("$vmdir/kernels/cloud-hypervisor/vmlinux") || is_file("$vmdir/kernels/firecracker/vmlinux");
 ?>
 
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+
 <style>
 /* Table layout */
 table.tablesorter.microvm { width:100%; }
@@ -73,17 +76,6 @@ span.inner a {
 /* Opacity for stopped icons */
 img.vm-icon-started { opacity:1.0; }
 img.vm-icon-stopped { opacity:0.4; }
-
-/* Autostart toggle */
-.autostart-toggle {
-  cursor:pointer;
-  font-weight:bold;
-  font-size:0.85rem;
-  padding:2px 8px;
-  border-radius:3px;
-}
-.autostart-on { color:#009900; }
-.autostart-off { color:#888; }
 
 /* Bottom button bar */
 .microvm-btnbar {
@@ -155,11 +147,7 @@ img.vm-icon-stopped { opacity:0.4; }
     <td><?=$mem_display?></td>
     <td><?=$ip?></td>
     <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap)?></td>
-    <td>
-      <span class="autostart-toggle <?=$autostart ? 'autostart-on' : 'autostart-off'?>" onclick="toggleAutostart('<?=$name?>', <?=$autostart ? 'true' : 'false'?>)">
-        <?=$autostart ? 'ON' : 'OFF'?>
-      </span>
-    </td>
+    <td><input class="autostart" type="checkbox" name="auto_<?=$name?>" title="Toggle autostart" data-name="<?=$name?>" <?=$autostart ? 'checked' : ''?>></td>
   </tr>
   <?php endforeach; ?>
 <?php endif; ?>
@@ -359,12 +347,15 @@ function vmDelete(name) {
   });
 }
 
-function toggleAutostart(name, current) {
-  var newVal = current ? 'false' : 'true';
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'autostart', name: name, enabled: newVal}, function(data) {
-    location.reload();
+// Initialize switchButton for autostart toggles
+$(function() {
+  $('.autostart').switchButton({labels_placement:'right', on_label:'On', off_label:'Off'});
+  $('.autostart').change(function() {
+    var name = $(this).data('name');
+    var enabled = $(this).prop('checked') ? 'true' : 'false';
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'autostart', name: name, enabled: enabled});
   });
-}
+});
 
 function startAll() {
   <?php foreach ($vms as $vm): ?>

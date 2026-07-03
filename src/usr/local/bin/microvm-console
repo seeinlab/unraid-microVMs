@@ -1,0 +1,11 @@
+#!/bin/bash
+# /usr/local/bin/microvm-console - bidirectional PTY access for ttyd
+PTY=$1
+if [ ! -e "$PTY" ]; then
+  echo "Error: PTY $PTY does not exist"
+  exit 1
+fi
+exec 3<>"$PTY"
+cat <&3 &
+cat >&3
+kill %1 2>/dev/null
