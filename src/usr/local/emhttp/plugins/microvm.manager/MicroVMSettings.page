@@ -10,34 +10,62 @@ require_once "$docroot/plugins/$plugin/include/common.php";
 
 $cfg = microvm_load_config();
 
-$ch_version = trim(shell_exec('cloud-hypervisor --version 2>/dev/null') ?: 'Not installed');
-$remote_version = trim(shell_exec('ch-remote --version 2>/dev/null') ?: 'Not installed');
-$crane_version = trim(shell_exec('crane version 2>/dev/null') ?: 'Not installed');
+$ch_bin = is_file('/usr/local/bin/cloud-hypervisor');
+$ch_version = $ch_bin ? trim(shell_exec('cloud-hypervisor --version 2>/dev/null')) : false;
+$remote_bin = is_file('/usr/local/bin/ch-remote');
+$remote_version = $remote_bin ? trim(shell_exec('ch-remote --version 2>/dev/null')) : false;
+$crane_bin = is_file('/usr/local/bin/crane');
+$crane_version = $crane_bin ? trim(shell_exec('crane version 2>/dev/null')) : false;
+$kvm_available = is_readable('/dev/kvm');
 
-exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output);
-$is_running = (strpos(implode(' ', $status_output), 'Manager: running') !== false);
-
-$vm_count = 0;
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-if (is_dir($vmdir)) {
+$vmdir_exists = is_dir($vmdir);
+$kernel_exists = is_file("$vmdir/kernels/vmlinux");
+
+// Count VMs
+$vm_count = 0;
+if ($vmdir_exists) {
     foreach (glob("$vmdir/*/config.json") as $f) $vm_count++;
 }
+
+// Determine status
+$issues = [];
+if (!$ch_bin) $issues[] = "cloud-hypervisor binary not found";
+if (!$remote_bin) $issues[] = "ch-remote binary not found";
+if (!$kvm_available) $issues[] = "/dev/kvm not accessible";
+if (!$vmdir_exists) $issues[] = "VM storage directory not found: $vmdir";
+if (!$kernel_exists) $issues[] = "Kernel not found: $vmdir/kernels/vmlinux";
+
+$is_ready = empty($issues);
+$status_text = $is_ready ? '<span style="color:#4CAF50;"><b>Ready</b></span>' : '<span style="color:#f44336;"><b>Failed</b></span>';
 ?>
 
-<div class="title"><span class="left"><i class="title fa fa-fire"></i>_(Service Status)_</span><span class="right"><?=$is_running ? '<span style="color:#4CAF50;">Status: <b>Running</b></span>' : '<span style="color:#f44336;">Status: <b>Stopped</b></span>'?></span></div>
+<div class="title"><span class="left"><i class="title fa fa-fire"></i>_(Status)_</span><span class="right">Status: <?=$status_text?></span></div>
 
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="microvm.manager/microvm.manager.cfg">
-<input type="hidden" name="#command" value="/plugins/microvm.manager/restart.sh">
+
+<?php if (!$is_ready): ?>
+<?php foreach ($issues as $issue): ?>
+> <span style="color:#f44336;">✗ <?=$issue?></span>
+
+<?php endforeach; ?>
+<?php endif; ?>
 
 _(Cloud Hypervisor)_:
-: <?=$ch_version?>
+: <?=$ch_version ?: '<span style="color:#f44336;">Not installed</span>'?>
 
 _(ch-remote)_:
-: <?=$remote_version?>
+: <?=$remote_version ?: '<span style="color:#f44336;">Not installed</span>'?>
 
 _(crane)_:
-: <?=$crane_version?>
+: <?=$crane_version ?: '<span style="opacity:0.5;">Not installed (optional)</span>'?>
+
+_(KVM)_:
+: <?=$kvm_available ? '<span style="color:#4CAF50;">/dev/kvm available</span>' : '<span style="color:#f44336;">Not available</span>'?>
+
+_(Kernel)_:
+: <?=$kernel_exists ? basename(realpath("$vmdir/kernels/vmlinux")) : '<span style="color:#f44336;">Not found</span>'?>
 
 _(Configured VMs)_:
 : <?=$vm_count?>
@@ -77,23 +105,6 @@ _(Autostart VMs on array start)_:
 
 </form>
 
-<div class="title"><span class="left"><i class="title fa fa-power-off"></i>_(Service Control)_</span></div>
-
-&nbsp;
-: <span class="inline-block"><input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>><input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>><input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')"></span><span id="svcStatus" style="margin-left:15px;"></span>
-
 <script>
 function done() { location = '/Settings'; }
-function serviceCmd(action) {
-  $('#svcStatus').html('<i class="fa fa-spinner fa-spin"></i> ' + action + '...');
-  $('#btnStart,#btnStop,#btnRestart').prop('disabled', true);
-  $.post('/plugins/microvm.manager/backend/MicroVMAdmin.php', {cmd: 'service', action: action}, function(data) {
-    var msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data;
-    $('#svcStatus').html('<span style="color:#4CAF50;">Done</span>');
-    setTimeout(function(){ location.reload(); }, 2000);
-  }).fail(function() {
-    $('#svcStatus').html('<span style="color:#f44336;">Failed</span>');
-    setTimeout(function(){ location.reload(); }, 2000);
-  });
-}
 </script>
