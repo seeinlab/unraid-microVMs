@@ -122,18 +122,25 @@ if (is_dir($vmdir)) {
 <dl>
   <dt>&nbsp;</dt>
   <dd>
-    <input type="button" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>>
-    <input type="button" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>>
-    <input type="button" value="_(Restart)_" onclick="serviceCmd('restart')">
+    <input type="button" id="btnStart" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>>
+    <input type="button" id="btnStop" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>>
+    <input type="button" id="btnRestart" value="_(Restart)_" onclick="serviceCmd('restart')">
+    <span id="svcStatus" style="margin-left:15px;"></span>
   </dd>
 </dl>
 
 <script>
 function done() { location = '/Settings'; }
 function serviceCmd(action) {
-  var script = '/plugins/microvm.manager/' + action + '.sh';
-  $.post('/update.php', {'#command': script}, function() {
-    setTimeout(function(){ location.reload(); }, 3000);
+  $('#svcStatus').html('<i class="fa fa-spinner fa-spin"></i> ' + action + '...');
+  $('#btnStart,#btnStop,#btnRestart').prop('disabled', true);
+  $.post('/plugins/microvm.manager/backend/MicroVMAdmin.php', {cmd: 'service', action: action}, function(data) {
+    var msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data;
+    $('#svcStatus').html('<span style="color:#4CAF50;">' + msg + '</span>');
+    setTimeout(function(){ location.reload(); }, 2000);
+  }).fail(function() {
+    $('#svcStatus').html('<span style="color:#f44336;">Failed</span>');
+    setTimeout(function(){ location.reload(); }, 2000);
   });
 }
 </script>

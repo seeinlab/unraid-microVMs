@@ -197,6 +197,16 @@ INIT;
         echo json_encode(['success' => true, 'message' => "VM '$name' created from JSON."]);
         break;
 
+    case 'service':
+        $action = $_POST['action'] ?? '';
+        if (in_array($action, ['start', 'stop', 'restart'])) {
+            exec("/etc/rc.d/rc.microvm $action 2>&1", $output, $ret);
+            echo json_encode(['success' => ($ret === 0), 'message' => implode("\n", $output)]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        }
+        break;
+
     default:
         echo json_encode(['error' => "Unknown command: $cmd"]);
 }
