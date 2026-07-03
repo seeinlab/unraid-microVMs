@@ -17,13 +17,120 @@ $kernel_exists = file_exists($kernel_path);
 ?>
 
 <style>
-.vm-row td { padding:8px 12px; vertical-align:middle; }
-.vm-state-running { color:#4CAF50; font-weight:bold; }
-.vm-state-stopped { color:#f44336; }
-.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; }
-.vm-btn:hover { background:#555; }
-.vm-btn-danger { border-color:#d32f2f; color:#f44336; }
-.vm-btn-start { border-color:#4CAF50; color:#4CAF50; }
+/* Match Unraid VM Manager style */
+table.tablesorter.microvm tr:nth-child(odd){background:none;}
+table.tablesorter.microvm tr:nth-child(even){background:none;}
+table.tablesorter.microvm th:first-child{width:220px;text-align:left;}
+table.tablesorter.microvm td:first-child{width:220px;text-align:left;}
+table.tablesorter.microvm th:nth-child(2){width:8%;text-align:center;}
+table.tablesorter.microvm td:nth-child(2){width:8%;text-align:center;}
+table.tablesorter.microvm th:nth-child(3){width:10%;text-align:center;}
+table.tablesorter.microvm td:nth-child(3){width:10%;text-align:center;}
+table.tablesorter.microvm th:nth-child(4){width:15%;text-align:center;}
+table.tablesorter.microvm td:nth-child(4){width:15%;text-align:center;}
+table.tablesorter.microvm th:nth-child(5){width:24px;text-align:center;}
+table.tablesorter.microvm td:nth-child(5){width:24px;text-align:center;}
+
+/* Icon container - matches Unraid VM/Docker style */
+span.outer {
+  display:inline-flex;
+  align-items:center;
+  position:relative;
+}
+span.outer .img {
+  width:32px;
+  height:32px;
+  object-fit:contain;
+  vertical-align:middle;
+}
+span.inner {
+  display:inline-block;
+  margin-left:10px;
+  line-height:1.3;
+}
+span.inner .vmname {
+  font-weight:bold;
+  font-size:1.2rem;
+}
+
+/* Status indicators - match Unraid */
+.started { color:#009900; }
+.stopped { color:#EF3D47; }
+.paused  { color:#F0DD33; }
+.green-text { color:#009900; }
+.red-text { color:#EF3D47; }
+.orange-text { color:#F0DD33; }
+
+/* Context menu */
+.microvm-context {
+  position:relative;
+  display:inline-block;
+}
+.microvm-context .ctx-btn {
+  cursor:pointer;
+  padding:4px 8px;
+  font-size:1.4rem;
+  color:#606e7f;
+}
+.microvm-context .ctx-btn:hover {
+  color:#f56c6c;
+}
+.microvm-context .ctx-menu {
+  display:none;
+  position:absolute;
+  right:0;
+  top:100%;
+  z-index:1000;
+  min-width:180px;
+  background:#1c1b1b;
+  border:1px solid #3a3a3a;
+  border-radius:4px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.5);
+  padding:4px 0;
+}
+.microvm-context.open .ctx-menu {
+  display:block;
+}
+.microvm-context .ctx-menu a {
+  display:block;
+  padding:6px 14px;
+  color:#ccc;
+  text-decoration:none;
+  font-size:0.9rem;
+  white-space:nowrap;
+}
+.microvm-context .ctx-menu a:hover {
+  background:#333;
+  color:#fff;
+}
+.microvm-context .ctx-menu a i {
+  width:20px;
+  text-align:center;
+  margin-right:8px;
+}
+.microvm-context .ctx-menu .ctx-divider {
+  height:1px;
+  background:#3a3a3a;
+  margin:4px 0;
+}
+
+/* Icon status overlay */
+.icon-wrap {
+  position:relative;
+  display:inline-block;
+  width:32px;
+  height:32px;
+}
+.icon-wrap .iconstatus {
+  position:absolute;
+  z-index:2;
+  bottom:-2px;
+  right:-2px;
+  font-size:1.1rem;
+  text-shadow:0 0 2px #000;
+}
+img.vm-icon-started { opacity:1.0; }
+img.vm-icon-stopped { opacity:0.4; }
 </style>
 
 <?php if (!$kernel_exists): ?>
@@ -33,42 +140,70 @@ $kernel_exists = file_exists($kernel_path);
 </div>
 <?php endif; ?>
 
-<table class="tablesorter shift ups">
+<table class="tablesorter microvm shift ups">
 <thead><tr>
   <th>Name</th>
-  <th>State</th>
   <th>vCPUs</th>
   <th>Memory</th>
   <th>IP Address</th>
-  <th style="width:250px;">Actions</th>
+  <th></th>
 </tr></thead>
 <tbody>
 <?php if (empty($vms)): ?>
-  <tr><td colspan="6" style="text-align:center;padding:20px;opacity:0.6;">No microVMs configured yet.</td></tr>
+  <tr><td colspan="5" style="text-align:center;padding:20px;">No microVMs configured yet.</td></tr>
 <?php else: ?>
   <?php foreach ($vms as $vm):
     $name = htmlspecialchars($vm['name']);
     $state = $vm['state'];
     $cpus = $vm['config']['boot_vcpus'] ?? '-';
-    $mem = $vm['config']['memory_mb'] ?? '-';
+    $mem_mb = $vm['config']['memory_mb'] ?? '-';
+    $mem_display = ($mem_mb !== '-' && $mem_mb >= 1024) ? round($mem_mb / 1024, 1) . ' GB' : $mem_mb . ' MB';
     $ip = htmlspecialchars($vm['config']['ip'] ?? '-');
+    $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
+    $icon = "/plugins/microvm.manager/images/{$engine}.png";
+
+    $shape = ($state === 'running') ? 'play' : 'square';
+    $status_class = ($state === 'running') ? 'started' : 'stopped';
+    $color_class = ($state === 'running') ? 'green-text' : 'red-text';
+    $icon_opacity = ($state === 'running') ? 'vm-icon-started' : 'vm-icon-stopped';
   ?>
-  <tr class="vm-row">
-    <td><img src="/plugins/microvm.manager/images/<?=($vm['config']['engine'] ?? 'cloud-hypervisor')?>.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:8px;"><b><?=$name?></b></td>
-    <td><span class="vm-state-<?=$state?>"><?=$state?></span></td>
+  <tr class="sortable">
+    <td style="padding:8px;">
+      <span class="outer">
+        <span class="icon-wrap">
+          <img src="<?=$icon?>" class="img <?=$icon_opacity?>" onerror="this.src='/plugins/dynamix.vm.manager/images/default.png';">
+          <i class="fa fa-<?=$shape?> iconstatus <?=$color_class?>"></i>
+        </span>
+        <span class="inner">
+          <span class="vmname"><?=$name?></span><br>
+          <i class="fa fa-<?=$shape?> <?=$status_class?> <?=$color_class?>"></i>
+          <span class="state"><?=$state?></span>
+        </span>
+      </span>
+    </td>
     <td><?=$cpus?></td>
-    <td><?=$mem?> MB</td>
+    <td><?=$mem_display?></td>
     <td><?=$ip?></td>
     <td>
-      <?php if ($state === 'running'): ?>
-        <button class="vm-btn" onclick="vmAction('stop','<?=$name?>')">Stop</button>
-        <button class="vm-btn" onclick="vmResize('<?=$name?>')">Resize</button>
-        <button class="vm-btn" onclick="vmAction('snapshot','<?=$name?>')">Snapshot</button>
-      <?php else: ?>
-        <button class="vm-btn vm-btn-start" onclick="vmAction('start','<?=$name?>')">Start</button>
-      <?php endif; ?>
-      <button class="vm-btn" onclick="vmInfo('<?=$name?>')">Info</button>
-      <button class="vm-btn vm-btn-danger" onclick="vmDelete('<?=$name?>')">✕</button>
+      <div class="microvm-context" id="ctx-<?=$name?>">
+        <span class="ctx-btn" onclick="toggleCtx('<?=$name?>')"><i class="fa fa-bars"></i></span>
+        <div class="ctx-menu">
+          <?php if ($state === 'running'): ?>
+            <a href="#" onclick="vmAction('stop','<?=$name?>');return false;"><i class="fa fa-stop"></i>Stop</a>
+            <a href="#" onclick="vmResize('<?=$name?>');return false;"><i class="fa fa-expand"></i>Resize</a>
+            <a href="#" onclick="vmAction('snapshot','<?=$name?>');return false;"><i class="fa fa-camera"></i>Snapshot</a>
+            <div class="ctx-divider"></div>
+            <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
+          <?php else: ?>
+            <a href="#" onclick="vmAction('start','<?=$name?>');return false;"><i class="fa fa-play green-text"></i>Start</a>
+            <div class="ctx-divider"></div>
+            <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
+            <a href="#" onclick="vmEdit('<?=$name?>');return false;"><i class="fa fa-pencil"></i>Edit</a>
+            <div class="ctx-divider"></div>
+            <a href="#" onclick="vmDelete('<?=$name?>');return false;"><i class="fa fa-trash red-text"></i>Remove</a>
+          <?php endif; ?>
+        </div>
+      </div>
     </td>
   </tr>
   <?php endforeach; ?>
@@ -77,19 +212,46 @@ $kernel_exists = file_exists($kernel_path);
 </table>
 
 <br>
-<input type="button" onclick="addmicroVM()" value="Add microVM" style="padding:8px 24px; font-size:14px;">
+<input type="button" onclick="addmicroVM()" value="Add microVM" class="btn">
 
 <!-- Output area -->
 <div id="vmOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
 
 <script>
+var plugin = '<?=$plugin?>';
+
+// Close any open context menu when clicking elsewhere
+$(document).on('click', function(e) {
+  if (!$(e.target).closest('.microvm-context').length) {
+    $('.microvm-context').removeClass('open');
+  }
+});
+
+function toggleCtx(name) {
+  var el = document.getElementById('ctx-' + name);
+  var isOpen = el.classList.contains('open');
+  // Close all first
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
+  if (!isOpen) el.classList.add('open');
+}
+
 function addmicroVM() {
   location = location.pathname + '/AddMicroVM';
 }
 
 function vmAction(action, name) {
+  // Close menu
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
+  // Show spinner on the VM icon
+  var row = document.getElementById('ctx-' + name);
+  if (row) {
+    var icons = row.closest('tr').querySelectorAll('.icon-wrap .iconstatus, .inner .fa');
+    icons.forEach(function(ic) {
+      ic.className = 'fa fa-refresh fa-spin';
+    });
+  }
   showOutput('Running: ' + action + ' ' + name + '...');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
     var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
     showOutput('Done: ' + msg);
     setTimeout(function(){ location.reload(); }, 3000);
@@ -97,17 +259,20 @@ function vmAction(action, name) {
 }
 
 function vmResize(name) {
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   var cpus = prompt('New CPU count:', '2');
   if (!cpus) return;
   var mem = prompt('New memory in bytes (e.g. 536870912 = 512MB):', '536870912');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
-    showOutput('Resize: ' + data);
+  if (!mem) return;
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
+    showOutput('Resize: ' + (typeof data === 'object' ? JSON.stringify(data) : data));
     setTimeout(function(){ location.reload(); }, 2000);
   });
 }
 
 function vmInfo(name) {
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
     var text;
     if (typeof data === 'object') {
       text = JSON.stringify(data, null, 2);
@@ -118,17 +283,24 @@ function vmInfo(name) {
   });
 }
 
+function vmEdit(name) {
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
+  location = location.pathname + '/AddMicroVM?name=' + encodeURIComponent(name);
+}
+
 function vmDelete(name) {
+  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   swal({
     title: 'Delete ' + name + '?',
     text: 'Config will be removed. Rootfs disk is preserved.',
     type: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Delete'
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel'
   }, function(confirmed) {
     if (confirmed) {
-      $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
-        showOutput(data);
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
+        showOutput(typeof data === 'object' ? JSON.stringify(data) : data);
         setTimeout(function(){ location.reload(); }, 2000);
       });
     }
