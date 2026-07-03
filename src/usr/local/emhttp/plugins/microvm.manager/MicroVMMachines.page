@@ -30,7 +30,7 @@ table.tablesorter.microvm th:first-child { width:240px; }
   border-radius:6px;
   width:32px;
   height:32px;
-  object-fit:cover;
+  object-fit:contain;
   overflow:hidden;
   display:block;
 }
@@ -52,7 +52,7 @@ span.outer .icon-wrap {
 span.outer .icon-wrap img {
   width:32px;
   height:32px;
-  object-fit:cover;
+  object-fit:contain;
   border-radius:6px;
   display:block;
 }
@@ -177,7 +177,7 @@ img.vm-icon-stopped { opacity:0.4; }
     $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvm.manager/images/{$engine}.png";
-    $tap = 'tap-' . $vm['name'];
+    $bridge = $vm['config']['bridge'] ?? 'br0'; $tap = $bridge . '@tap-' . $vm['name'];
 
     $shape = ($state === 'running') ? 'play' : 'square';
     $status_class = ($state === 'running') ? 'started' : 'stopped';
