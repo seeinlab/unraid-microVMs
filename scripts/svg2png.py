@@ -8,8 +8,8 @@ png_path = r'C:\Users\seein\Workspaces\github\unraid-microVMs\src\usr\local\emht
 html_content = """<!DOCTYPE html>
 <html>
 <head><style>
-html, body { margin:0; padding:0; background:transparent; width:128px; height:154px; overflow:hidden; }
-img { display:block; width:128px; height:auto; }
+html, body { margin:0; padding:0; background:transparent; width:512px; height:614px; overflow:hidden; }
+img { display:block; width:512px; height:auto; }
 </style></head>
 <body>
 <img src="SVGPATH">
@@ -47,7 +47,7 @@ cmd = [
     "--disable-gpu",
     "--no-sandbox",
     f"--screenshot={tmp_png}",
-    "--window-size=128,154",
+    "--window-size=512,614",
     "--default-background-color=00000000",
     f"file:///{html_path.replace(chr(92), '/')}"
 ]
