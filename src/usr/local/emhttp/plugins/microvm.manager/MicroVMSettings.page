@@ -14,6 +14,8 @@ $ch_bin = is_file('/usr/local/bin/cloud-hypervisor');
 $ch_version = $ch_bin ? trim(shell_exec('cloud-hypervisor --version 2>/dev/null')) : false;
 $remote_bin = is_file('/usr/local/bin/ch-remote');
 $remote_version = $remote_bin ? trim(shell_exec('ch-remote --version 2>/dev/null')) : false;
+$fc_bin = is_file('/usr/local/bin/firecracker');
+$fc_version = $fc_bin ? trim(shell_exec('firecracker --version 2>&1 | head -1')) : false;
 $crane_bin = is_file('/usr/local/bin/crane');
 $crane_version = $crane_bin ? trim(shell_exec('crane version 2>/dev/null')) : false;
 $kvm_available = is_readable('/dev/kvm');
@@ -30,14 +32,16 @@ if ($vmdir_exists) {
 
 // Determine status
 $issues = [];
-if (!$ch_bin) $issues[] = "cloud-hypervisor binary not found";
-if (!$remote_bin) $issues[] = "ch-remote binary not found";
+if (!$ch_bin && !$fc_bin) $issues[] = "No VM engine installed (need cloud-hypervisor or firecracker)";
 if (!$kvm_available) $issues[] = "/dev/kvm not accessible";
 if (!$vmdir_exists) $issues[] = "VM storage directory not found: $vmdir";
 if (!$kernel_exists) $issues[] = "Kernel not found: $vmdir/kernels/vmlinux";
 
 $is_ready = empty($issues);
 $status_text = $is_ready ? '<span style="color:#4CAF50;"><b>Ready</b></span>' : '<span style="color:#f44336;"><b>Failed</b></span>';
+$ch_status = $ch_bin ? '<span style="color:#4CAF50;">✓</span>' : '<span style="color:#f44336;">✗</span>';
+$fc_status = $fc_bin ? '<span style="color:#4CAF50;">✓</span>' : '<span style="color:#f44336;">✗</span>';
+$crane_status = $crane_bin ? '<span style="color:#4CAF50;">✓</span>' : '<span style="opacity:0.5;">—</span>';
 ?>
 
 <div class="title"><span class="left"><i class="title fa fa-fire"></i>_(Status)_</span><span class="right">Status: <?=$status_text?></span></div>
@@ -53,16 +57,16 @@ $status_text = $is_ready ? '<span style="color:#4CAF50;"><b>Ready</b></span>' : 
 <?php endif; ?>
 
 _(Cloud Hypervisor)_:
-: <?=$ch_version ?: '<span style="color:#f44336;">Not installed</span>'?>
+: <?=$ch_status?> <?=$ch_version ?: '<span style="color:#f44336;">Not installed</span>'?><?=$remote_version ? " + $remote_version" : ''?>
 
-_(ch-remote)_:
-: <?=$remote_version ?: '<span style="color:#f44336;">Not installed</span>'?>
+_(Firecracker)_:
+: <?=$fc_status?> <?=$fc_version ?: '<span style="opacity:0.5;">Not installed</span>'?>
 
-_(crane)_:
-: <?=$crane_version ?: '<span style="opacity:0.5;">Not installed (optional)</span>'?>
+_(OCI Image Tool)_:
+: <?=$crane_status?> crane <?=$crane_version ?: '<span style="opacity:0.5;">Not installed (optional)</span>'?>
 
 _(KVM)_:
-: <?=$kvm_available ? '<span style="color:#4CAF50;">/dev/kvm available</span>' : '<span style="color:#f44336;">Not available</span>'?>
+: <?=$kvm_available ? '<span style="color:#4CAF50;">✓ /dev/kvm available</span>' : '<span style="color:#f44336;">✗ Not available</span>'?>
 
 _(Kernel)_:
 : <?=$kernel_exists ? basename(realpath("$vmdir/kernels/vmlinux")) : '<span style="color:#f44336;">Not found</span>'?>
