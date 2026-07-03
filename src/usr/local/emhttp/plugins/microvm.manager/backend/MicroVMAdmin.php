@@ -78,6 +78,7 @@ switch ($cmd) {
     case 'resize':
         // Only Cloud Hypervisor supports live resize via ch-remote
         $configFile = "$vmdir/$name/config.json";
+        $vmConfig = [];
         if (file_exists($configFile)) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
             $vmEngine = $vmConfig['engine'] ?? 'cloud-hypervisor';
@@ -89,6 +90,16 @@ switch ($cmd) {
         $cpus = $_POST['cpus'] ?? null;
         $memory = $_POST['memory'] ?? null;
         $result = microvm_resize_vm($name, $cpus, $memory);
+        // Update config.json with new values if resize succeeded
+        if (!empty($result['cpus']) && $cpus) {
+            $vmConfig['boot_vcpus'] = intval($cpus);
+        }
+        if (!empty($result['memory']) && $memory) {
+            $vmConfig['memory_mb'] = intval($memory) / 1048576; // bytes to MB
+        }
+        if (!empty($vmConfig)) {
+            file_put_contents($configFile, json_encode($vmConfig, JSON_PRETTY_PRINT));
+        }
         echo json_encode($result);
         break;
 
