@@ -69,7 +69,7 @@ dm-bio-prison, dm-persistent-data, dm-mod
 #!/bin/bash
 # /usr/local/bin/microvm-thinpool-setup
 
-POOL_DIR="/mnt/cache/appdata/microvm"
+POOL_DIR="/mnt/user/microvms/thinpool"
 POOL_NAME="microvm-pool"
 DATA_SIZE="50G"  # Sparse file, actual usage = data written
 META_SIZE="500M"
