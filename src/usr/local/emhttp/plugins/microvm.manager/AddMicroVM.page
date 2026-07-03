@@ -74,12 +74,12 @@ $nproc = trim(shell_exec('nproc'));
 
 <dl>
   <dt>IP Address:</dt>
-  <dd><input type="text" id="vm_ip" required placeholder="192.168.50.201" style="width:200px;"></dd>
+  <dd><input type="text" id="vm_ip" required placeholder="<?=trim(shell_exec("ip -4 addr show $bridge 2>/dev/null | grep -oP 'inet \K[\d.]+/\d+' | sed 's|\.[0-9]*/|.x/|'"))?>" style="width:200px;"></dd>
 </dl>
 
 <dl>
   <dt>Gateway:</dt>
-  <dd><input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;"></dd>
+  <dd><input type="text" id="vm_gateway" placeholder="<?=trim(shell_exec("ip route | grep default | grep -oP 'via \K[\d.]+' | head -1"))?>" style="width:200px;"></dd>
 </dl>
 
 <dl>
