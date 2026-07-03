@@ -62,10 +62,10 @@ start_vm() {
   [ -f "$config" ] || return 1
   [ -S "$sock" ] && return 0  # Already running
   
-  # Read config (simple JSON parse with jq or grep)
-  local kernel=$(cat "$config" | grep -oP '"kernel"\s*:\s*"\K[^"]+')
-  local disk=$(cat "$config" | grep -oP '"disk"\s*:\s*"\K[^"]+')
-  local cmdline=$(cat "$config" | grep -oP '"cmdline"\s*:\s*"\K[^"]+')
+  # Read config (parse JSON, strip backslashes from escaped paths)
+  local kernel=$(cat "$config" | grep -oP '"kernel"\s*:\s*"\K[^"]+' | tr -d '\\')
+  local disk=$(cat "$config" | grep -oP '"disk"\s*:\s*"\K[^"]+' | tr -d '\\')
+  local cmdline=$(cat "$config" | grep -oP '"cmdline"\s*:\s*"\K[^"]+' | tr -d '\\')
   local cpus=$(cat "$config" | grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+')
   local max_cpus=$(cat "$config" | grep -oP '"max_vcpus"\s*:\s*\K[0-9]+')
   local memory=$(cat "$config" | grep -oP '"memory_mb"\s*:\s*\K[0-9]+')
