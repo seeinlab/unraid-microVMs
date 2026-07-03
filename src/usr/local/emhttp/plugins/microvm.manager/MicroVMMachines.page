@@ -330,15 +330,17 @@ function vmInfo(name) {
 }
 
 function vmLogs(name) {
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'logs', name: name}, function(data) {
-    var text;
-    if (typeof data === 'object') {
-      text = JSON.stringify(data, null, 2);
-    } else {
-      text = data;
-    }
-    swal({title: name + ' — Logs', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:12px;white-space:pre-wrap;">' + text + '</pre>', html: true});
-  });
+  // Open log viewer in popup window like Unraid's libvirt VM logs
+  // Uses Unraid's built-in logterminal page pattern
+  var logPath = '<?=$vmdir?>/' + name + '/vm.log';
+  var url = '/logterminal/' + name + '/';
+  // Unraid's log viewer uses: /usr/local/emhttp/webGui/scripts/run_cmd tail -f -n 90 <logpath>
+  // We'll use the same pattern
+  var cmdUrl = '/webGui/scripts/run_cmd tail -f -n 90 ' + logPath + ' (microvm-' + name + ')';
+  var w = 900, h = 600;
+  var left = (screen.width - w) / 2;
+  var top = (screen.height - h) / 2;
+  window.open(cmdUrl, 'microvm_log_' + name, 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes');
 }
 
 function vmDelete(name) {

@@ -134,7 +134,7 @@ start_vm() {
 }
 FCEOF
     /usr/local/bin/firecracker --api-sock "$sock" --config-file "$fc_cfg" \
-      >> "/var/log/microvm-${name}.log" 2>&1 &
+      >> "$vmdir/vm.log" 2>&1 &
   else
     # Cloud Hypervisor
     # Ensure cmdline uses ttyS0 for serial console (not hvc0)
@@ -149,7 +149,7 @@ FCEOF
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
       --net "tap=tap-$name,mac=$mac" \
       --serial pty --console off \
-      -v >> "/var/log/microvm-${name}.log" 2>&1 &
+      -v >> "$vmdir/vm.log" 2>&1 &
   fi
   
   log "Started VM: $name (engine=$engine, PID: $!)"

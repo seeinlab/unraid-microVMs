@@ -274,7 +274,7 @@ INIT;
 
     case 'console':
         // Find PTY path from VM log and start ttyd relay
-        $logFile = "/var/log/microvm-{$name}.log";
+        $logFile = "$vmdir/$name/vm.log";
         $sock = "/tmp/microvm-{$name}.sock";
 
         // Check VM is running
@@ -425,12 +425,12 @@ INIT;
 
     case 'logs':
         // Return last 100 lines of VM log
-        $logFile = "/var/log/microvm-{$name}.log";
+        $logFile = "$vmdir/$name/vm.log";
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $lines]);
         } else {
-            echo json_encode(['success' => true, 'log' => "(no log file found for $name)"]);
+            echo json_encode(['success' => true, 'log' => "(no log file found at $logFile)"]);
         }
         break;
 
