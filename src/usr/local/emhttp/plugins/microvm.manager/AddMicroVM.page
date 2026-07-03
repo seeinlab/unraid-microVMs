@@ -1,4 +1,4 @@
-Title="Add MicroVM"
+Title="Add microVM"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"
 Markdown="false"
 ---
@@ -15,7 +15,7 @@ $default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
 $nproc = trim(shell_exec('nproc'));
 ?>
 
-<div class="title"><span class="left"><a href="/MicroVMs" title="Back to MicroVMs"><i class="fa fa-arrow-left"></i></a> Add MicroVM</span></div>
+<div class="title"><span class="left"><a href="/microVMs" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
 
 <form id="microvm_add_form" onsubmit="return submitForm()">
 
@@ -164,10 +164,10 @@ function showProgress(msg) {
 function submitForm() {
   var name = document.getElementById('vm_name').value;
   var source = document.getElementById('rootfs_source').value;
-  showProgress('Creating MicroVM: ' + name + '...');
+  showProgress('Creating microVM: ' + name + '...');
   if (source === 'oci') showProgress('Pulling image: ' + document.getElementById('vm_oci_image').value + ' (may take 10-30s)...');
 
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {
     cmd: 'create',
     name: name,
     cpus: document.getElementById('vm_cpus').value,
@@ -184,7 +184,7 @@ function submitForm() {
       var result = JSON.parse(data);
       if (result.success) {
         showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
-        setTimeout(function(){ location = '/MicroVMs'; }, 3000);
+        setTimeout(function(){ location = '/microVMs'; }, 3000);
       } else {
         showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
       }
@@ -201,16 +201,16 @@ function createFromJson() {
   var json = document.getElementById('jsonBox').value;
   try { JSON.parse(json); } catch(e) { alert('Invalid JSON: ' + e.message); return; }
   showProgress('Creating from JSON...');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
     var r = JSON.parse(data);
     if (r.success) {
       showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
-      setTimeout(function(){ location = '/MicroVMs'; }, 2000);
+      setTimeout(function(){ location = '/microVMs'; }, 2000);
     } else {
       showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
     }
   });
 }
 
-function done() { location = '/MicroVMs'; }
+function done() { location = '/microVMs'; }
 </script>

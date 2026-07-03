@@ -1,4 +1,4 @@
-Menu="MicroVMs:2"
+Menu="microVMs:2"
 Title="RootFS"
 Tag="hdd-o"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"
@@ -117,7 +117,7 @@ function pullImage() {
   el.style.display = 'block';
   el.innerHTML = 'Pulling ' + image + ' and converting to rootfs (this may take 20-60s)...<br>';
   
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {
     cmd: 'pull_rootfs',
     image: image,
     name: name,
@@ -138,7 +138,7 @@ function pullImage() {
 
 function deleteRootfs(name) {
   if (!confirm('Delete rootfs for "' + name + '"? This cannot be undone!')) return;
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
     location.reload();
   });
 }

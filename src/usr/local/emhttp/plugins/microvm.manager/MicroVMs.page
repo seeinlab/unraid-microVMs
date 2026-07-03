@@ -14,9 +14,9 @@ $cfg = microvm_load_config();
 $noticeMessage = null;
 
 if (($var['fsState'] ?? '') != "Started") {
-    $noticeMessage = "Array must be <b>started</b> to manage MicroVMs";
+    $noticeMessage = "Array must be <b>started</b> to manage microVMs";
 } elseif (($cfg['SERVICE'] ?? 'disable') !== 'enable') {
-    $noticeMessage = "microVM Manager is disabled. <a href='/Settings/MicroVMSettings'>Enable in Settings</a>";
+    $noticeMessage = "microVM Manager is disabled. <a href='/Settings/microVMSettings'>Enable in Settings</a>";
 }
 ?>
 <?php if ($noticeMessage): ?>

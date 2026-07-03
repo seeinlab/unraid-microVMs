@@ -1,4 +1,4 @@
-Menu="MicroVMs:3"
+Menu="microVMs:3"
 Title="Usage Statistics"
 Tag="bar-chart"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"
@@ -59,7 +59,7 @@ $vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null
 </table>
 
 <div class="stat-grid">
-  <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total MicroVMs</div></div>
+  <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total microVMs</div></div>
   <div class="stat-card running"><div class="number"><?=$running_vms?></div><div class="label">Running</div></div>
   <div class="stat-card stopped"><div class="number"><?=$stopped_vms?></div><div class="label">Stopped</div></div>
   <div class="stat-card"><div class="number"><?=$total_cpus_allocated?>/<?=$host_cpus?></div><div class="label">vCPUs Allocated</div></div>

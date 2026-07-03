@@ -1,3 +1,3 @@
 #!/bin/bash
-# start.sh - Start MicroVM service (called from WebGUI via update.php)
+# start.sh - Start microVM service (called from WebGUI via update.php)
 /etc/rc.d/rc.microvm start

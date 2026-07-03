@@ -1,5 +1,5 @@
-Menu="MicroVMs:1"
-Title="MicroVMs"
+Menu="microVMs:1"
+Title="microVMs"
 Tag="server"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"
 Markdown="false"
@@ -44,7 +44,7 @@ $kernel_exists = file_exists($kernel_path);
 </tr></thead>
 <tbody>
 <?php if (empty($vms)): ?>
-  <tr><td colspan="6" style="text-align:center;padding:20px;opacity:0.6;">No MicroVMs configured yet.</td></tr>
+  <tr><td colspan="6" style="text-align:center;padding:20px;opacity:0.6;">No microVMs configured yet.</td></tr>
 <?php else: ?>
   <?php foreach ($vms as $vm):
     $name = htmlspecialchars($vm['name']);
@@ -77,19 +77,19 @@ $kernel_exists = file_exists($kernel_path);
 </table>
 
 <br>
-<input type="button" onclick="addMicroVM()" value="Add MicroVM" style="padding:8px 24px; font-size:14px;">
+<input type="button" onclick="addmicroVM()" value="Add microVM" style="padding:8px 24px; font-size:14px;">
 
 <!-- Output area -->
 <div id="vmOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
 
 <script>
-function addMicroVM() {
-  location = location.pathname + '/AddMicroVM';
+function addmicroVM() {
+  location = location.pathname + '/AddmicroVM';
 }
 
 function vmAction(action, name) {
   showOutput('Running: ' + action + ' ' + name + '...');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: action, name: name}, function(data) {
     var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
     showOutput('Done: ' + msg);
     setTimeout(function(){ location.reload(); }, 3000);
@@ -100,14 +100,14 @@ function vmResize(name) {
   var cpus = prompt('New CPU count:', '2');
   if (!cpus) return;
   var mem = prompt('New memory in bytes (e.g. 536870912 = 512MB):', '536870912');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
     showOutput('Resize: ' + data);
     setTimeout(function(){ location.reload(); }, 2000);
   });
 }
 
 function vmInfo(name) {
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+  $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: 'info', name: name}, function(data) {
     var text;
     if (typeof data === 'object') {
       text = JSON.stringify(data, null, 2);
@@ -127,7 +127,7 @@ function vmDelete(name) {
     confirmButtonText: 'Delete'
   }, function(confirmed) {
     if (confirmed) {
-      $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
+      $.post('/plugins/<?=$plugin?>/backend/microVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
         showOutput(data);
         setTimeout(function(){ location.reload(); }, 2000);
       });
