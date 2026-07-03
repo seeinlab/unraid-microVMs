@@ -15,65 +15,109 @@ $default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
 $nproc = trim(shell_exec('nproc'));
 ?>
 
-<style>
-.microvm-form dt { width:220px; }
-.json-box { width:100%; min-height:220px; font-family:'Courier New',monospace; font-size:13px; padding:12px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; resize:vertical; line-height:1.4; tab-size:2; }
-</style>
+<div class="title"><span class="left"><a href="/MicroVMs" title="Back to MicroVMs"><i class="fa fa-arrow-left"></i></a> Add MicroVM</span></div>
 
-<div class="title"><span class="left"><a href="/MicroVMs" title="Back"><i class="fa fa-arrow-left"></i></a> Add MicroVM</span></div>
+<form id="microvm_add_form" onsubmit="return submitForm()">
 
-<form markdown="1" id="microvm_add_form" class="microvm-form" onsubmit="return submitForm()">
+<table>
+  <tr>
+    <td>VM Name:</td>
+    <td><input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens" style="width:300px;"></td>
+  </tr>
+</table>
 
-_(VM Name)_:
-: <input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens only" style="width:300px;">
+<table>
+  <tr>
+    <td>vCPUs:</td>
+    <td><input type="number" id="vm_cpus" min="1" max="<?=$nproc?>" value="<?=$default_cpus?>" style="width:80px;"> <span style="opacity:0.5;">(max: <?=$nproc?>)</span></td>
+  </tr>
+</table>
 
-_(vCPUs)_:
-: <input type="number" id="vm_cpus" min="1" max="<?=$nproc?>" value="<?=$default_cpus?>" style="width:80px;">
+<table>
+  <tr>
+    <td>Memory (MB):</td>
+    <td><input type="number" id="vm_memory" min="64" step="64" value="<?=$default_mem?>" style="width:120px;"></td>
+  </tr>
+</table>
 
-_(Memory)_ (MB):
-: <input type="number" id="vm_memory" min="64" step="64" value="<?=$default_mem?>" style="width:100px;">
+<table>
+  <tr>
+    <td>IP Address:</td>
+    <td><input type="text" id="vm_ip" required placeholder="192.168.50.201" style="width:200px;"></td>
+  </tr>
+</table>
 
-_(IP Address)_:
-: <input type="text" id="vm_ip" required placeholder="192.168.50.201" pattern="\d+\.\d+\.\d+\.\d+" style="width:200px;">
+<table>
+  <tr>
+    <td>Gateway:</td>
+    <td><input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;"></td>
+  </tr>
+</table>
 
-_(Gateway)_:
-: <input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;">
-
-_(Rootfs Source)_:
-: <select id="rootfs_source" onchange="toggleSource(this.value)">
-  <option value="oci">Pull OCI/Docker Image (via crane)</option>
-  <option value="existing">Use Existing rootfs.raw</option>
-  </select>
+<table>
+  <tr>
+    <td>Rootfs Source:</td>
+    <td>
+      <select id="rootfs_source" onchange="toggleSource(this.value)" style="width:320px;">
+        <option value="oci">Pull OCI/Docker Image (via crane)</option>
+        <option value="existing">Use Existing rootfs.raw</option>
+      </select>
+    </td>
+  </tr>
+</table>
 
 <div id="section_oci">
-_(Docker/OCI Image)_:
-: <input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;">
-
-_(Disk Size)_ (MB):
-: <input type="number" id="vm_disk_size" min="100" step="100" value="500" style="width:100px;">
+<table>
+  <tr>
+    <td>Docker/OCI Image:</td>
+    <td><input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;"></td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td>Disk Size (MB):</td>
+    <td><input type="number" id="vm_disk_size" min="100" step="100" value="500" style="width:120px;"></td>
+  </tr>
+</table>
 </div>
 
-<div id="section_existing" style="display:none">
-_(Rootfs Path)_:
-: <input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:400px;" data-pickroot="/mnt" data-pickfolders="true">
+<div id="section_existing" style="display:none;">
+<table>
+  <tr>
+    <td>Rootfs Path:</td>
+    <td><input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:500px;"></td>
+  </tr>
+</table>
 </div>
 
-_(Autostart)_:
-: <select id="vm_autostart"><option value="false">No</option><option value="true">Yes</option></select>
+<table>
+  <tr>
+    <td>Autostart:</td>
+    <td><select id="vm_autostart" style="width:80px;"><option value="false">No</option><option value="true">Yes</option></select></td>
+  </tr>
+</table>
 
-&nbsp;
-: <input type="submit" value="_(Create)_"><input type="button" value="_(Done)_" onclick="done()"><input type="button" value="_(Show JSON)_" onclick="toggleJson()" style="margin-left:20px;">
+<br>
+<table>
+  <tr>
+    <td></td>
+    <td>
+      <input type="submit" value="Create">
+      <input type="button" value="Done" onclick="done()">
+      <input type="button" value="Show JSON" onclick="toggleJson()" style="margin-left:20px;">
+    </td>
+  </tr>
+</table>
 
 </form>
 
 <div id="jsonSection" style="display:none; margin-top:15px;">
 <div class="title">JSON Config Preview</div>
-<textarea id="jsonBox" class="json-box" spellcheck="false"></textarea>
+<textarea id="jsonBox" style="width:80%; min-height:240px; font-family:'Courier New',monospace; font-size:13px; padding:12px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; resize:vertical;" spellcheck="false"></textarea>
 <br><br>
-<input type="button" value="_(Create from JSON)_" onclick="createFromJson()">
+<input type="button" value="Create from JSON" onclick="createFromJson()">
 </div>
 
-<!-- Progress output -->
 <div id="addOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:250px; overflow-y:auto; border-radius:4px;"></div>
 
 <script>
@@ -101,12 +145,12 @@ function buildConfig() {
 }
 
 function toggleJson() {
-  var section = document.getElementById('jsonSection');
-  if (section.style.display === 'none') {
-    section.style.display = '';
+  var s = document.getElementById('jsonSection');
+  if (s.style.display === 'none') {
+    s.style.display = '';
     document.getElementById('jsonBox').value = JSON.stringify(buildConfig(), null, 2);
   } else {
-    section.style.display = 'none';
+    s.style.display = 'none';
   }
 }
 
@@ -120,10 +164,9 @@ function showProgress(msg) {
 function submitForm() {
   var name = document.getElementById('vm_name').value;
   var source = document.getElementById('rootfs_source').value;
-  
   showProgress('Creating MicroVM: ' + name + '...');
-  if (source === 'oci') showProgress('Pulling image: ' + document.getElementById('vm_oci_image').value + ' (this may take 10-30s)...');
-  
+  if (source === 'oci') showProgress('Pulling image: ' + document.getElementById('vm_oci_image').value + ' (may take 10-30s)...');
+
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
     cmd: 'create',
     name: name,
@@ -137,38 +180,37 @@ function submitForm() {
     rootfs_path: document.getElementById('vm_rootfs_path').value,
     autostart: document.getElementById('vm_autostart').value
   }, function(data) {
-    var result = JSON.parse(data);
-    if (result.success) {
-      showProgress('<b style="color:#4CAF50;">✓ VM created successfully!</b>');
-      showProgress('Redirecting to machines list...');
-      setTimeout(function(){ location = '/MicroVMs'; }, 3000);
-    } else {
-      showProgress('<b style="color:#f44336;">✗ Error: ' + (result.error || 'Unknown error') + '</b>');
+    try {
+      var result = JSON.parse(data);
+      if (result.success) {
+        showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
+        setTimeout(function(){ location = '/MicroVMs'; }, 3000);
+      } else {
+        showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
+      }
+    } catch(e) {
+      showProgress('<b style="color:#f44336;">✗ Parse error: ' + data + '</b>');
     }
   }).fail(function(xhr) {
     showProgress('<b style="color:#f44336;">✗ Request failed: ' + xhr.statusText + '</b>');
   });
-  
   return false;
 }
 
 function createFromJson() {
   var json = document.getElementById('jsonBox').value;
   try { JSON.parse(json); } catch(e) { alert('Invalid JSON: ' + e.message); return; }
-  
   showProgress('Creating from JSON...');
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
-    var result = JSON.parse(data);
-    if (result.success) {
+    var r = JSON.parse(data);
+    if (r.success) {
       showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
       setTimeout(function(){ location = '/MicroVMs'; }, 2000);
     } else {
-      showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Failed') + '</b>');
+      showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
     }
   });
 }
 
-function done() {
-  location = '/MicroVMs';
-}
+function done() { location = '/MicroVMs'; }
 </script>
