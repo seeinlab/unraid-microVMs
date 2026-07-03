@@ -1,5 +1,5 @@
 Menu="MicroVMs:2"
-Title="RootFS"
+Title="rootFS"
 Tag="hdd-o"
 Cond="is_file('/usr/local/bin/cloud-hypervisor')"
 Markdown="false"
