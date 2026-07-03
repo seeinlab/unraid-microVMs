@@ -95,7 +95,7 @@ $nproc = trim(shell_exec('nproc'));
 <div id="section_oci">
 <dl>
   <dt>OCI/Docker Image:</dt>
-  <dd><input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;"></dd>
+  <dd><input type="text" id="vm_oci_image" placeholder="docker.io/nginx:alpine" style="width:300px;"></dd>
 </dl>
 <dl>
   <dt>Disk Size:</dt>

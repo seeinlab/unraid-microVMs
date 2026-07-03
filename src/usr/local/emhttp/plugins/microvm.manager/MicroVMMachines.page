@@ -291,19 +291,40 @@ function vmConsole(name) {
 
 function vmResize(name, engine) {
   if (engine === 'firecracker') {
-    alert('Live resize is not supported for Firecracker engine.\nRecreate the VM with new resource settings.');
+    swal({title: 'Not Supported', text: 'Live resize is not supported for Firecracker. Recreate the VM with new settings.', type: 'error'});
     return;
   }
-  var cpus = prompt('New CPU count:', '2');
-  if (!cpus) return;
-  var memMB = prompt('New memory (MB):', '512');
-  if (!memMB) return;
-  var memBytes = parseInt(memMB) * 1048576;
-  showOutput('Resizing ' + name + ': ' + cpus + ' CPUs, ' + memMB + 'MB...');
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
-    var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
-    showOutput('Result: ' + msg);
-    setTimeout(function(){ location.reload(); }, 2000);
+  swal({
+    title: 'Resize ' + name,
+    text: 'Enter new CPU count:',
+    type: 'input',
+    inputValue: '2',
+    showCancelButton: true,
+    closeOnConfirm: false
+  }, function(cpus) {
+    if (!cpus) return;
+    swal({
+      title: 'Resize ' + name,
+      text: 'Enter new memory (MB):',
+      type: 'input',
+      inputValue: '512',
+      showCancelButton: true,
+      closeOnConfirm: false
+    }, function(memMB) {
+      if (!memMB) return;
+      var memBytes = parseInt(memMB) * 1048576;
+      swal({title: 'Resizing...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.cpus || data.memory) {
+          swal({title: 'Resized!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
+            location.reload();
+          });
+        } else {
+          swal({title: 'Resize Failed', text: JSON.stringify(data), type: 'error'});
+        }
+      });
+    });
   });
 }
 

@@ -62,21 +62,14 @@ if (is_dir($vmdir)) {
 <p class="notice">crane is not installed. Install via terminal: <span style="font-family:monospace;">curl -fsSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane</span></p>
 <?php else: ?>
 
-<form markdown="1" onsubmit="return pullImage()">
+<div style="display:flex; gap:20px; align-items:center; padding:10px 0;">
+  <span>OCI/Docker Image: <input type="text" id="pull_image" placeholder="docker.io/nginx:alpine" style="width:250px;" required></span>
+  <span>Target VM Name: <input type="text" id="pull_name" placeholder="my-web" pattern="[a-z0-9\-]+" required style="width:150px;"></span>
+  <span>Disk Size (MB): <input type="number" id="pull_size" value="500" min="100" step="100" style="width:80px;"></span>
+  <input type="button" value="Pull &amp; Convert" onclick="pullImage()">
+  <span style="opacity:0.6;">crane <?=$crane_version?></span>
+</div>
 
-_(OCI/Docker Image)_:
-: <input type="text" id="pull_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;" required>
-
-_(Target VM Name)_:
-: <input type="text" id="pull_name" placeholder="my-web" pattern="[a-z0-9\-]+" required style="width:200px;">
-
-_(Disk Size)_ (MB):
-: <input type="number" id="pull_size" value="500" min="100" step="100" style="width:100px;">
-
-&nbsp;
-: <input type="submit" value="_(Pull & Convert)_"><span style="margin-left:15px; opacity:0.6;">crane <?=$crane_version?></span>
-
-</form>
 <?php endif; ?>
 
 <div id="pullOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
