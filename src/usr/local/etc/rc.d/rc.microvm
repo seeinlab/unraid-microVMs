@@ -1,5 +1,5 @@
 #!/bin/bash
-# /etc/rc.d/rc.microvm - start/stop the MicroVM Manager service
+# /etc/rc.d/rc.microvm - start/stop the microVM Manager service
 
 PLUGIN="microvm.manager"
 CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.cfg"
@@ -144,7 +144,7 @@ stop_vm() {
 
 microvm_start() {
   if [ "$SERVICE" != "enable" ]; then
-    log "MicroVM Manager disabled in settings"
+    log "microVM Manager disabled in settings"
     return
   fi
   
@@ -153,7 +153,7 @@ microvm_start() {
     return 1
   fi
   
-  log "Starting MicroVM Manager..."
+  log "Starting microVM Manager..."
   
   # Create VM storage directory
   mkdir -p "$VMDIR/kernels"
@@ -179,11 +179,11 @@ microvm_start() {
     done
   fi
   
-  log "MicroVM Manager started"
+  log "microVM Manager started"
 }
 
 microvm_stop() {
-  log "Stopping MicroVM Manager..."
+  log "Stopping microVM Manager..."
   
   # Graceful shutdown all running VMs
   for sock in /tmp/microvm-*.sock; do
@@ -201,14 +201,14 @@ microvm_stop() {
   # Remove TAP interfaces
   remove_taps
   
-  log "MicroVM Manager stopped"
+  log "microVM Manager stopped"
 }
 
 microvm_status() {
   if microvm_running; then
-    echo "MicroVM Manager: running (PID $(cat $PIDFILE))"
+    echo "microVM Manager: running (PID $(cat $PIDFILE))"
   else
-    echo "MicroVM Manager: stopped"
+    echo "microVM Manager: stopped"
   fi
   
   # List running VMs

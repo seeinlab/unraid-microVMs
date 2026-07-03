@@ -1,5 +1,5 @@
 <?php
-// include/common.php - MicroVM Manager shared functions
+// include/common.php - microVM Manager shared functions
 
 define('MICROVM_PLUGIN', 'microvm.manager');
 define('MICROVM_CFG_PATH', '/boot/config/plugins/' . MICROVM_PLUGIN . '/' . MICROVM_PLUGIN . '.cfg');

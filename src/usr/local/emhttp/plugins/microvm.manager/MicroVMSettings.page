@@ -1,6 +1,6 @@
 Menu="OtherSettings"
 Icon="microvm.manager.png"
-Title="MicroVM Manager"
+Title="microVM Manager"
 Tag="microchip"
 Markdown="false"
 ---
@@ -58,7 +58,7 @@ if (is_dir($vmdir)) {
 <table class="unraid tablesorter"><thead><tr><td>_(General Settings)_</td></tr></thead></table>
 
 <dl>
-  <dt>_(Enable MicroVM Manager)_:</dt>
+  <dt>_(Enable microVM Manager)_:</dt>
   <dd>
     <select name="SERVICE">
       <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
