@@ -91,6 +91,14 @@ switch ($cmd) {
         break;
 
     case 'delete':
+        $vmPath = "$vmdir/$name";
+        // Check for snapshots - block delete if any exist
+        $snapDir = "$vmPath/snapshots";
+        if (is_dir($snapDir) && count(glob("$snapDir/*")) > 0) {
+            $snapCount = count(glob("$snapDir/*"));
+            echo json_encode(['success' => false, 'error' => "Cannot delete: VM has $snapCount snapshot(s). Remove snapshots first."]);
+            break;
+        }
         // Stop VM if running
         microvm_stop_vm($name);
         sleep(2);
@@ -98,8 +106,7 @@ switch ($cmd) {
         $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
         if ($pid) exec("kill -9 $pid 2>/dev/null");
         @unlink("/tmp/microvm-{$name}.sock");
-        // Remove entire VM folder (config + rootfs + snapshots)
-        $vmPath = "$vmdir/$name";
+        // Remove entire VM folder (config + rootfs)
         if (is_dir($vmPath)) {
             exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);
             echo json_encode(['success' => ($ret === 0), 'message' => "VM '$name' deleted completely"]);
