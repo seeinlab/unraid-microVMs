@@ -210,10 +210,12 @@ img.vm-icon-stopped { opacity:0.4; }
         <div class="ctx-menu">
           <?php if ($state === 'running'): ?>
             <a href="#" onclick="vmAction('stop','<?=$name?>');return false;"><i class="fa fa-stop red-text"></i>Stop</a>
+            <a href="#" onclick="vmAction('force_stop','<?=$name?>');return false;"><i class="fa fa-power-off red-text"></i>Force Stop</a>
             <a href="#" onclick="vmResize('<?=$name?>','<?=$engine?>');return false;"><i class="fa fa-expand"></i>Resize</a>
             <a href="#" onclick="vmAction('snapshot','<?=$name?>');return false;"><i class="fa fa-camera"></i>Snapshot</a>
             <div class="ctx-divider"></div>
             <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
+            <a href="#" onclick="vmDelete('<?=$name?>');return false;"><i class="fa fa-trash red-text"></i>Remove</a>
           <?php else: ?>
             <a href="#" onclick="vmAction('start','<?=$name?>');return false;"><i class="fa fa-play green-text"></i>Start</a>
             <div class="ctx-divider"></div>
