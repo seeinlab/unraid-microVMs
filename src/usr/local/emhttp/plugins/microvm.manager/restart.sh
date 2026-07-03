@@ -1,4 +1,5 @@
 #!/bin/bash
-# Delayed restart to avoid blocking the WebGUI form submission
-logger -t "microvm.manager" "Restarting MicroVM Manager in 3 seconds"
-echo "sleep 3 ; /etc/rc.d/rc.microvm restart" | at now 2>/dev/null
+# restart.sh - Restart MicroVM service (called from WebGUI via update.php)
+/etc/rc.d/rc.microvm stop 2>/dev/null
+sleep 2
+/etc/rc.d/rc.microvm start

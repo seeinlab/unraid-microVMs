@@ -120,8 +120,7 @@ if (is_dir($vmdir)) {
 <table class="unraid tablesorter"><thead><tr><td>_(Service Control)_</td></tr></thead></table>
 
 <form method="POST" action="/update.php" target="progressFrame">
-<input type="hidden" name="#command" value="/etc/rc.d/rc.microvm">
-<input type="hidden" name="#arg[1]" value="start">
+<input type="hidden" name="#command" value="/plugins/microvm.manager/start.sh">
 <dl>
   <dt>_(Start MicroVM service)_:</dt>
   <dd><input type="submit" value="_(Start)_" <?=$is_running ? 'disabled' : ''?>></dd>
@@ -129,8 +128,7 @@ if (is_dir($vmdir)) {
 </form>
 
 <form method="POST" action="/update.php" target="progressFrame">
-<input type="hidden" name="#command" value="/etc/rc.d/rc.microvm">
-<input type="hidden" name="#arg[1]" value="stop">
+<input type="hidden" name="#command" value="/plugins/microvm.manager/stop.sh">
 <dl>
   <dt>_(Stop MicroVM service)_ (graceful shutdown all VMs):</dt>
   <dd><input type="submit" value="_(Stop)_" <?=$is_running ? '' : 'disabled'?>></dd>
@@ -138,7 +136,7 @@ if (is_dir($vmdir)) {
 </form>
 
 <form method="POST" action="/update.php" target="progressFrame">
-<input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
+<input type="hidden" name="#command" value="/plugins/microvm.manager/restart.sh">
 <dl>
   <dt>_(Restart service)_:</dt>
   <dd><input type="submit" value="_(Restart)_"></dd>
