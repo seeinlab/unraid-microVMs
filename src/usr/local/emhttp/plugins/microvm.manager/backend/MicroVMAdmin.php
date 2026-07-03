@@ -94,13 +94,17 @@ switch ($cmd) {
         // Stop VM if running
         microvm_stop_vm($name);
         sleep(2);
-        // Remove config (keep rootfs)
-        $configFile = "$vmdir/$name/config.json";
-        if (file_exists($configFile)) {
-            unlink($configFile);
-            echo json_encode(['success' => true, 'message' => "Config deleted. Rootfs preserved at $vmdir/$name/"]);
+        // Force kill if still running
+        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        if ($pid) exec("kill -9 $pid 2>/dev/null");
+        @unlink("/tmp/microvm-{$name}.sock");
+        // Remove entire VM folder (config + rootfs + snapshots)
+        $vmPath = "$vmdir/$name";
+        if (is_dir($vmPath)) {
+            exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);
+            echo json_encode(['success' => ($ret === 0), 'message' => "VM '$name' deleted completely"]);
         } else {
-            echo json_encode(['success' => false, 'error' => 'Config not found']);
+            echo json_encode(['success' => false, 'error' => 'VM folder not found']);
         }
         break;
 

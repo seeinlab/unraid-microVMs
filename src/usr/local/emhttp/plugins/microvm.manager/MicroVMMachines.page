@@ -307,7 +307,7 @@ function vmDelete(name) {
   document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   swal({
     title: 'Delete ' + name + '?',
-    text: 'Config will be removed. Rootfs disk is preserved.',
+    text: 'This will delete the VM and all its data (config, rootfs, snapshots). This cannot be undone.',
     type: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Delete',
