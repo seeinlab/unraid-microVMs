@@ -119,11 +119,7 @@ $nproc = trim(shell_exec('nproc'));
 <br>
 <dl>
   <dt>&nbsp;</dt>
-  <dd style="display:flex; gap:10px; align-items:center;">
-    <input type="submit" value="Create">
-    <input type="button" value="Done" onclick="done()">
-    <input type="button" value="Show JSON" onclick="toggleJson()">
-  </dd>
+  <dd><span style="display:inline-flex; gap:10px;"><input type="submit" value="Create" style="display:inline-block;width:auto;"><input type="button" value="Done" onclick="done()" style="display:inline-block;width:auto;"><input type="button" value="Show JSON" onclick="toggleJson()" style="display:inline-block;width:auto;"></span></dd>
 </dl>
 
 </form>
