@@ -28,10 +28,6 @@ if (is_dir($vmdir)) {
 }
 ?>
 
-<link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.switchbutton.css')?>">
-
-<span class="status vhshift"><input type="checkbox" class="advancedview"></span>
-
 <form method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="microvm.manager/microvm.manager.cfg">
 <input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
@@ -121,18 +117,34 @@ if (is_dir($vmdir)) {
 </dl>
 </form>
 
-<!-- Separate restart button -->
+<table class="unraid tablesorter"><thead><tr><td>_(Service Control)_</td></tr></thead></table>
+
+<form method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#command" value="/etc/rc.d/rc.microvm">
+<input type="hidden" name="#arg[1]" value="start">
+<dl>
+  <dt>_(Start MicroVM service)_:</dt>
+  <dd><input type="submit" value="_(Start)_" <?=$is_running ? 'disabled' : ''?>></dd>
+</dl>
+</form>
+
+<form method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#command" value="/etc/rc.d/rc.microvm">
+<input type="hidden" name="#arg[1]" value="stop">
+<dl>
+  <dt>_(Stop MicroVM service)_ (graceful shutdown all VMs):</dt>
+  <dd><input type="submit" value="_(Stop)_" <?=$is_running ? '' : 'disabled'?>></dd>
+</dl>
+</form>
+
 <form method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
 <dl>
-  <dt>_(Restart service without changing settings)_:</dt>
+  <dt>_(Restart service)_:</dt>
   <dd><input type="submit" value="_(Restart)_"></dd>
 </dl>
 </form>
 
-<script src="<?=autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
 <script>
-$(function() {
-  $('.advancedview').switchButton({labels_placement:"left", on_label:"Advanced", off_label:"Basic"});
-});
+function done() { location = '/Settings'; }
 </script>
