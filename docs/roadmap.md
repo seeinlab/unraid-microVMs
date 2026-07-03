@@ -13,14 +13,18 @@
 - [x] JSON config persistence
 - [x] TAP networking on br0
 
-## Next (Priority)
-- [ ] Fix engine logo sizes on Add page (both same dimensions)
-- [ ] VM list: show engine icon + name + state per row (like VMs page shows OS icons)
-- [ ] VM list: context menu dropdown per VM (Stop, Restart, Snapshot, Logs)
-- [ ] Engine selector on Add page — both same card size
-- [ ] Firecracker engine backend (curl-based API instead of ch-remote)
-- [ ] Serial console access (WebSocket → serial TTY via xterm.js)
-- [ ] Edit rootfs (mount image, modify files, unmount)
+## Next (Priority - UI Parity with VMs/Docker tabs)
+- [ ] **Context menu on VM name click** (not hamburger) — like VMs/Docker pattern:
+  - Running: Serial Console, Stop, Pause, Restart, Force Stop, Snapshot, Logs, Edit
+  - Stopped: Start, Logs, Edit, Remove
+- [ ] **Rounded logo** for Cloud Hypervisor (CSS border-radius:50% or find transparent round logo)
+- [ ] **Additional columns**: TAP interface (tap-name), Snapshots count, Autostart toggle
+- [ ] **Snapshot management**: list snapshots, restore, delete
+- [ ] **Convert engine**: migrate config between CH and FC formats
+- [ ] **Logo opacity**: stopped VMs = 0.3 opacity (like VMs page)
+- [ ] **Bottom buttons row**: ADD MICROVM | START ALL | STOP ALL (like Docker's button bar)
+- [ ] **Autostart toggle** per VM (ON/OFF switch in row)
+- [ ] Firecracker engine backend fully working (start via --config-file ✅, stop via kill)
 - [ ] Custom init script injection at create time
 - [ ] Nchan real-time VM status updates (no page refresh needed)
 - [ ] Firecracker engine support (alternative backend)
