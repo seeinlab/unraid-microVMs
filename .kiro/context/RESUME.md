@@ -8,30 +8,30 @@
 ## Current State
 
 ### Plugin Deployed on Unraid (192.168.50.6)
-- **Version**: 48 iterations (microvm.manager-2026.07.03.48.tgz)
-- **Git commits**: 40+ commits on main branch
+- **Version**: 68+ iterations (microvm.manager-2026.07.03.66.tgz latest build)
+- **Git commits**: 60+ commits on main branch (latest: d1cf7b7)
 - **SSH**: `ssh -i ~/.ssh/mastervault root@192.168.50.6`
 - **Shell**: All commands use `& "C:\Program Files\Git\bin\bash.exe" -c "..."` (Windows + Git Bash)
 
 ### Running VMs on Unraid
-- **nginx-test** — Cloud Hypervisor v52.0, IP 192.168.50.219, nginx serving
-- **fc-nginx** — Firecracker v1.16.0, IP 192.168.50.220, nginx serving (started via --config-file)
-- **nginx2** — Firecracker, IP 192.168.50.189 (may be stopped)
+- **nginx-ch** — Cloud Hypervisor v52.0, IP 192.168.50.220, nginx serving, serial console on /dev/ttyS0
+- **nginx-fc** — Firecracker v1.16.0, IP 192.168.50.221, nginx serving
 
 ### Installed Binaries on Unraid
 - `/usr/local/bin/cloud-hypervisor` (v52.0, 5.5MB static)
 - `/usr/local/bin/ch-remote` (v52.0)
 - `/usr/local/bin/firecracker` (v1.16.0)
 - `/usr/local/bin/crane` (v0.21.7, OCI image tool)
+- `/usr/local/bin/ttyd` (v1.7.7, web terminal)
+- `/usr/local/bin/microvm-console` (bidirectional PTY helper)
 - All cached on flash: `/boot/config/plugins/microvm.manager/`
 
 ### Kernel Layout
 ```
 /mnt/user/microvms/kernels/
-├── cloud-hypervisor/vmlinux  (61MB, kernel 6.2.0+)
+├── cloud-hypervisor/vmlinux  (60MB, kernel 6.2.0+)
 └── firecracker/vmlinux       (37MB, kernel 5.10.225)
 ```
-No shared `kernels/vmlinux` — each engine uses its own subfolder.
 
 ### Plugin Config
 - `/boot/config/plugins/microvm.manager/microvm.manager.cfg`
@@ -46,106 +46,88 @@ No shared `kernels/vmlinux` — each engine uses its own subfolder.
 ### File Layout (source)
 ```
 src/usr/local/emhttp/plugins/microvm.manager/
-├── MicroVMs.page              ← Parent tab (Tasks:65, Tabs=true)
-├── MicroVMMachines.page       ← Tab 1: VM list + context menu + actions
-├── MicroVMRootFS.page         ← Tab 2: rootfs images + OCI pull
+├── MicroVMs.page              ← Parent tab (Tabs=true)
+├── MicroVMMachines.page       ← Tab 1: VM list + context menu + switchButton autostart
+├── MicroVMRootFS.page         ← Tab 2: rootFS images + OCI pull + kernel list
 ├── MicroVMStats.page          ← Tab 3: usage statistics
-├── MicroVMSettings.page       ← Settings → OtherSettings (markdown form)
-├── AddMicroVM.page            ← Create VM form (engine selector)
-├── backend/MicroVMAdmin.php   ← AJAX command handler
-├── include/common.php         ← PHP helpers (list, start, stop, status)
-├── images/cloud-hypervisor.png
-├── images/firecracker.png
-├── microvm.manager.png        ← Plugin icon (Firecracker flame)
+├── MicroVMSettings.page       ← Settings → OtherSettings
+├── AddMicroVM.page            ← Create VM form (dl/dt/dd layout, engine selector)
+├── backend/MicroVMAdmin.php   ← AJAX command handler (all commands)
+├── include/common.php         ← PHP helpers (list, start, stop, status, snapshots)
+├── console.html               ← Standalone xterm.js page (fallback)
+├── images/cloud-hypervisor.png  (official GitHub org logo, rounded corners)
+├── images/firecracker.png       (official flame logo, transparent)
+├── microvm.manager.png        ← Settings icon (LiquidMetal droplet from SVG)
+├── microvm.manager.svg        ← LiquidMetal SVG source
 ├── start.sh, stop.sh, restart.sh
-└── rc.microvm                 ← Copied to /etc/rc.d/ at install
-src/usr/local/etc/rc.d/rc.microvm  ← Service script (start/stop/status/start_vm/stop_vm)
+└── microvm-console            ← Bidirectional PTY script (exec 3<>PTY)
+src/usr/local/etc/rc.d/rc.microvm  ← Service script
+src/usr/local/bin/microvm-console  ← PTY helper binary
 ```
 
 ### Key Technical Details
 
-1. **FUSE path issue**: Cloud Hypervisor can't read `/mnt/user/` (Unraid FUSE shfs). The `rc.microvm start_vm` has a `resolve_path()` function that searches `/mnt/cache /mnt/mtier /mnt/ztier /mnt/rtier /mnt/disk*` for the actual file.
+1. **Log path**: VM logs at `VMDIR/NAME/vm.log` (persistent). Fallback to `/var/log/microvm-NAME.log`.
 
-2. **JSON escape issue**: PHP's `json_encode()` writes `\/` in paths. The `start_vm` function uses `tr -d '\\'` to strip backslashes after grep extraction.
+2. **Serial console (CH only)**: `--serial pty` → PTY path in log → ttyd on unix socket (`/var/tmp/microvm-NAME.console.sock`) → nginx proxies at `/logterminal/microvm-NAME.console/`
 
-3. **Dual engine support**:
-   - CH: `cloud-hypervisor --api-socket /tmp/microvm-NAME.sock --kernel ... --disk ...`
-   - FC: `firecracker --api-sock /tmp/microvm-NAME.sock --config-file /tmp/microvm-NAME-fc.json`
-   - FC config generated at start time from the unified config.json
+3. **Log viewer**: ttyd on unix socket (`/var/tmp/microvm-NAME.log.sock`) → proxied at `/logterminal/microvm-NAME.log/`
 
-4. **Status check**:
-   - CH: `ch-remote --api-socket $sock ping` (exit code 0 = running)
-   - FC: `pgrep -f 'microvm-NAME'` (process exists = running)
+4. **Context menu**: Uses Unraid's built-in `context.js` (bundled in dynamix.js). Pattern: `context.attach('#vm-NAME', opts)`
 
-5. **Unraid page routing**: Filenames must start with uppercase (MicroVMs.page → /MicroVMs). Top nav is always UPPERCASE (CSS). Tab labels from Title in sub-pages.
+5. **Firecracker stop**: Uses `kill PID` (no ACPI support). CH uses `ch-remote power-button`.
 
-6. **Settings form**: Uses `markdown="1"` form with `label:\n: value` pattern. Buttons need `<span class="inline-block">` wrapper for horizontal layout.
+6. **TAP display**: Shows `tap-NAME@br0` format.
 
-7. **Commands via update.php**: Must be relative to docroot (`/plugins/microvm.manager/stop.sh`) — update.php prepends `/usr/local/emhttp/`.
+7. **Autostart**: jQuery switchButton (same as Docker/VMs pages).
+
+8. **Resize (CH only)**: swal input dialogs, updates config.json after success.
+
+9. **Init script**: CH gets serial shell on ttyS0 (`TERM=linux sh`). FC just runs nginx (no interactive console).
 
 ---
 
 ## What Works ✅
 - Create VM from OCI image (crane pull → rootfs)
-- Start/Stop VMs (both CH and FC engines)
+- Start/Stop VMs (CH: ACPI, FC: kill)
 - Force Stop (kill -9)
-- Live resize CPU/RAM (CH only, FC shows "not supported")
+- Live resize CPU/RAM (CH only, updates config.json)
 - Snapshot (CH: pause→snap→resume)
+- Snapshot management (list/restore/delete via swal)
 - Remove VM (blocked if has snapshots)
-- Settings page with health checks (Ready/Failed)
+- Serial console (CH: ttyd + unix socket + nginx proxy)
+- Log viewer (ttyd + tail -f via logterminal)
+- Settings page with health checks
 - Engine selector on Add page (CH or FC with logos)
-- Context menu per VM (click ▼ or name)
-- TAP interface display
-- RootFS tab (list images, pull OCI)
+- Context menu per VM (Unraid native context.js)
+- switchButton autostart toggle
+- RootFS tab (list images, pull OCI, delete, kernel engine column)
 - Usage Statistics tab
 - Both engines use own kernel subfolder
-- Default Engine setting
+- TAP display as tap-NAME@br0
 
 ---
 
-## Known Issues / TODO
-- [ ] Cloud Hypervisor logo has dark background (needs transparent/rounded version)
-- [ ] Context menu doesn't match VMs page exactly (VMs uses click-on-name natively via addVMContext JS)
-- [ ] No serial console yet
-- [ ] No snapshot list/manage UI
-- [ ] "Start" from WebGUI needs page reload to see status change (no nchan yet)
-- [ ] Stop (graceful) for FC just kills process (FC has no ACPI)
-- [ ] `nginx2` VM's rootfs was on /mnt/mtier but config still says /mnt/user — needs path fix in config.json
+## Known Issues / Remaining
+- [ ] Console shows `^[[32;5R` once at start (busybox DSR query, cosmetic)
+- [ ] Add VM form: buttons now horizontal but might need more CSS testing
+- [ ] No serial console for Firecracker (only log viewer)
+- [ ] Cloud Hypervisor logo has text (not ideal at 32x32 but official)
+- [ ] LiquidMetal settings icon slightly cropped (SVG viewBox vs render)
 
 ---
 
 ## Build & Deploy Command (one-liner)
 ```bash
-cd /c/Users/seein/Workspaces/github/unraid-microVMs && git add -A && git commit -m 'MESSAGE' && rm -rf build && mkdir -p build/microvm.manager/backend build/microvm.manager/include build/microvm.manager/scripts build/microvm.manager/images && cp src/usr/local/emhttp/plugins/microvm.manager/*.page build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.sh build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.png build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/images/* build/microvm.manager/images/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/include build/microvm.manager/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/backend build/microvm.manager/ && cp src/usr/local/etc/rc.d/rc.microvm build/microvm.manager/rc.microvm && cd build && tar -czf ../plugin/microvm.manager-VERSION.tgz microvm.manager && cd .. && rm -rf build && cat plugin/microvm.manager-VERSION.tgz | ssh -i ~/.ssh/mastervault root@192.168.50.6 'cat > /tmp/p.tgz && rm -rf /usr/local/emhttp/plugins/microvm.manager && tar -xf /tmp/p.tgz -C /usr/local/emhttp/plugins/ && chmod +x /usr/local/emhttp/plugins/microvm.manager/*.sh /usr/local/emhttp/plugins/microvm.manager/rc.microvm && cp /usr/local/emhttp/plugins/microvm.manager/rc.microvm /etc/rc.d/rc.microvm && rm /tmp/p.tgz && echo ok'
+cd /c/Users/seein/Workspaces/github/unraid-microVMs && rm -rf build && mkdir -p build/microvm.manager/backend build/microvm.manager/include build/microvm.manager/images && cp src/usr/local/emhttp/plugins/microvm.manager/*.page build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.sh build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.png build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.svg build/microvm.manager/ 2>/dev/null; cp src/usr/local/emhttp/plugins/microvm.manager/*.html build/microvm.manager/ 2>/dev/null; cp src/usr/local/emhttp/plugins/microvm.manager/images/* build/microvm.manager/images/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/include build/microvm.manager/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/backend build/microvm.manager/ && cp src/usr/local/etc/rc.d/rc.microvm build/microvm.manager/rc.microvm && cp src/usr/local/bin/microvm-console build/microvm.manager/ && cd build && tar -czf ../plugin/microvm.manager-VERSION.tgz microvm.manager && cd .. && rm -rf build && cat plugin/microvm.manager-VERSION.tgz | ssh -i ~/.ssh/mastervault root@192.168.50.6 'cat > /tmp/p.tgz && rm -rf /usr/local/emhttp/plugins/microvm.manager && tar -xf /tmp/p.tgz -C /usr/local/emhttp/plugins/ && chmod +x /usr/local/emhttp/plugins/microvm.manager/*.sh /usr/local/emhttp/plugins/microvm.manager/rc.microvm && cp /usr/local/emhttp/plugins/microvm.manager/rc.microvm /etc/rc.d/rc.microvm && cp /usr/local/emhttp/plugins/microvm.manager/microvm-console /usr/local/bin/microvm-console && chmod +x /usr/local/bin/microvm-console && rm /tmp/p.tgz && echo ok'
 ```
 
 ---
 
-## Reference Repos Cloned
-- `D:/github/unraid-webgui` — Unraid 7.2.7 WebGUI source (page system, update.php, emcmd)
-- `D:/github/unraid-tailscale` — Official Tailscale plugin (daemon pattern, rc.d, PLG)
-- `D:/github/ZFS-Master-Unraid` — ZFS Master plugin (nchan, AJAX backend, SweetAlert2)
-
----
-
-## Research Completed (docs/ folder)
-- architecture.md — Stack decisions, CH vs FC
-- cloud-hypervisor.md — Full API reference
-- diagrams.md — 9 Mermaid diagrams
-- flintlock-containerd.md — Orchestration layer
-- networking.md — TAP/bridge setup
-- oci-to-rootfs.md — Image conversion
-- plugin-development.md — Unraid PLG format
-- test-results.md — All proven tests
-- unraid-integration.md — rc.d, persistence
-- roadmap.md — Next items
-
----
-
-## Next Session Priorities
-1. Fix context menu to be more like native VMs (click name opens menu)
-2. Snapshot list/manage UI
-3. Serial console (WebSocket + xterm.js)
-4. CH logo improvement (transparent background)
-5. PLG installer for Community Applications distribution
-6. nchan real-time status updates (no page refresh needed)
+## Next Priorities
+1. PLG installer for Community Applications
+2. nchan real-time VM status (no page refresh)
+3. Add VM form refinements (match VMs page exactly)
+4. macvtap support (tap0@br0 naming)
+5. VM edit page
+6. Import/export VM
