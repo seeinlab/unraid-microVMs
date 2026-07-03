@@ -177,7 +177,7 @@ img.vm-icon-stopped { opacity:0.4; }
     $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvm.manager/images/{$engine}.png";
-    $bridge = $vm['config']['bridge'] ?? 'br0'; $tap = $bridge . '@tap-' . $vm['name'];
+    $tap = 'tap-' . $vm['name'];
 
     $shape = ($state === 'running') ? 'play' : 'square';
     $status_class = ($state === 'running') ? 'started' : 'stopped';
