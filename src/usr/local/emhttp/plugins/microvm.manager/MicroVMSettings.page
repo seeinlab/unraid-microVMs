@@ -1,0 +1,138 @@
+Menu="OtherSettings"
+Icon="microvm.manager.png"
+Title="MicroVM Manager"
+Tag="microchip"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.manager";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+
+// Check binaries
+$ch_version = trim(shell_exec('cloud-hypervisor --version 2>/dev/null') ?: 'Not installed');
+$remote_version = trim(shell_exec('ch-remote --version 2>/dev/null') ?: 'Not installed');
+$crane_version = trim(shell_exec('crane version 2>/dev/null') ?: 'Not installed');
+
+// Service status
+$service_running = exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output, $status_ret);
+$is_running = ($status_ret === 0);
+
+// Count VMs
+$vm_count = 0;
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+if (is_dir($vmdir)) {
+    foreach (glob("$vmdir/*/config.json") as $f) $vm_count++;
+}
+?>
+
+<link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.switchbutton.css')?>">
+
+<span class="status vhshift"><input type="checkbox" class="advancedview"></span>
+
+<form method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#file" value="microvm.manager/microvm.manager.cfg">
+<input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
+
+<table class="unraid tablesorter"><thead><tr><td>_(Service Status)_</td></tr></thead></table>
+
+<dl>
+  <dt>_(Cloud Hypervisor)_:</dt>
+  <dd><?=$ch_version?></dd>
+</dl>
+<dl>
+  <dt>_(ch-remote)_:</dt>
+  <dd><?=$remote_version?></dd>
+</dl>
+<dl>
+  <dt>_(crane)_:</dt>
+  <dd><?=$crane_version?></dd>
+</dl>
+<dl>
+  <dt>_(Service)_:</dt>
+  <dd><?=$is_running ? '<span class="green"><b>Running</b></span>' : '<span class="red"><b>Stopped</b></span>'?></dd>
+</dl>
+<dl>
+  <dt>_(Configured VMs)_:</dt>
+  <dd><?=$vm_count?></dd>
+</dl>
+
+<table class="unraid tablesorter"><thead><tr><td>_(General Settings)_</td></tr></thead></table>
+
+<dl>
+  <dt>_(Enable MicroVM Manager)_:</dt>
+  <dd>
+    <select name="SERVICE">
+      <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
+      <?=mk_option($cfg['SERVICE'] ?? 'disable', 'enable', _('Yes'))?>
+    </select>
+  </dd>
+</dl>
+
+<dl>
+  <dt>_(VM Storage Location)_:</dt>
+  <dd>
+    <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/appdata/microvm')?>"
+      data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
+  </dd>
+</dl>
+
+<dl>
+  <dt>_(Network Bridge)_:</dt>
+  <dd>
+    <select name="BRIDGE">
+      <?php foreach(glob('/sys/class/net/br*') as $br): $name=basename($br); ?>
+      <?=mk_option($cfg['BRIDGE'] ?? 'br0', $name, $name)?>
+      <?php endforeach; ?>
+    </select>
+  </dd>
+</dl>
+
+<dl>
+  <dt>_(Default vCPUs)_:</dt>
+  <dd><input type="number" name="DEFAULT_CPUS" min="1" max="<?=exec('nproc')?>" value="<?=htmlspecialchars($cfg['DEFAULT_CPUS'] ?? '1')?>"></dd>
+</dl>
+
+<dl>
+  <dt>_(Default Memory)_ (MB):</dt>
+  <dd><input type="number" name="DEFAULT_MEMORY" min="64" step="64" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>"></dd>
+</dl>
+
+<dl>
+  <dt>_(Autostart VMs on array start)_:</dt>
+  <dd>
+    <select name="AUTOSTART">
+      <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'no', _('No'))?>
+      <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'yes', _('Yes'))?>
+    </select>
+  </dd>
+</dl>
+
+<table class="unraid tablesorter"><thead><tr><td>_(Actions)_</td></tr></thead></table>
+
+<dl>
+  <dt>&nbsp;</dt>
+  <dd>
+    <input type="submit" name="#apply" value="_(Apply)_">
+    <input type="button" value="_(Done)_" onclick="done()">
+  </dd>
+</dl>
+</form>
+
+<!-- Separate restart button -->
+<form method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#command" value="/usr/local/emhttp/plugins/microvm.manager/restart.sh">
+<dl>
+  <dt>_(Restart service without changing settings)_:</dt>
+  <dd><input type="submit" value="_(Restart)_"></dd>
+</dl>
+</form>
+
+<script src="<?=autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<script>
+$(function() {
+  $('.advancedview').switchButton({labels_placement:"left", on_label:"Advanced", off_label:"Basic"});
+});
+</script>

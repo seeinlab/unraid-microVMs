@@ -1,0 +1,24 @@
+Menu="Tasks:65"
+Type="xmenu"
+Code="e918"
+Lock="true"
+Tabs="true"
+Cond="is_file('/usr/local/bin/cloud-hypervisor')"
+---
+<?php
+$plugin = "microvm.manager";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$noticeMessage = null;
+
+if ($var['fsState'] != "Started") {
+    $noticeMessage = "Array must be <b>started</b> to manage MicroVMs";
+} elseif (($cfg['SERVICE'] ?? 'disable') !== 'enable') {
+    $noticeMessage = "MicroVM Manager is disabled. <a href='/Settings/MicroVMSettings'>Enable in Settings</a>";
+}
+?>
+<?php if ($noticeMessage): ?>
+<p class="notice"><?=$noticeMessage?></p>
+<?php endif; ?>

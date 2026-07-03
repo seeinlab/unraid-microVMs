@@ -1,0 +1,279 @@
+Menu="MicroVMs:1"
+Title="Machines"
+Tag="server"
+Cond="is_file('/usr/local/bin/cloud-hypervisor')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.manager";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vms = microvm_list_vms();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+$bridge = $cfg['BRIDGE'] ?? 'br0';
+$default_cpus = $cfg['DEFAULT_CPUS'] ?? '1';
+$default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
+
+// Check kernel available
+$kernel_path = "$vmdir/kernels/vmlinux";
+$kernel_exists = file_exists($kernel_path);
+?>
+
+<style>
+.vm-table { width:100%; }
+.vm-table td { padding:4px 8px; }
+.vm-table .running { color:#4CAF50; font-weight:bold; }
+.vm-table .stopped { color:#f44336; }
+.vm-actions button { margin:2px; padding:4px 12px; cursor:pointer; }
+.add-vm-form dl { margin:5px 0; }
+.add-vm-form dt { width:200px; float:left; padding:5px 0; }
+.add-vm-form dd { margin-left:210px; padding:5px 0; }
+</style>
+
+<!-- VM List -->
+<table class="unraid tablesorter">
+<thead><tr><td>MicroVM Machines</td></tr></thead>
+</table>
+
+<?php if (!$kernel_exists): ?>
+<p class="notice">
+  <b>No kernel found.</b> Download one first:<br>
+  <code>curl -fsSL -o <?=$kernel_path?> https://github.com/cloud-hypervisor/linux/releases/download/ch-release-v6.2-20240908/vmlinux</code>
+</p>
+<?php endif; ?>
+
+<table class="unraid vm-table">
+<thead><tr>
+  <th>Name</th><th>Status</th><th>CPUs</th><th>Memory</th><th>IP</th><th>Actions</th>
+</tr></thead>
+<tbody>
+<?php if (empty($vms)): ?>
+  <tr><td colspan="6" style="text-align:center;padding:20px;">No MicroVMs configured. Create one below.</td></tr>
+<?php else: ?>
+  <?php foreach ($vms as $vm): ?>
+  <tr>
+    <td><b><?=htmlspecialchars($vm['name'])?></b></td>
+    <td class="<?=$vm['state']?>"><?=$vm['state']?></td>
+    <td><?=$vm['config']['boot_vcpus'] ?? $vm['config']['cpus']['boot_vcpus'] ?? '-'?></td>
+    <td><?=($vm['config']['memory_mb'] ?? ($vm['config']['memory']['size'] ?? 0) / 1048576) ?: '-'?> MB</td>
+    <td><?=$vm['config']['ip'] ?? '-'?></td>
+    <td class="vm-actions">
+      <?php if ($vm['state'] === 'running'): ?>
+        <button onclick="vmAction('stop','<?=$vm['name']?>')">Stop</button>
+        <button onclick="vmAction('resize_prompt','<?=$vm['name']?>')">Resize</button>
+        <button onclick="vmAction('snapshot','<?=$vm['name']?>')">Snapshot</button>
+      <?php else: ?>
+        <button onclick="vmAction('start','<?=$vm['name']?>')">Start</button>
+      <?php endif; ?>
+      <button onclick="vmAction('info','<?=$vm['name']?>')" title="Show JSON config">JSON</button>
+      <button onclick="vmAction('delete','<?=$vm['name']?>')" style="color:red;" title="Delete VM config">✕</button>
+    </td>
+  </tr>
+  <?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
+
+<br>
+
+<!-- Add VM Form -->
+<table class="unraid tablesorter">
+<thead><tr><td>Add MicroVM</td></tr></thead>
+</table>
+
+<div class="add-vm-form">
+<form id="addVmForm" onsubmit="return createVM(this)">
+
+<dl>
+  <dt><label>VM Name:</label></dt>
+  <dd><input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase letters, numbers, hyphens only"></dd>
+</dl>
+
+<dl>
+  <dt><label>vCPUs:</label></dt>
+  <dd><input type="number" id="vm_cpus" min="1" max="<?=exec('nproc')?>" value="<?=$default_cpus?>"></dd>
+</dl>
+
+<dl>
+  <dt><label>Memory (MB):</label></dt>
+  <dd><input type="number" id="vm_memory" min="64" step="64" value="<?=$default_mem?>"></dd>
+</dl>
+
+<dl>
+  <dt><label>IP Address:</label></dt>
+  <dd><input type="text" id="vm_ip" required placeholder="192.168.50.201" pattern="\d+\.\d+\.\d+\.\d+"></dd>
+</dl>
+
+<dl>
+  <dt><label>Gateway:</label></dt>
+  <dd><input type="text" id="vm_gateway" value="192.168.50.1" pattern="\d+\.\d+\.\d+\.\d+"></dd>
+</dl>
+
+<dl>
+  <dt><label>Rootfs Source:</label></dt>
+  <dd>
+    <select id="rootfs_source" onchange="toggleRootfsInput(this.value)">
+      <option value="oci">Pull OCI/Docker Image</option>
+      <option value="existing">Use Existing rootfs.raw</option>
+    </select>
+  </dd>
+</dl>
+
+<dl id="oci_input">
+  <dt><label>OCI Image:</label></dt>
+  <dd><input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine"></dd>
+</dl>
+
+<dl id="existing_input" style="display:none">
+  <dt><label>Rootfs Path:</label></dt>
+  <dd><input type="text" id="vm_rootfs_path" placeholder="/mnt/user/appdata/microvm/my-vm/rootfs.raw"></dd>
+</dl>
+
+<dl>
+  <dt><label>Disk Size (MB):</label></dt>
+  <dd><input type="number" id="vm_disk_size" min="100" step="100" value="500"></dd>
+</dl>
+
+<dl>
+  <dt></dt>
+  <dd>
+    <button type="submit" style="padding:8px 20px;">Create MicroVM</button>
+    <button type="button" onclick="showJsonEditor()" style="padding:8px 20px;">Advanced (JSON)</button>
+  </dd>
+</dl>
+
+</form>
+</div>
+
+<!-- JSON Editor (hidden by default) -->
+<div id="jsonEditorSection" style="display:none; margin-top:10px;">
+<table class="unraid tablesorter">
+<thead><tr><td>JSON Config Editor</td></tr></thead>
+</table>
+<div style="padding:10px;">
+<textarea id="jsonEditor" style="width:100%; height:250px; font-family:monospace; font-size:13px; padding:10px; background:#1a1a2e; color:#e0e0e0; border:1px solid #444; border-radius:4px; resize:vertical;" spellcheck="false"></textarea>
+<br><br>
+<button type="button" onclick="createVMFromJson()" style="padding:8px 20px;">Create from JSON</button>
+<button type="button" onclick="document.getElementById('jsonEditorSection').style.display='none'" style="padding:8px 20px;">Cancel</button>
+</div>
+</div>
+
+<!-- Output log -->
+<div id="vmOutput" style="display:none; margin-top:10px; padding:10px; background:#1c1c1c; color:#0f0; font-family:monospace; font-size:12px; max-height:300px; overflow-y:auto;">
+</div>
+
+<script>
+function toggleRootfsInput(val) {
+  document.getElementById('oci_input').style.display = val === 'oci' ? '' : 'none';
+  document.getElementById('existing_input').style.display = val === 'existing' ? '' : 'none';
+}
+
+function showJsonEditor() {
+  var name = document.getElementById('vm_name').value || 'my-vm';
+  var cpus = document.getElementById('vm_cpus').value;
+  var mem = document.getElementById('vm_memory').value;
+  var ip = document.getElementById('vm_ip').value || '192.168.50.201';
+  var gw = document.getElementById('vm_gateway').value || '192.168.50.1';
+  
+  var config = {
+    name: name,
+    kernel: "<?=$kernel_path?>",
+    disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
+    cmdline: "console=hvc0 root=/dev/vda rw init=/init ip=" + ip + "::" + gw + ":255.255.255.0:::off",
+    boot_vcpus: parseInt(cpus),
+    max_vcpus: parseInt(cpus) * 2,
+    memory_mb: parseInt(mem),
+    mac: "52:54:00:" + Math.floor(Math.random()*256).toString(16).padStart(2,'0') + ":" + Math.floor(Math.random()*256).toString(16).padStart(2,'0') + ":" + Math.floor(Math.random()*256).toString(16).padStart(2,'0'),
+    ip: ip,
+    bridge: "<?=$bridge?>",
+    autostart: false
+  };
+  
+  document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
+  document.getElementById('jsonEditorSection').style.display = '';
+}
+
+function showOutput(msg) {
+  var el = document.getElementById('vmOutput');
+  el.style.display = '';
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function vmAction(action, name) {
+  if (action === 'delete' && !confirm('Delete VM config for "' + name + '"? (rootfs will be preserved)')) return;
+  if (action === 'info') {
+    $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+      alert(JSON.stringify(JSON.parse(data), null, 2));
+    });
+    return;
+  }
+  if (action === 'resize_prompt') {
+    var cpus = prompt('New CPU count:', '2');
+    var mem = prompt('New memory (bytes, e.g. 536870912 for 512MB):', '536870912');
+    if (cpus || mem) {
+      $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'resize', name: name, cpus: cpus, memory: mem}, function(data) {
+        showOutput('Resize: ' + data);
+        setTimeout(function(){ location.reload(); }, 2000);
+      });
+    }
+    return;
+  }
+  
+  showOutput('Action: ' + action + ' on ' + name + '...');
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
+    showOutput('Result: ' + data);
+    setTimeout(function(){ location.reload(); }, 3000);
+  });
+}
+
+function createVM(form) {
+  var name = document.getElementById('vm_name').value;
+  var cpus = document.getElementById('vm_cpus').value;
+  var mem = document.getElementById('vm_memory').value;
+  var ip = document.getElementById('vm_ip').value;
+  var gw = document.getElementById('vm_gateway').value;
+  var source = document.getElementById('rootfs_source').value;
+  var ociImage = document.getElementById('vm_oci_image').value;
+  var diskSize = document.getElementById('vm_disk_size').value;
+  var rootfsPath = document.getElementById('vm_rootfs_path').value;
+  
+  showOutput('Creating MicroVM: ' + name + '...');
+  
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+    cmd: 'create',
+    name: name,
+    cpus: cpus,
+    memory: mem,
+    ip: ip,
+    gateway: gw,
+    source: source,
+    oci_image: ociImage,
+    disk_size: diskSize,
+    rootfs_path: rootfsPath
+  }, function(data) {
+    showOutput('Result: ' + data);
+    setTimeout(function(){ location.reload(); }, 5000);
+  });
+  
+  return false;
+}
+
+function createVMFromJson() {
+  var json = document.getElementById('jsonEditor').value;
+  try {
+    JSON.parse(json); // validate
+  } catch(e) {
+    alert('Invalid JSON: ' + e.message);
+    return;
+  }
+  
+  showOutput('Creating MicroVM from JSON...');
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
+    showOutput('Result: ' + data);
+    setTimeout(function(){ location.reload(); }, 5000);
+  });
+}
+</script>

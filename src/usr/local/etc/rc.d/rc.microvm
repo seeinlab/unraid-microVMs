@@ -1,0 +1,207 @@
+#!/bin/bash
+# /etc/rc.d/rc.microvm - start/stop the MicroVM Manager service
+
+PLUGIN="microvm.manager"
+CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.cfg"
+PIDFILE="/var/run/microvm-manager.pid"
+CH_BIN="/usr/local/bin/cloud-hypervisor"
+REMOTE_BIN="/usr/local/bin/ch-remote"
+
+# Load config
+[ -f "$CFGFILE" ] && source "$CFGFILE"
+VMDIR="${VMDIR:-/mnt/user/appdata/microvm}"
+BRIDGE="${BRIDGE:-br0}"
+AUTOSTART="${AUTOSTART:-no}"
+
+log() {
+  logger -t "rc.microvm" "$1"
+  echo "$1"
+}
+
+microvm_running() {
+  [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null
+}
+
+wait_for_array() {
+  local timeout=60
+  local elapsed=0
+  while [ ! -d "/mnt/user" ] && [ $elapsed -lt $timeout ]; do
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  [ -d "/mnt/user" ]
+}
+
+create_taps() {
+  [ -d "$VMDIR" ] || return
+  for vmdir in "$VMDIR"/*/; do
+    [ -f "$vmdir/config.json" ] || continue
+    local name=$(basename "$vmdir")
+    if ! ip link show "tap-$name" &>/dev/null; then
+      ip tuntap add "tap-$name" mode tap 2>/dev/null
+      ip link set "tap-$name" master "$BRIDGE" 2>/dev/null
+      ip link set "tap-$name" up 2>/dev/null
+      log "Created TAP: tap-$name on $BRIDGE"
+    fi
+  done
+}
+
+remove_taps() {
+  for tap in $(ip -o link show | grep -oP 'tap-\S+(?=:)'); do
+    ip link del "$tap" 2>/dev/null
+    log "Removed TAP: $tap"
+  done
+}
+
+start_vm() {
+  local name="$1"
+  local vmdir="$VMDIR/$name"
+  local config="$vmdir/config.json"
+  local sock="/tmp/microvm-${name}.sock"
+  
+  [ -f "$config" ] || return 1
+  [ -S "$sock" ] && return 0  # Already running
+  
+  # Read config (simple JSON parse with jq or grep)
+  local kernel=$(cat "$config" | grep -oP '"kernel"\s*:\s*"\K[^"]+')
+  local disk=$(cat "$config" | grep -oP '"disk"\s*:\s*"\K[^"]+')
+  local cmdline=$(cat "$config" | grep -oP '"cmdline"\s*:\s*"\K[^"]+')
+  local cpus=$(cat "$config" | grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+')
+  local max_cpus=$(cat "$config" | grep -oP '"max_vcpus"\s*:\s*\K[0-9]+')
+  local memory=$(cat "$config" | grep -oP '"memory_mb"\s*:\s*\K[0-9]+')
+  local mac=$(cat "$config" | grep -oP '"mac"\s*:\s*"\K[^"]+')
+  
+  # Defaults
+  cpus=${cpus:-${DEFAULT_CPUS:-1}}
+  max_cpus=${max_cpus:-$((cpus * 2))}
+  memory=${memory:-${DEFAULT_MEMORY:-256}}
+  
+  $CH_BIN \
+    --api-socket "$sock" \
+    --kernel "$kernel" \
+    --disk "path=$disk" \
+    --cmdline "$cmdline" \
+    --cpus "boot=$cpus,max=$max_cpus" \
+    --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
+    --net "tap=tap-$name,mac=$mac" \
+    --serial off --console off \
+    -v >> "/var/log/microvm-${name}.log" 2>&1 &
+  
+  log "Started VM: $name (PID: $!)"
+}
+
+stop_vm() {
+  local name="$1"
+  local sock="/tmp/microvm-${name}.sock"
+  
+  if [ -S "$sock" ]; then
+    $REMOTE_BIN --api-socket "$sock" power-button 2>/dev/null
+    log "Sent ACPI power-button to: $name"
+    
+    # Wait for graceful shutdown (max 30s)
+    local timeout=30
+    local elapsed=0
+    while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
+      sleep 1
+      elapsed=$((elapsed + 1))
+    done
+    
+    if [ -S "$sock" ]; then
+      $REMOTE_BIN --api-socket "$sock" shutdown-vmm 2>/dev/null
+      log "Force shutdown: $name"
+    fi
+  fi
+}
+
+microvm_start() {
+  if [ "$SERVICE" != "enable" ]; then
+    log "MicroVM Manager disabled in settings"
+    return
+  fi
+  
+  if ! wait_for_array; then
+    log "ERROR: Array not started, cannot access VM storage"
+    return 1
+  fi
+  
+  log "Starting MicroVM Manager..."
+  
+  # Create VM storage directory
+  mkdir -p "$VMDIR/kernels"
+  
+  # Create TAP interfaces
+  create_taps
+  
+  # Start nchan monitoring (if WebGUI integration exists)
+  if [ -f "/usr/local/emhttp/plugins/$PLUGIN/nchan/microvm_manager" ]; then
+    /usr/local/emhttp/plugins/$PLUGIN/nchan/microvm_manager &
+    echo $! > "$PIDFILE"
+  fi
+  
+  # Autostart VMs
+  if [ "$AUTOSTART" = "yes" ]; then
+    for vmdir in "$VMDIR"/*/; do
+      [ -f "$vmdir/config.json" ] || continue
+      local name=$(basename "$vmdir")
+      local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$vmdir/config.json")
+      if [ "$autostart" = "true" ]; then
+        start_vm "$name"
+      fi
+    done
+  fi
+  
+  log "MicroVM Manager started"
+}
+
+microvm_stop() {
+  log "Stopping MicroVM Manager..."
+  
+  # Graceful shutdown all running VMs
+  for sock in /tmp/microvm-*.sock; do
+    [ -S "$sock" ] || continue
+    local name=$(basename "$sock" .sock | sed 's/microvm-//')
+    stop_vm "$name"
+  done
+  
+  # Stop nchan daemon
+  if [ -f "$PIDFILE" ]; then
+    kill $(cat "$PIDFILE") 2>/dev/null
+    rm -f "$PIDFILE"
+  fi
+  
+  # Remove TAP interfaces
+  remove_taps
+  
+  log "MicroVM Manager stopped"
+}
+
+microvm_status() {
+  if microvm_running; then
+    echo "MicroVM Manager: running (PID $(cat $PIDFILE))"
+  else
+    echo "MicroVM Manager: stopped"
+  fi
+  
+  # List running VMs
+  local count=0
+  for sock in /tmp/microvm-*.sock; do
+    [ -S "$sock" ] || continue
+    local name=$(basename "$sock" .sock | sed 's/microvm-//')
+    local info=$($REMOTE_BIN --api-socket "$sock" ping 2>/dev/null)
+    if [ -n "$info" ]; then
+      echo "  VM: $name (running)"
+      count=$((count + 1))
+    fi
+  done
+  echo "  Total VMs running: $count"
+}
+
+case "$1" in
+  start)   microvm_start ;;
+  stop)    microvm_stop ;;
+  restart) microvm_stop; sleep 2; microvm_start ;;
+  status)  microvm_status ;;
+  start_vm)  start_vm "$2" ;;
+  stop_vm)   stop_vm "$2" ;;
+  *)       echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME}" ;;
+esac
