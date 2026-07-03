@@ -22,7 +22,7 @@ $kvm_available = is_readable('/dev/kvm');
 
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
 $vmdir_exists = is_dir($vmdir);
-$kernel_exists = is_file("$vmdir/kernels/vmlinux");
+$kernel_exists = is_file("$vmdir/kernels/cloud-hypervisor/vmlinux") || is_file("$vmdir/kernels/firecracker/vmlinux");
 
 // Count VMs
 $vm_count = 0;
@@ -69,7 +69,14 @@ _(KVM)_:
 : <?=$kvm_available ? '<span style="color:#4CAF50;">✓ /dev/kvm available</span>' : '<span style="color:#f44336;">✗ Not available</span>'?>
 
 _(Kernel)_:
-: <?=$kernel_exists ? basename(realpath("$vmdir/kernels/vmlinux")) : '<span style="color:#f44336;">Not found</span>'?>
+: <?php
+$ch_kernel = is_file("$vmdir/kernels/cloud-hypervisor/vmlinux");
+$fc_kernel = is_file("$vmdir/kernels/firecracker/vmlinux");
+if ($ch_kernel && $fc_kernel) echo '<span style="color:#4CAF50;">✓</span> CH + FC kernels';
+elseif ($ch_kernel) echo '<span style="color:#4CAF50;">✓</span> CH kernel only';
+elseif ($fc_kernel) echo '<span style="color:#4CAF50;">✓</span> FC kernel only';
+else echo '<span style="color:#f44336;">✗ No kernels found</span>';
+?>
 
 _(Configured VMs)_:
 : <?=$vm_count?>
