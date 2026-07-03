@@ -123,6 +123,8 @@ img.vm-icon-stopped { opacity:0.4; }
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvm.manager/images/{$engine}.png";
     $tap = 'tap-' . $vm['name'];
+    $bridge_name = $vm['config']['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
+    $tap_display = $tap . '@' . $bridge_name;
     $autostart = !empty($vm['config']['autostart']);
 
     $status_class = ($state === 'running') ? 'started' : 'stopped';
@@ -146,7 +148,7 @@ img.vm-icon-stopped { opacity:0.4; }
     <td><?=$cpus?></td>
     <td><?=$mem_display?></td>
     <td><?=$ip?></td>
-    <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap)?></td>
+    <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap_display)?></td>
     <td><input class="autostart" type="checkbox" name="auto_<?=$name?>" title="Toggle autostart" data-name="<?=$name?>" <?=$autostart ? 'checked' : ''?>></td>
   </tr>
   <?php endforeach; ?>

@@ -470,6 +470,61 @@ INIT;
         }
         break;
 
+    case 'delete_rootfs':
+        $rootfsPath = "$vmdir/$name";
+        // Check VM is not running
+        if (file_exists("/tmp/microvm-{$name}.sock")) {
+            echo json_encode(['success' => false, 'error' => "VM '$name' is running. Stop it first."]);
+            break;
+        }
+        // Only delete rootfs file, keep config
+        $deleted = false;
+        foreach (['rootfs.raw', 'rootfs.ext4'] as $rf) {
+            $fp = "$rootfsPath/$rf";
+            if (file_exists($fp)) {
+                unlink($fp);
+                $deleted = true;
+                microvm_log("DELETED rootfs: $fp");
+            }
+        }
+        echo json_encode(['success' => $deleted, 'message' => $deleted ? "RootFS deleted for '$name'" : "No rootfs found"]);
+        break;
+
+    case 'pull_rootfs':
+        $image = $_POST['image'] ?? 'nginx:alpine';
+        $pullName = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['name'] ?? ''));
+        $diskSize = intval($_POST['disk_size'] ?? 500);
+        if (empty($pullName)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid VM name']);
+            break;
+        }
+        $vmPath = "$vmdir/$pullName";
+        $rootfs = "$vmPath/rootfs.raw";
+        @mkdir($vmPath, 0755, true);
+
+        // Pull with crane to temp tar
+        $tmpTar = "/tmp/microvm-$pullName.tar";
+        exec("crane export " . escapeshellarg($image) . " " . escapeshellarg($tmpTar) . " 2>&1", $pullOutput, $pullRet);
+        if ($pullRet !== 0) {
+            echo json_encode(['success' => false, 'error' => 'crane pull failed: ' . implode("\n", $pullOutput)]);
+            break;
+        }
+
+        // Create ext4 image
+        exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
+        exec("mkfs.ext4 -F $rootfs 2>/dev/null");
+        exec("mkdir -p /tmp/microvm-mount-$pullName");
+        exec("mount $rootfs /tmp/microvm-mount-$pullName");
+        exec("tar -xf $tmpTar -C /tmp/microvm-mount-$pullName 2>&1");
+        exec("umount /tmp/microvm-mount-$pullName");
+        exec("rmdir /tmp/microvm-mount-$pullName 2>/dev/null");
+        // Cleanup temp tar
+        @unlink($tmpTar);
+
+        microvm_log("PULL_ROOTFS: $image -> $rootfs ($diskSize MB)");
+        echo json_encode(['success' => true, 'path' => $rootfs]);
+        break;
+
     default:
         echo json_encode(['error' => "Unknown command: $cmd"]);
 }

@@ -26,7 +26,7 @@ if (is_dir($vmdir)) {
 ?>
 
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="4">Existing RootFS Images</td></tr></thead>
+<thead><tr><td colspan="4"><b>Existing RootFS Images</b></td></tr></thead>
 </table>
 
 <table class="tablesorter shift ups">
@@ -45,7 +45,7 @@ if (is_dir($vmdir)) {
     <td><b><?=htmlspecialchars($img['name'])?></b></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img['path'])?></td>
     <td><?=number_format($img['size'] / 1048576, 0)?> MB</td>
-    <td><button class="vm-btn" onclick="deleteRootfs('<?=htmlspecialchars($img['name'])?>')">Delete</button></td>
+    <td><button class="vm-btn" onclick="deleteRootfs('<?=htmlspecialchars($img['name'])?>', '<?=htmlspecialchars($img['path'])?>')">DELETE</button></td>
   </tr>
   <?php endforeach; ?>
 <?php endif; ?>
@@ -55,7 +55,7 @@ if (is_dir($vmdir)) {
 <br>
 
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="2">Pull OCI/Docker Image → RootFS</td></tr></thead>
+<thead><tr><td colspan="2"><b>Pull OCI/Docker Image → RootFS</b></td></tr></thead>
 </table>
 
 <?php if (!$crane_installed): ?>
@@ -84,31 +84,40 @@ _(Disk Size)_ (MB):
 <br>
 
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="2">Kernel Images</td></tr></thead>
+<thead><tr><td colspan="3"><b>Kernel Images</b></td></tr></thead>
 </table>
 
 <table class="tablesorter shift ups">
-<thead><tr><th>File</th><th>Size</th></tr></thead>
+<thead><tr><th>Engine</th><th>File</th><th>Size</th></tr></thead>
 <tbody>
 <?php
 $kernelDir = "$vmdir/kernels";
 if (is_dir($kernelDir)) {
-    foreach (glob("$kernelDir/{vmlinux,cloud-hypervisor/vmlinux,firecracker/vmlinux}", GLOB_BRACE) as $k) {
-        echo "<tr><td style='font-family:monospace;'>".htmlspecialchars(basename($k))."</td><td>".number_format(filesize($k)/1048576,0)." MB</td></tr>";
+    $found = false;
+    foreach (['cloud-hypervisor', 'firecracker'] as $engine) {
+        $kpath = "$kernelDir/$engine/vmlinux";
+        if (is_file($kpath)) {
+            $found = true;
+            $engineLabel = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
+            echo "<tr><td>{$engineLabel}</td><td style='font-family:monospace;'>{$kpath}</td><td>".number_format(filesize($kpath)/1048576,0)." MB</td></tr>";
+        }
     }
+    if (!$found) echo "<tr><td colspan='3' style='text-align:center;opacity:0.6;'>No kernels found</td></tr>";
 } else {
-    echo "<tr><td colspan='2' style='text-align:center;opacity:0.6;'>No kernels found</td></tr>";
+    echo "<tr><td colspan='3' style='text-align:center;opacity:0.6;'>Kernel directory not found</td></tr>";
 }
 ?>
 </tbody>
 </table>
 
 <style>
-.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; }
+.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; text-transform:uppercase; font-size:0.85em; }
 .vm-btn:hover { background:#555; }
 </style>
 
 <script>
+var plugin = '<?=$plugin?>';
+
 function pullImage() {
   var image = document.getElementById('pull_image').value;
   var name = document.getElementById('pull_name').value;
@@ -117,29 +126,44 @@ function pullImage() {
   el.style.display = 'block';
   el.innerHTML = 'Pulling ' + image + ' and converting to rootfs (this may take 20-60s)...<br>';
   
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {
     cmd: 'pull_rootfs',
     image: image,
     name: name,
     disk_size: size
   }, function(data) {
-    var result = JSON.parse(data);
-    if (result.success) {
-      el.innerHTML += '<b style="color:#4CAF50;">✓ RootFS created: ' + result.path + '</b><br>';
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success) {
+      el.innerHTML += '<b style="color:#4CAF50;">\u2713 RootFS created: ' + data.path + '</b><br>';
       setTimeout(function(){ location.reload(); }, 2000);
     } else {
-      el.innerHTML += '<b style="color:#f44336;">✗ Error: ' + (result.error || 'Unknown') + '</b><br>';
+      el.innerHTML += '<b style="color:#f44336;">\u2717 Error: ' + (data.error || 'Unknown') + '</b><br>';
     }
   }).fail(function(xhr) {
-    el.innerHTML += '<b style="color:#f44336;">✗ Request failed</b><br>';
+    el.innerHTML += '<b style="color:#f44336;">\u2717 Request failed</b><br>';
   });
   return false;
 }
 
-function deleteRootfs(name) {
-  if (!confirm('Delete rootfs for "' + name + '"? This cannot be undone!')) return;
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
-    location.reload();
+function deleteRootfs(name, path) {
+  swal({
+    title: 'Delete RootFS?',
+    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nThis cannot be undone!',
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel'
+  }, function(confirmed) {
+    if (confirmed) {
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.success) {
+          location.reload();
+        } else {
+          swal({title: 'Error', text: data.error || 'Delete failed', type: 'error'});
+        }
+      });
+    }
   });
 }
 </script>
