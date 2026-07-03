@@ -13,7 +13,10 @@
 - [x] JSON config persistence
 - [x] TAP networking on br0
 
-## Next
+## Next (Priority)
+- [ ] VM list with engine icon (Cloud Hypervisor / Firecracker logo per VM)
+- [ ] Context menu on VM row (like VMs page: Stop, Restart, Snapshot, Logs, Edit)
+- [ ] Engine selector on Add page (Cloud Hypervisor or Firecracker)
 - [ ] Serial console access (WebSocket → serial TTY)
 - [ ] Edit rootfs (mount image, modify files, unmount)
 - [ ] Custom init script injection at create time
