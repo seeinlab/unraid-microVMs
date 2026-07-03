@@ -14,8 +14,8 @@ $ch_version = trim(shell_exec('cloud-hypervisor --version 2>/dev/null') ?: 'Not 
 $remote_version = trim(shell_exec('ch-remote --version 2>/dev/null') ?: 'Not installed');
 $crane_version = trim(shell_exec('crane version 2>/dev/null') ?: 'Not installed');
 
-exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output, $status_ret);
-$is_running = ($status_ret === 0);
+exec("/etc/rc.d/rc.microvm status 2>/dev/null", $status_output);
+$is_running = (strpos(implode(' ', $status_output), 'running') !== false);
 
 $vm_count = 0;
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
