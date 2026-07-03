@@ -65,7 +65,7 @@ if (is_dir($vmdir)) {
 <div style="display:flex; gap:20px; align-items:center; padding:10px 0;">
   <span>OCI/Docker Image: <input type="text" id="pull_image" placeholder="docker.io/nginx:alpine" style="width:250px;" required></span>
   <span>Target VM Name: <input type="text" id="pull_name" placeholder="my-web" pattern="[a-z0-9\-]+" required style="width:150px;"></span>
-  <span>Disk Size (MB): <input type="number" id="pull_size" value="500" min="100" step="100" style="width:80px;"></span>
+  <span>Disk Size (MB): <input type="number" id="pull_size" placeholder="500" min="100" step="100" style="width:80px;"></span>
   <input type="button" value="Pull &amp; Convert" onclick="pullImage()">
   <span style="opacity:0.6;">crane <?=$crane_version?></span>
 </div>
