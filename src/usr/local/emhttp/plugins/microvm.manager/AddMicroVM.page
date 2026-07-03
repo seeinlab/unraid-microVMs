@@ -15,132 +15,132 @@ $default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
 $nproc = trim(shell_exec('nproc'));
 ?>
 
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+
 <div class="title"><span class="left"><a href="/MicroVMs" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
 
 <form id="microvm_add_form" onsubmit="return submitForm()">
 
-<table>
-  <tr>
-    <td>Engine:</td>
-    <td>
-      <div style="display:flex; gap:20px; align-items:center;">
-        <label style="cursor:pointer; text-align:center; padding:10px 20px; border:2px solid #4CAF50; border-radius:8px; background:#1a2e1a;" id="label_ch">
-          <input type="radio" name="engine" id="engine_ch" value="cloud-hypervisor" checked style="display:none;">
-          <img src="/plugins/microvm.manager/images/cloud-hypervisor.png" style="width:48px; height:48px; object-fit:contain; display:block; margin:0 auto 5px;">
-          <span style="font-size:12px;">Cloud Hypervisor</span>
-        </label>
-        <label style="cursor:pointer; text-align:center; padding:10px 20px; border:2px solid #555; border-radius:8px;" id="label_fc">
-          <input type="radio" name="engine" id="engine_fc" value="firecracker" style="display:none;">
-          <img src="/plugins/microvm.manager/images/firecracker.png" style="width:48px; height:48px; object-fit:contain; display:block; margin:0 auto 5px;">
-          <span style="font-size:12px;">Firecracker</span>
-        </label>
-      </div>
-    </td>
-  </tr>
-</table>
+<dl>
+  <dt>Engine:</dt>
+  <dd>
+    <div style="display:inline-flex; gap:15px; align-items:center;">
+      <label style="cursor:pointer; text-align:center; padding:8px 16px; border:2px solid #4CAF50; border-radius:8px; background:#1a2e1a;" id="label_ch">
+        <input type="radio" name="engine" id="engine_ch" value="cloud-hypervisor" checked style="display:none;">
+        <img src="/plugins/microvm.manager/images/cloud-hypervisor.png" style="width:40px; height:40px; object-fit:contain; display:block; margin:0 auto 4px;">
+        <span style="font-size:11px;">Cloud Hypervisor</span>
+      </label>
+      <label style="cursor:pointer; text-align:center; padding:8px 16px; border:2px solid #555; border-radius:8px;" id="label_fc">
+        <input type="radio" name="engine" id="engine_fc" value="firecracker" style="display:none;">
+        <img src="/plugins/microvm.manager/images/firecracker.png" style="width:40px; height:40px; object-fit:contain; display:block; margin:0 auto 4px;">
+        <span style="font-size:11px;">Firecracker</span>
+      </label>
+    </div>
+  </dd>
+</dl>
 
-<table>
-  <tr>
-    <td>VM Name:</td>
-    <td><input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens" style="width:300px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>Autostart:</dt>
+  <dd><input class="autostart-add" type="checkbox" id="vm_autostart"></dd>
+</dl>
 
-<table>
-  <tr>
-    <td>vCPUs:</td>
-    <td><input type="number" id="vm_cpus" min="1" max="<?=$nproc?>" value="<?=$default_cpus?>" style="width:80px;"> <span style="opacity:0.5;">(max: <?=$nproc?>)</span></td>
-  </tr>
-</table>
+<dl>
+  <dt>Name:</dt>
+  <dd><input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens" style="width:300px;"></dd>
+</dl>
 
-<table>
-  <tr>
-    <td>Memory (MB):</td>
-    <td><input type="number" id="vm_memory" min="64" step="64" value="<?=$default_mem?>" style="width:120px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>vCPUs:</dt>
+  <dd><select id="vm_cpus" style="width:80px;">
+    <?php for ($i = 1; $i <= $nproc; $i++): ?>
+    <option value="<?=$i?>" <?=($i == $default_cpus) ? 'selected' : ''?>><?=$i?></option>
+    <?php endfor; ?>
+  </select></dd>
+</dl>
 
-<table>
-  <tr>
-    <td>IP Address:</td>
-    <td><input type="text" id="vm_ip" required placeholder="192.168.50.201" style="width:200px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>Initial Memory:</dt>
+  <dd><select id="vm_memory" style="width:120px;">
+    <option value="128">128 MB</option>
+    <option value="256" selected>256 MB</option>
+    <option value="512">512 MB</option>
+    <option value="1024">1.0 GB</option>
+    <option value="2048">2.0 GB</option>
+    <option value="4096">4.0 GB</option>
+    <option value="8192">8.0 GB</option>
+  </select></dd>
+</dl>
 
-<table>
-  <tr>
-    <td>Gateway:</td>
-    <td><input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>IP Address:</dt>
+  <dd><input type="text" id="vm_ip" required placeholder="192.168.50.201" style="width:200px;"></dd>
+</dl>
 
-<table>
-  <tr>
-    <td>Rootfs Source:</td>
-    <td>
-      <select id="rootfs_source" onchange="toggleSource(this.value)" style="width:320px;">
-        <option value="oci">Pull OCI/Docker Image (via crane)</option>
-        <option value="existing">Use Existing rootfs.raw</option>
-      </select>
-    </td>
-  </tr>
-</table>
+<dl>
+  <dt>Gateway:</dt>
+  <dd><input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;"></dd>
+</dl>
+
+<dl>
+  <dt>rootFS Source:</dt>
+  <dd>
+    <select id="rootfs_source" onchange="toggleSource(this.value)" style="width:320px;">
+      <option value="oci">Pull OCI/Docker Image (via crane)</option>
+      <option value="existing">Use Existing rootfs</option>
+    </select>
+  </dd>
+</dl>
 
 <div id="section_oci">
-<table>
-  <tr>
-    <td>Docker/OCI Image:</td>
-    <td><input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;"></td>
-  </tr>
-</table>
-<table>
-  <tr>
-    <td>Disk Size (MB):</td>
-    <td><input type="number" id="vm_disk_size" min="100" step="100" value="500" style="width:120px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>OCI/Docker Image:</dt>
+  <dd><input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;"></dd>
+</dl>
+<dl>
+  <dt>Disk Size:</dt>
+  <dd><select id="vm_disk_size" style="width:120px;">
+    <option value="200">200 MB</option>
+    <option value="500" selected>500 MB</option>
+    <option value="1024">1.0 GB</option>
+    <option value="2048">2.0 GB</option>
+    <option value="5120">5.0 GB</option>
+  </select></dd>
+</dl>
 </div>
 
 <div id="section_existing" style="display:none;">
-<table>
-  <tr>
-    <td>Rootfs Path:</td>
-    <td><input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:500px;"></td>
-  </tr>
-</table>
+<dl>
+  <dt>rootFS Path:</dt>
+  <dd><input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:400px;"></dd>
+</dl>
 </div>
 
-<table>
-  <tr>
-    <td>Autostart:</td>
-    <td><select id="vm_autostart" style="width:80px;"><option value="false">No</option><option value="true">Yes</option></select></td>
-  </tr>
-</table>
-
 <br>
-<table>
-  <tr>
-    <td></td>
-    <td>
-      <input type="submit" value="Create">
-      <input type="button" value="Done" onclick="done()">
-      <input type="button" value="Show JSON" onclick="toggleJson()" style="margin-left:20px;">
-    </td>
-  </tr>
-</table>
+<dl>
+  <dt>&nbsp;</dt>
+  <dd>
+    <input type="submit" value="Create">
+    <input type="button" value="Done" onclick="done()">
+    <input type="button" value="Show JSON" onclick="toggleJson()" style="margin-left:20px;">
+  </dd>
+</dl>
 
 </form>
 
-<div id="jsonSection" style="display:none; margin-top:15px;">
-<div class="title">JSON Config Preview</div>
-<textarea id="jsonBox" style="width:80%; min-height:240px; font-family:'Courier New',monospace; font-size:13px; padding:12px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; resize:vertical;" spellcheck="false"></textarea>
+<div id="jsonSection" style="display:none; margin-top:15px; padding:0 30px;">
+<textarea id="jsonBox" style="width:80%; min-height:200px; font-family:monospace; font-size:12px; padding:10px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:4px;" spellcheck="false"></textarea>
 <br><br>
 <input type="button" value="Create from JSON" onclick="createFromJson()">
 </div>
 
-<div id="addOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:250px; overflow-y:auto; border-radius:4px;"></div>
+<div id="addOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
 
 <script>
+$(function() {
+  $('.autostart-add').switchButton({labels_placement:'right', on_label:'YES', off_label:'NO'});
+});
+
 function toggleSource(val) {
   document.getElementById('section_oci').style.display = val === 'oci' ? '' : 'none';
   document.getElementById('section_existing').style.display = val === 'existing' ? '' : 'none';
@@ -161,7 +161,7 @@ function buildConfig() {
     mac: mac,
     ip: document.getElementById('vm_ip').value,
     bridge: "<?=$bridge?>",
-    autostart: document.getElementById('vm_autostart').value === 'true'
+    autostart: $('#vm_autostart').prop('checked')
   };
 }
 
@@ -200,17 +200,17 @@ function submitForm() {
     oci_image: document.getElementById('vm_oci_image').value,
     disk_size: document.getElementById('vm_disk_size').value,
     rootfs_path: document.getElementById('vm_rootfs_path').value,
-    autostart: document.getElementById('vm_autostart').value
+    autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false'
   }, function(data) {
     var result = (typeof data === 'object') ? data : JSON.parse(data);
     if (result.success) {
-      showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
+      showProgress('<b style="color:#4CAF50;">\u2713 ' + result.message + '</b>');
       setTimeout(function(){ location = '/MicroVMs'; }, 3000);
     } else {
-      showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
+      showProgress('<b style="color:#f44336;">\u2717 ' + (result.error || 'Unknown error') + '</b>');
     }
   }).fail(function(xhr) {
-    showProgress('<b style="color:#f44336;">✗ Request failed: ' + xhr.statusText + '</b>');
+    showProgress('<b style="color:#f44336;">\u2717 Request failed: ' + xhr.statusText + '</b>');
   });
   return false;
 }
@@ -222,17 +222,16 @@ function createFromJson() {
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
     var r = (typeof data === 'object') ? data : JSON.parse(data);
     if (r.success) {
-      showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
+      showProgress('<b style="color:#4CAF50;">\u2713 Created!</b>');
       setTimeout(function(){ location = '/MicroVMs'; }, 2000);
     } else {
-      showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
+      showProgress('<b style="color:#f44336;">\u2717 ' + (r.error || 'Failed') + '</b>');
     }
   });
 }
 
 function done() { location = '/MicroVMs'; }
 
-// Engine selector visual toggle
 $('input[name="engine"]').change(function() {
   $('#label_ch').css({'border-color': '#555', 'background': 'transparent'});
   $('#label_fc').css({'border-color': '#555', 'background': 'transparent'});
