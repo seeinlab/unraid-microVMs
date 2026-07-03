@@ -180,16 +180,12 @@ function submitForm() {
     rootfs_path: document.getElementById('vm_rootfs_path').value,
     autostart: document.getElementById('vm_autostart').value
   }, function(data) {
-    try {
-      var result = JSON.parse(data);
-      if (result.success) {
-        showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
-        setTimeout(function(){ location = '/MicroVMs'; }, 3000);
-      } else {
-        showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
-      }
-    } catch(e) {
-      showProgress('<b style="color:#f44336;">✗ Parse error: ' + data + '</b>');
+    var result = (typeof data === 'object') ? data : JSON.parse(data);
+    if (result.success) {
+      showProgress('<b style="color:#4CAF50;">✓ ' + result.message + '</b>');
+      setTimeout(function(){ location = '/MicroVMs'; }, 3000);
+    } else {
+      showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Unknown error') + '</b>');
     }
   }).fail(function(xhr) {
     showProgress('<b style="color:#f44336;">✗ Request failed: ' + xhr.statusText + '</b>');
@@ -202,7 +198,7 @@ function createFromJson() {
   try { JSON.parse(json); } catch(e) { alert('Invalid JSON: ' + e.message); return; }
   showProgress('Creating from JSON...');
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
-    var r = JSON.parse(data);
+    var r = (typeof data === 'object') ? data : JSON.parse(data);
     if (r.success) {
       showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
       setTimeout(function(){ location = '/MicroVMs'; }, 2000);
