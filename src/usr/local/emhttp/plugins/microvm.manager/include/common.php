@@ -109,6 +109,127 @@ function microvm_snapshot_vm($name, $tag = null) {
     return ['success' => ($ret === 0), 'path' => $snapdir, 'output' => implode("\n", $output)];
 }
 
+function microvm_list_snapshots($name) {
+    $cfg = microvm_load_config();
+    $vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+    $snapdir = "$vmdir/$name/snapshots";
+    $snapshots = [];
+
+    if (!is_dir($snapdir)) return $snapshots;
+
+    foreach (glob("$snapdir/*/") as $dir) {
+        $tag = basename($dir);
+        // Get directory modification time
+        $mtime = filemtime($dir);
+        // Calculate directory size
+        $size = trim(shell_exec("du -sh " . escapeshellarg($dir) . " 2>/dev/null | cut -f1"));
+        if (empty($size)) $size = '?';
+
+        $snapshots[] = [
+            'tag' => $tag,
+            'date' => date('Y-m-d H:i:s', $mtime),
+            'timestamp' => $mtime,
+            'size' => $size,
+            'path' => rtrim($dir, '/'),
+        ];
+    }
+
+    // Sort by timestamp descending (newest first)
+    usort($snapshots, function($a, $b) {
+        return $b['timestamp'] - $a['timestamp'];
+    });
+
+    return $snapshots;
+}
+
+function microvm_delete_snapshot($name, $tag) {
+    $cfg = microvm_load_config();
+    $vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+    // Sanitize tag to prevent directory traversal
+    $tag = basename($tag);
+    $snapPath = "$vmdir/$name/snapshots/$tag";
+
+    if (!is_dir($snapPath)) {
+        return ['success' => false, 'error' => "Snapshot '$tag' not found for VM '$name'"];
+    }
+
+    exec("rm -rf " . escapeshellarg($snapPath) . " 2>&1", $output, $ret);
+    return [
+        'success' => ($ret === 0),
+        'message' => ($ret === 0) ? "Snapshot '$tag' deleted" : "Failed to delete snapshot: " . implode("\n", $output),
+    ];
+}
+
+function microvm_restore_snapshot($name, $tag) {
+    $cfg = microvm_load_config();
+    $vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+    $tag = basename($tag);
+    $snapPath = "$vmdir/$name/snapshots/$tag";
+    $sock = "/tmp/microvm-{$name}.sock";
+
+    if (!is_dir($snapPath)) {
+        return ['success' => false, 'error' => "Snapshot '$tag' not found for VM '$name'"];
+    }
+
+    // Check engine - only Cloud Hypervisor supports restore
+    $configFile = "$vmdir/$name/config.json";
+    if (file_exists($configFile)) {
+        $vmConfig = json_decode(file_get_contents($configFile), true);
+        if (($vmConfig['engine'] ?? 'cloud-hypervisor') === 'firecracker') {
+            return ['success' => false, 'error' => 'Snapshot restore not supported for Firecracker engine'];
+        }
+    }
+
+    // Stop the VM if currently running
+    if (file_exists($sock)) {
+        exec("ch-remote --api-socket $sock ping 2>/dev/null", $pingOut, $pingRet);
+        if ($pingRet === 0) {
+            // VM is running, shut it down
+            exec("ch-remote --api-socket $sock shutdown-vmm 2>/dev/null");
+            sleep(2);
+        }
+        // Force kill if still alive
+        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        if ($pid) {
+            exec("kill -9 $pid 2>/dev/null");
+            sleep(1);
+        }
+        @unlink($sock);
+    }
+
+    // Read config for restore parameters
+    $vmConfig = json_decode(file_get_contents($configFile), true);
+    $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
+    $mac = $vmConfig['mac'] ?? '';
+    $tap = "tap-{$name}";
+
+    // Ensure TAP device exists
+    exec("ip link show $tap 2>/dev/null", $tapOut, $tapRet);
+    if ($tapRet !== 0) {
+        exec("ip tuntap add dev $tap mode tap 2>/dev/null");
+        exec("ip link set $tap master $bridge 2>/dev/null");
+        exec("ip link set $tap up 2>/dev/null");
+    }
+
+    // Restore from snapshot using cloud-hypervisor
+    $cmd = "nohup cloud-hypervisor"
+        . " --api-socket " . escapeshellarg($sock)
+        . " --restore source_url=" . escapeshellarg("file://$snapPath")
+        . " > /var/log/microvm-{$name}.log 2>&1 &";
+    exec($cmd);
+    sleep(2);
+
+    // Verify VM came back
+    exec("ch-remote --api-socket $sock ping 2>/dev/null", $verifyOut, $verifyRet);
+
+    return [
+        'success' => ($verifyRet === 0),
+        'message' => ($verifyRet === 0)
+            ? "VM '$name' restored from snapshot '$tag' and is running"
+            : "Restore command issued but VM may not be responding yet. Check /var/log/microvm-{$name}.log",
+    ];
+}
+
 function microvm_pull_oci_image($image, $outputPath) {
     // Use crane to export OCI image as filesystem
     $tmpTar = "/tmp/microvm-oci-" . md5($image) . ".tar";

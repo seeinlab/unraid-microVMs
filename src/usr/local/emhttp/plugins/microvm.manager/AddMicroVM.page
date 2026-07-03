@@ -154,7 +154,7 @@ function buildConfig() {
     engine: $('input[name="engine"]:checked').val(),
     kernel: "<?=$vmdir?>/kernels/vmlinux",
     disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
-    cmdline: "console=hvc0 root=/dev/vda rw init=/init ip=" + document.getElementById('vm_ip').value + "::" + document.getElementById('vm_gateway').value + ":255.255.255.0:::off",
+    cmdline: "console=ttyS0 root=/dev/vda rw init=/init ip=" + document.getElementById('vm_ip').value + "::" + document.getElementById('vm_gateway').value + ":255.255.255.0:::off",
     boot_vcpus: parseInt(document.getElementById('vm_cpus').value),
     max_vcpus: parseInt(document.getElementById('vm_cpus').value) * 2,
     memory_mb: parseInt(document.getElementById('vm_memory').value),

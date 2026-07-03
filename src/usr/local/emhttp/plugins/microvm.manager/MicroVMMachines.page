@@ -25,13 +25,11 @@ table.tablesorter.microvm th { text-align:left; padding:8px; }
 table.tablesorter.microvm td { padding:8px; vertical-align:middle; }
 table.tablesorter.microvm th:first-child { width:240px; }
 
-/* VM icon - rounded circle like Unraid */
+/* VM icon - pre-rendered with rounded corners */
 .vm-icon {
-  border-radius:6px;
   width:32px;
   height:32px;
   object-fit:contain;
-  overflow:hidden;
   display:block;
 }
 
@@ -41,19 +39,16 @@ span.outer {
   align-items:center;
   position:relative;
 }
-span.outer .icon-wrap {
-  position:relative;
+span.outer .hand {
+  cursor:pointer;
   display:inline-block;
   width:32px;
   height:32px;
-  border-radius:6px;
-  overflow:hidden;
 }
-span.outer .icon-wrap img {
+span.outer .hand img {
   width:32px;
   height:32px;
   object-fit:contain;
-  border-radius:6px;
   display:block;
 }
 span.inner {
@@ -61,9 +56,12 @@ span.inner {
   margin-left:10px;
   line-height:1.3;
 }
-span.inner .vmname { cursor:pointer;
+span.inner a {
   font-weight:bold;
   font-size:1.1rem;
+  color:inherit;
+  text-decoration:none;
+  cursor:pointer;
 }
 
 /* Status indicators */
@@ -76,63 +74,16 @@ span.inner .vmname { cursor:pointer;
 img.vm-icon-started { opacity:1.0; }
 img.vm-icon-stopped { opacity:0.4; }
 
-/* Context menu */
-.microvm-context {
-  position:relative;
-  display:inline-block;
-}
-.microvm-context .ctx-btn {
+/* Autostart toggle */
+.autostart-toggle {
   cursor:pointer;
-  padding:4px 10px;
-  font-size:1.2rem;
-  color:#606e7f;
-  border:1px solid #3a3a3a;
+  font-weight:bold;
+  font-size:0.85rem;
+  padding:2px 8px;
   border-radius:3px;
-  background:#2a2a2a;
 }
-.microvm-context .ctx-btn:hover {
-  color:#fff;
-  background:#444;
-}
-.microvm-context .ctx-menu {
-  display:none;
-  position:absolute;
-  right:0;
-  top:100%;
-  z-index:1000;
-  min-width:180px;
-  background:#1c1b1b;
-  border:1px solid #3a3a3a;
-  border-radius:4px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.5);
-  padding:4px 0;
-  margin-top:2px;
-}
-.microvm-context.open .ctx-menu {
-  display:block;
-}
-.microvm-context .ctx-menu a {
-  display:block;
-  padding:7px 14px;
-  color:#ccc;
-  text-decoration:none;
-  font-size:0.9rem;
-  white-space:nowrap;
-}
-.microvm-context .ctx-menu a:hover {
-  background:#333;
-  color:#fff;
-}
-.microvm-context .ctx-menu a i {
-  width:20px;
-  text-align:center;
-  margin-right:8px;
-}
-.microvm-context .ctx-menu .ctx-divider {
-  height:1px;
-  background:#3a3a3a;
-  margin:4px 0;
-}
+.autostart-on { color:#009900; }
+.autostart-off { color:#888; }
 
 /* Bottom button bar */
 .microvm-btnbar {
@@ -163,7 +114,7 @@ img.vm-icon-stopped { opacity:0.4; }
   <th>Memory</th>
   <th>IP Address</th>
   <th>TAP</th>
-  <th>Actions</th>
+  <th>Autostart</th>
 </tr></thead>
 <tbody>
 <?php if (empty($vms)): ?>
@@ -180,8 +131,8 @@ img.vm-icon-stopped { opacity:0.4; }
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvm.manager/images/{$engine}.png";
     $tap = 'tap-' . $vm['name'];
+    $autostart = !empty($vm['config']['autostart']);
 
-    $shape = ($state === 'running') ? 'play' : 'square';
     $status_class = ($state === 'running') ? 'started' : 'stopped';
     $color_class = ($state === 'running') ? 'green-text' : 'red-text';
     $status_symbol = ($state === 'running') ? '&#9654;' : '&#9632;';
@@ -190,11 +141,11 @@ img.vm-icon-stopped { opacity:0.4; }
   <tr class="sortable">
     <td>
       <span class="outer">
-        <span class="icon-wrap">
+        <span id="vm-<?=$name?>" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>')" class="hand">
           <img src="<?=$icon?>" class="vm-icon <?=$icon_opacity?>" onerror="this.src='/plugins/dynamix.vm.manager/images/default.png';">
         </span>
         <span class="inner">
-          <a href="#" class="vmname" style="color:inherit;text-decoration:none;cursor:pointer;" onclick="toggleCtx('<?=$name?>');return false;"><?=$name?></a><br>
+          <a href="#" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>');return false;"><?=$name?></a><br>
           <span class="<?=$color_class?>" style="font-size:0.85rem;"><?=$status_symbol?> <?=$state?></span>
         </span>
       </span>
@@ -205,25 +156,9 @@ img.vm-icon-stopped { opacity:0.4; }
     <td><?=$ip?></td>
     <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap)?></td>
     <td>
-      <div class="microvm-context" id="ctx-<?=$name?>">
-        <span class="ctx-btn" onclick="toggleCtx('<?=$name?>')">&#9660;</span>
-        <div class="ctx-menu">
-          <?php if ($state === 'running'): ?>
-            <a href="#" onclick="vmAction('stop','<?=$name?>');return false;"><i class="fa fa-stop red-text"></i>Stop</a>
-            <a href="#" onclick="vmAction('force_stop','<?=$name?>');return false;"><i class="fa fa-power-off red-text"></i>Force Stop</a>
-            <a href="#" onclick="vmResize('<?=$name?>','<?=$engine?>');return false;"><i class="fa fa-expand"></i>Resize</a>
-            <a href="#" onclick="vmAction('snapshot','<?=$name?>');return false;"><i class="fa fa-camera"></i>Snapshot</a>
-            <div class="ctx-divider"></div>
-            <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
-            <a href="#" onclick="vmDelete('<?=$name?>');return false;"><i class="fa fa-trash red-text"></i>Remove</a>
-          <?php else: ?>
-            <a href="#" onclick="vmAction('start','<?=$name?>');return false;"><i class="fa fa-play green-text"></i>Start</a>
-            <div class="ctx-divider"></div>
-            <a href="#" onclick="vmInfo('<?=$name?>');return false;"><i class="fa fa-info-circle"></i>Info</a>
-            <a href="#" onclick="vmDelete('<?=$name?>');return false;"><i class="fa fa-trash red-text"></i>Remove</a>
-          <?php endif; ?>
-        </div>
-      </div>
+      <span class="autostart-toggle <?=$autostart ? 'autostart-on' : 'autostart-off'?>" onclick="toggleAutostart('<?=$name?>', <?=$autostart ? 'true' : 'false'?>)">
+        <?=$autostart ? 'ON' : 'OFF'?>
+      </span>
     </td>
   </tr>
   <?php endforeach; ?>
@@ -243,18 +178,80 @@ img.vm-icon-stopped { opacity:0.4; }
 <script>
 var plugin = '<?=$plugin?>';
 
-// Close any open context menu when clicking elsewhere
-$(document).on('click', function(e) {
-  if (!$(e.target).closest('.microvm-context').length) {
-    $('.microvm-context').removeClass('open');
-  }
-});
+function addMicroVMContext(name, state, engine) {
+  var opts = [];
+  context.settings({right:false, above:false});
 
-function toggleCtx(name) {
-  var el = document.getElementById('ctx-' + name);
-  var isOpen = el.classList.contains('open');
-  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
-  if (!isOpen) el.classList.add('open');
+  if (state == 'running') {
+    opts.push({text:'Console', icon:'fa-terminal', action:function(e){
+      e.preventDefault();
+      vmConsole(name);
+    }});
+    opts.push({text:'Stop', icon:'fa-stop', action:function(e){
+      e.preventDefault();
+      vmAction('stop', name);
+    }});
+    opts.push({text:'Force Stop', icon:'fa-power-off', action:function(e){
+      e.preventDefault();
+      vmAction('force_stop', name);
+    }});
+    if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Resize', icon:'fa-expand', action:function(e){
+        e.preventDefault();
+        vmResize(name, engine);
+      }});
+      opts.push({text:'Snapshot', icon:'fa-camera', action:function(e){
+        e.preventDefault();
+        vmAction('snapshot', name);
+      }});
+      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+        e.preventDefault();
+        vmSnapshots(name);
+      }});
+    }
+    opts.push({divider:true});
+    opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
+      e.preventDefault();
+      vmInfo(name);
+    }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmLogs(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
+      e.preventDefault();
+      vmDelete(name);
+    }});
+  } else {
+    opts.push({text:'Start', icon:'fa-play', action:function(e){
+      e.preventDefault();
+      vmAction('start', name);
+    }});
+    if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+        e.preventDefault();
+        vmSnapshots(name);
+      }});
+    }
+    opts.push({divider:true});
+    opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
+      e.preventDefault();
+      vmInfo(name);
+    }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmLogs(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
+      e.preventDefault();
+      vmDelete(name);
+    }});
+  }
+
+  context.destroy('#vm-' + name);
+  context.attach('#vm-' + name, opts);
 }
 
 function addmicroVM() {
@@ -262,7 +259,6 @@ function addmicroVM() {
 }
 
 function vmAction(action, name) {
-  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   showOutput('Running: ' + action + ' ' + name + '...');
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
     var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
@@ -271,8 +267,39 @@ function vmAction(action, name) {
   });
 }
 
+function vmConsole(name) {
+  showOutput('Opening console for ' + name + '...');
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console', name: name}, function(data) {
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch(e) {}
+    }
+    if (data.success && data.url) {
+      // ttyd serves its own xterm.js web terminal — open in popup
+      var w = 900, h = 600;
+      var left = (screen.width - w) / 2;
+      var top = (screen.height - h) / 2;
+      var popup = window.open(
+        data.url,
+        'microvm_console_' + name,
+        'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no'
+      );
+      if (!popup) {
+        // Popup blocked — fall back to new tab
+        window.open(data.url, '_blank');
+      }
+      showOutput('Console opened for ' + name + ' at ' + data.url);
+    } else {
+      var errMsg = data.error || 'Failed to start console relay';
+      showOutput('Console error: ' + errMsg);
+      swal({title: 'Console Error', text: errMsg, type: 'error'});
+    }
+  }).fail(function() {
+    showOutput('Console error: request failed');
+    swal({title: 'Console Error', text: 'Failed to connect to backend', type: 'error'});
+  });
+}
+
 function vmResize(name, engine) {
-  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   if (engine === 'firecracker') {
     alert('Live resize is not supported for Firecracker engine.\nRecreate the VM with new resource settings.');
     return;
@@ -291,7 +318,6 @@ function vmResize(name, engine) {
 }
 
 function vmInfo(name) {
-  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
     var text;
     if (typeof data === 'object') {
@@ -303,8 +329,19 @@ function vmInfo(name) {
   });
 }
 
+function vmLogs(name) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'logs', name: name}, function(data) {
+    var text;
+    if (typeof data === 'object') {
+      text = JSON.stringify(data, null, 2);
+    } else {
+      text = data;
+    }
+    swal({title: name + ' — Logs', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:12px;white-space:pre-wrap;">' + text + '</pre>', html: true});
+  });
+}
+
 function vmDelete(name) {
-  document.querySelectorAll('.microvm-context').forEach(function(m){ m.classList.remove('open'); });
   swal({
     title: 'Delete ' + name + '?',
     text: 'This will delete the VM and all its data (config, rootfs, snapshots). This cannot be undone.',
@@ -322,6 +359,13 @@ function vmDelete(name) {
   });
 }
 
+function toggleAutostart(name, current) {
+  var newVal = current ? 'false' : 'true';
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'autostart', name: name, enabled: newVal}, function(data) {
+    location.reload();
+  });
+}
+
 function startAll() {
   <?php foreach ($vms as $vm): ?>
     <?php if ($vm['state'] !== 'running'): ?>
@@ -336,6 +380,106 @@ function stopAll() {
     vmAction('stop', '<?=htmlspecialchars($vm['name'])?>');
     <?php endif; ?>
   <?php endforeach; ?>
+}
+
+function vmSnapshots(name) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'list_snapshots', name: name}, function(data) {
+    if (!data.success) {
+      swal({title: 'Error', text: data.error || 'Failed to list snapshots', type: 'error'});
+      return;
+    }
+    var snaps = data.snapshots || [];
+    var html = '<div style="text-align:left;max-height:400px;overflow-y:auto;">';
+
+    if (snaps.length === 0) {
+      html += '<p style="text-align:center;color:#999;">No snapshots for this VM.</p>';
+      html += '<p style="text-align:center;font-size:0.85em;color:#666;">Create one using the <b>Snapshot</b> action while the VM is running.</p>';
+    } else {
+      html += '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">';
+      html += '<tr style="border-bottom:1px solid #444;"><th style="padding:6px;text-align:left;">Tag / Date</th><th style="padding:6px;text-align:left;">Size</th><th style="padding:6px;text-align:right;">Actions</th></tr>';
+      for (var i = 0; i < snaps.length; i++) {
+        var s = snaps[i];
+        html += '<tr style="border-bottom:1px solid #333;">';
+        html += '<td style="padding:6px;"><b>' + escapeHtml(s.tag) + '</b><br><span style="font-size:0.8em;color:#999;">' + escapeHtml(s.date) + '</span></td>';
+        html += '<td style="padding:6px;color:#ccc;">' + escapeHtml(s.size) + '</td>';
+        html += '<td style="padding:6px;text-align:right;">';
+        html += '<a href="#" onclick="vmSnapshotRestore(\'' + escapeHtml(name) + '\',\'' + escapeHtml(s.tag) + '\');return false;" style="color:#4caf50;margin-right:12px;" title="Restore"><i class="fa fa-undo"></i> Restore</a>';
+        html += '<a href="#" onclick="vmSnapshotDelete(\'' + escapeHtml(name) + '\',\'' + escapeHtml(s.tag) + '\');return false;" style="color:#ef5350;" title="Delete"><i class="fa fa-trash"></i> Delete</a>';
+        html += '</td></tr>';
+      }
+      html += '</table>';
+    }
+    html += '</div>';
+
+    swal({
+      title: name + ' — Snapshots (' + snaps.length + ')',
+      text: html,
+      html: true,
+      showCancelButton: false,
+      confirmButtonText: 'Close'
+    });
+  });
+}
+
+function vmSnapshotRestore(name, tag) {
+  swal({
+    title: 'Restore Snapshot?',
+    text: 'This will stop the current VM and restore from snapshot <b>' + escapeHtml(tag) + '</b>.<br><br>Any unsaved state in the running VM will be lost.',
+    html: true,
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Restore',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (confirmed) {
+      swal({title: 'Restoring...', text: 'Please wait while the VM is restored from snapshot.', showConfirmButton: false});
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'restore_snapshot', name: name, tag: tag}, function(data) {
+        if (data.success) {
+          swal({title: 'Restored!', text: data.message, type: 'success'}, function() {
+            location.reload();
+          });
+        } else {
+          swal({title: 'Restore Failed', text: data.error || data.message || 'Unknown error', type: 'error'});
+        }
+      }).fail(function() {
+        swal({title: 'Error', text: 'Request failed. Check server logs.', type: 'error'});
+      });
+    }
+  });
+}
+
+function vmSnapshotDelete(name, tag) {
+  swal({
+    title: 'Delete Snapshot?',
+    text: 'Delete snapshot <b>' + escapeHtml(tag) + '</b>? This cannot be undone.',
+    html: true,
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (confirmed) {
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_snapshot', name: name, tag: tag}, function(data) {
+        if (data.success) {
+          swal({title: 'Deleted', text: data.message, type: 'success'}, function() {
+            vmSnapshots(name); // Refresh the list
+          });
+        } else {
+          swal({title: 'Delete Failed', text: data.error || 'Unknown error', type: 'error'});
+        }
+      }).fail(function() {
+        swal({title: 'Error', text: 'Request failed. Check server logs.', type: 'error'});
+      });
+    }
+  });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
 }
 
 function showOutput(msg) {

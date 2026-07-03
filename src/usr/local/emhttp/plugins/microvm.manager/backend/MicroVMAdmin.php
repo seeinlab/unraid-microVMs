@@ -39,6 +39,13 @@ switch ($cmd) {
 
     case 'force_stop':
         $sock = "/tmp/microvm-{$name}.sock";
+        // Kill any ttyd console relay
+        $ttydPid = "/tmp/ttyd-microvm-{$name}.pid";
+        if (file_exists($ttydPid)) {
+            $tpid = trim(file_get_contents($ttydPid));
+            if ($tpid) exec("kill $tpid 2>/dev/null");
+            @unlink($ttydPid);
+        }
         // Kill the process - search for the socket path in cmdline
         $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
         if ($pid) {
@@ -86,7 +93,36 @@ switch ($cmd) {
         break;
 
     case 'snapshot':
-        $result = microvm_snapshot_vm($name);
+        $tag = $_POST['tag'] ?? null;
+        $result = microvm_snapshot_vm($name, $tag);
+        echo json_encode($result);
+        break;
+
+    case 'list_snapshots':
+        $snapshots = microvm_list_snapshots($name);
+        echo json_encode(['success' => true, 'snapshots' => $snapshots]);
+        break;
+
+    case 'delete_snapshot':
+        $tag = $_POST['tag'] ?? '';
+        if (empty($tag)) {
+            echo json_encode(['success' => false, 'error' => 'No snapshot tag specified']);
+            break;
+        }
+        $result = microvm_delete_snapshot($name, $tag);
+        microvm_log("DELETE_SNAPSHOT: $name/$tag - " . ($result['success'] ? 'OK' : $result['error'] ?? 'FAIL'));
+        echo json_encode($result);
+        break;
+
+    case 'restore_snapshot':
+        $tag = $_POST['tag'] ?? '';
+        if (empty($tag)) {
+            echo json_encode(['success' => false, 'error' => 'No snapshot tag specified']);
+            break;
+        }
+        microvm_log("RESTORE_SNAPSHOT: $name from $tag");
+        $result = microvm_restore_snapshot($name, $tag);
+        microvm_log("RESTORE_RESULT: " . json_encode($result));
         echo json_encode($result);
         break;
 
@@ -207,7 +243,7 @@ INIT;
             'engine' => $engine,
             'kernel' => $kernel,
             'disk' => $rootfs,
-            'cmdline' => "console=hvc0 root=/dev/vda rw init=/init ip=$ip::$gateway:255.255.255.0:::off",
+            'cmdline' => "console=ttyS0 root=/dev/vda rw init=/init ip=$ip::$gateway:255.255.255.0:::off",
             'boot_vcpus' => $cpus,
             'max_vcpus' => $cpus * 2,
             'memory_mb' => $memory,
@@ -234,6 +270,182 @@ INIT;
         @mkdir($vmPath, 0755, true);
         file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
         echo json_encode(['success' => true, 'message' => "VM '$name' created from JSON."]);
+        break;
+
+    case 'console':
+        // Find PTY path from VM log and start ttyd relay
+        $logFile = "/var/log/microvm-{$name}.log";
+        $sock = "/tmp/microvm-{$name}.sock";
+
+        // Check VM is running
+        if (!file_exists($sock)) {
+            echo json_encode(['success' => false, 'error' => "VM '$name' is not running"]);
+            break;
+        }
+
+        // Parse PTY path from Cloud Hypervisor or Firecracker log
+        $ptyPath = null;
+        $vmConfig = null;
+        $configFile = "$vmdir/$name/config.json";
+        if (file_exists($configFile)) {
+            $vmConfig = json_decode(file_get_contents($configFile), true);
+        }
+        $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+
+        if ($engine === 'cloud-hypervisor') {
+            // Cloud Hypervisor v52 logs serial PTY in the VmConfig dump:
+            // serial: SerialConfig { common: CommonConsoleConfig { file: Some("/dev/pts/1"), mode: Pty, ...
+            if (file_exists($logFile)) {
+                $logContent = file_get_contents($logFile);
+                // Pattern: file: Some("/dev/pts/X") in a serial context
+                if (preg_match('/serial:\s*SerialConfig\s*\{[^}]*file:\s*Some\("(\/dev\/pts\/\d+)"\)/s', $logContent, $matches)) {
+                    $ptyPath = $matches[1];
+                }
+                // Fallback: any /dev/pts/N mention near "serial" or "Pty"
+                if (!$ptyPath && preg_match('/serial.*?(?:file|pty)[:\s]*.*?(\/dev\/pts\/\d+)/si', $logContent, $matches2)) {
+                    $ptyPath = $matches2[1];
+                }
+            }
+        } else {
+            // Firecracker: no PTY support, but we can connect to its log output
+            // FC writes serial output to its stdout which goes to the log file
+            // Use 'tail -f' on the log file as a simple console
+            echo json_encode([
+                'success' => false,
+                'error' => "Serial console for Firecracker VMs is not yet supported. Firecracker does not expose a PTY device. Use 'tail -f /var/log/microvm-{$name}.log' from the terminal.",
+            ]);
+            break;
+        }
+
+        if (!$ptyPath || !file_exists($ptyPath)) {
+            echo json_encode([
+                'success' => false,
+                'error' => "Cannot find serial PTY for VM '$name'. The VM needs to be restarted (Stop then Start) to enable serial console. VMs started before this update used --serial off.",
+                'hint' => 'Stop and Start the VM to enable serial console.',
+            ]);
+            break;
+        }
+
+        // Find a free port for ttyd (range 7681-7780)
+        $port = null;
+        for ($p = 7681; $p <= 7780; $p++) {
+            $conn = @fsockopen('127.0.0.1', $p, $errno, $errstr, 0.1);
+            if ($conn) {
+                fclose($conn);
+                continue; // Port in use
+            }
+            $port = $p;
+            break;
+        }
+
+        if (!$port) {
+            echo json_encode(['success' => false, 'error' => 'No free port available for console relay (7681-7780)']);
+            break;
+        }
+
+        // Check if ttyd binary exists
+        $ttydBin = '/usr/local/bin/ttyd';
+        if (!is_executable($ttydBin)) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'ttyd binary not found. Download from: https://github.com/tsl0922/ttyd/releases (static x86_64 build) and place at /usr/local/bin/ttyd',
+            ]);
+            break;
+        }
+
+        // Start ttyd bridging to the serial PTY via socat
+        // --once: exit after first client disconnects (cleanup)
+        // -W: writable (allows input)
+        // Using socat to bridge STDIO to the PTY bidirectionally
+        $pidFile = "/tmp/ttyd-microvm-{$name}.pid";
+
+        // Kill any existing ttyd for this VM
+        if (file_exists($pidFile)) {
+            $oldPid = trim(file_get_contents($pidFile));
+            if ($oldPid && file_exists("/proc/$oldPid")) {
+                exec("kill $oldPid 2>/dev/null");
+                sleep(1);
+            }
+            @unlink($pidFile);
+        }
+
+        // Launch ttyd in background
+        $cmd = sprintf(
+            'nohup %s --port %d --once --writable socat STDIO %s > /dev/null 2>&1 & echo $!',
+            escapeshellarg($ttydBin),
+            $port,
+            escapeshellarg($ptyPath)
+        );
+        $pid = trim(shell_exec($cmd));
+        if ($pid) {
+            file_put_contents($pidFile, $pid);
+        }
+
+        // Wait briefly for ttyd to start
+        usleep(500000); // 500ms
+
+        // Verify it started
+        $conn = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+        if ($conn) {
+            fclose($conn);
+            $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_ADDR'] ?? 'localhost';
+            // Strip port from host if present
+            $host = preg_replace('/:\d+$/', '', $host);
+            $url = "http://{$host}:{$port}";
+            echo json_encode([
+                'success' => true,
+                'url' => $url,
+                'port' => $port,
+                'pty' => $ptyPath,
+                'pid' => $pid,
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => "ttyd started but port $port not responding",
+                'pid' => $pid,
+            ]);
+        }
+        break;
+
+    case 'console_stop':
+        // Stop ttyd relay for a VM
+        $pidFile = "/tmp/ttyd-microvm-{$name}.pid";
+        if (file_exists($pidFile)) {
+            $pid = trim(file_get_contents($pidFile));
+            if ($pid && file_exists("/proc/$pid")) {
+                exec("kill $pid 2>/dev/null");
+            }
+            @unlink($pidFile);
+            echo json_encode(['success' => true, 'message' => "Console relay stopped for $name"]);
+        } else {
+            echo json_encode(['success' => true, 'message' => "No active console relay for $name"]);
+        }
+        break;
+
+    case 'logs':
+        // Return last 100 lines of VM log
+        $logFile = "/var/log/microvm-{$name}.log";
+        if (file_exists($logFile)) {
+            $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
+            echo json_encode(['success' => true, 'log' => $lines]);
+        } else {
+            echo json_encode(['success' => true, 'log' => "(no log file found for $name)"]);
+        }
+        break;
+
+    case 'autostart':
+        // Toggle autostart for a VM
+        $enabled = ($_POST['enabled'] ?? 'false') === 'true';
+        $configFile = "$vmdir/$name/config.json";
+        if (file_exists($configFile)) {
+            $vmConfig = json_decode(file_get_contents($configFile), true);
+            $vmConfig['autostart'] = $enabled;
+            file_put_contents($configFile, json_encode($vmConfig, JSON_PRETTY_PRINT));
+            echo json_encode(['success' => true, 'autostart' => $enabled]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'VM config not found']);
+        }
         break;
 
     case 'service':

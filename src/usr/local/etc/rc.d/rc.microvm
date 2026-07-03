@@ -137,15 +137,18 @@ FCEOF
       >> "/var/log/microvm-${name}.log" 2>&1 &
   else
     # Cloud Hypervisor
+    # Ensure cmdline uses ttyS0 for serial console (not hvc0)
+    local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
+    [ -z "$ch_cmdline" ] && ch_cmdline="$cmdline"
     $CH_BIN \
       --api-socket "$sock" \
       --kernel "$kernel" \
       --disk "path=$disk" \
-      --cmdline "$cmdline" \
+      --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
       --net "tap=tap-$name,mac=$mac" \
-      --serial off --console off \
+      --serial pty --console off \
       -v >> "/var/log/microvm-${name}.log" 2>&1 &
   fi
   
@@ -155,6 +158,14 @@ FCEOF
 stop_vm() {
   local name="$1"
   local sock="/tmp/microvm-${name}.sock"
+  
+  # Kill any ttyd console relay for this VM
+  local ttyd_pid_file="/tmp/ttyd-microvm-${name}.pid"
+  if [ -f "$ttyd_pid_file" ]; then
+    kill $(cat "$ttyd_pid_file") 2>/dev/null
+    rm -f "$ttyd_pid_file"
+    log "Stopped console relay for: $name"
+  fi
   
   if [ -S "$sock" ]; then
     $REMOTE_BIN --api-socket "$sock" power-button 2>/dev/null
