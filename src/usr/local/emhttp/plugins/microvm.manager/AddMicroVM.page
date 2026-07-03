@@ -1,0 +1,174 @@
+Title="Add MicroVM"
+Cond="is_file('/usr/local/bin/cloud-hypervisor')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.manager";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+$bridge = $cfg['BRIDGE'] ?? 'br0';
+$default_cpus = $cfg['DEFAULT_CPUS'] ?? '1';
+$default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
+$nproc = trim(shell_exec('nproc'));
+?>
+
+<style>
+.microvm-form dt { width:220px; }
+.json-box { width:100%; min-height:220px; font-family:'Courier New',monospace; font-size:13px; padding:12px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; resize:vertical; line-height:1.4; tab-size:2; }
+</style>
+
+<div class="title"><span class="left"><a href="/MicroVMs" title="Back"><i class="fa fa-arrow-left"></i></a> Add MicroVM</span></div>
+
+<form markdown="1" id="microvm_add_form" class="microvm-form" onsubmit="return submitForm()">
+
+_(VM Name)_:
+: <input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens only" style="width:300px;">
+
+_(vCPUs)_:
+: <input type="number" id="vm_cpus" min="1" max="<?=$nproc?>" value="<?=$default_cpus?>" style="width:80px;">
+
+_(Memory)_ (MB):
+: <input type="number" id="vm_memory" min="64" step="64" value="<?=$default_mem?>" style="width:100px;">
+
+_(IP Address)_:
+: <input type="text" id="vm_ip" required placeholder="192.168.50.201" pattern="\d+\.\d+\.\d+\.\d+" style="width:200px;">
+
+_(Gateway)_:
+: <input type="text" id="vm_gateway" value="192.168.50.1" style="width:200px;">
+
+_(Rootfs Source)_:
+: <select id="rootfs_source" onchange="toggleSource(this.value)">
+  <option value="oci">Pull OCI/Docker Image (via crane)</option>
+  <option value="existing">Use Existing rootfs.raw</option>
+  </select>
+
+<div id="section_oci">
+_(Docker/OCI Image)_:
+: <input type="text" id="vm_oci_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;">
+
+_(Disk Size)_ (MB):
+: <input type="number" id="vm_disk_size" min="100" step="100" value="500" style="width:100px;">
+</div>
+
+<div id="section_existing" style="display:none">
+_(Rootfs Path)_:
+: <input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:400px;" data-pickroot="/mnt" data-pickfolders="true">
+</div>
+
+_(Autostart)_:
+: <select id="vm_autostart"><option value="false">No</option><option value="true">Yes</option></select>
+
+&nbsp;
+: <input type="submit" value="_(Create)_"><input type="button" value="_(Done)_" onclick="done()"><input type="button" value="_(Show JSON)_" onclick="toggleJson()" style="margin-left:20px;">
+
+</form>
+
+<div id="jsonSection" style="display:none; margin-top:15px;">
+<div class="title">JSON Config Preview</div>
+<textarea id="jsonBox" class="json-box" spellcheck="false"></textarea>
+<br><br>
+<input type="button" value="_(Create from JSON)_" onclick="createFromJson()">
+</div>
+
+<!-- Progress output -->
+<div id="addOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:250px; overflow-y:auto; border-radius:4px;"></div>
+
+<script>
+function toggleSource(val) {
+  document.getElementById('section_oci').style.display = val === 'oci' ? '' : 'none';
+  document.getElementById('section_existing').style.display = val === 'existing' ? '' : 'none';
+}
+
+function buildConfig() {
+  var name = document.getElementById('vm_name').value;
+  var mac = '52:54:00:' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2) + ':' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2) + ':' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2);
+  return {
+    name: name,
+    kernel: "<?=$vmdir?>/kernels/vmlinux",
+    disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
+    cmdline: "console=hvc0 root=/dev/vda rw init=/init ip=" + document.getElementById('vm_ip').value + "::" + document.getElementById('vm_gateway').value + ":255.255.255.0:::off",
+    boot_vcpus: parseInt(document.getElementById('vm_cpus').value),
+    max_vcpus: parseInt(document.getElementById('vm_cpus').value) * 2,
+    memory_mb: parseInt(document.getElementById('vm_memory').value),
+    mac: mac,
+    ip: document.getElementById('vm_ip').value,
+    bridge: "<?=$bridge?>",
+    autostart: document.getElementById('vm_autostart').value === 'true'
+  };
+}
+
+function toggleJson() {
+  var section = document.getElementById('jsonSection');
+  if (section.style.display === 'none') {
+    section.style.display = '';
+    document.getElementById('jsonBox').value = JSON.stringify(buildConfig(), null, 2);
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+function showProgress(msg) {
+  var el = document.getElementById('addOutput');
+  el.style.display = 'block';
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function submitForm() {
+  var name = document.getElementById('vm_name').value;
+  var source = document.getElementById('rootfs_source').value;
+  
+  showProgress('Creating MicroVM: ' + name + '...');
+  if (source === 'oci') showProgress('Pulling image: ' + document.getElementById('vm_oci_image').value + ' (this may take 10-30s)...');
+  
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+    cmd: 'create',
+    name: name,
+    cpus: document.getElementById('vm_cpus').value,
+    memory: document.getElementById('vm_memory').value,
+    ip: document.getElementById('vm_ip').value,
+    gateway: document.getElementById('vm_gateway').value,
+    source: source,
+    oci_image: document.getElementById('vm_oci_image').value,
+    disk_size: document.getElementById('vm_disk_size').value,
+    rootfs_path: document.getElementById('vm_rootfs_path').value,
+    autostart: document.getElementById('vm_autostart').value
+  }, function(data) {
+    var result = JSON.parse(data);
+    if (result.success) {
+      showProgress('<b style="color:#4CAF50;">✓ VM created successfully!</b>');
+      showProgress('Redirecting to machines list...');
+      setTimeout(function(){ location = '/MicroVMs'; }, 3000);
+    } else {
+      showProgress('<b style="color:#f44336;">✗ Error: ' + (result.error || 'Unknown error') + '</b>');
+    }
+  }).fail(function(xhr) {
+    showProgress('<b style="color:#f44336;">✗ Request failed: ' + xhr.statusText + '</b>');
+  });
+  
+  return false;
+}
+
+function createFromJson() {
+  var json = document.getElementById('jsonBox').value;
+  try { JSON.parse(json); } catch(e) { alert('Invalid JSON: ' + e.message); return; }
+  
+  showProgress('Creating from JSON...');
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
+    var result = JSON.parse(data);
+    if (result.success) {
+      showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
+      setTimeout(function(){ location = '/MicroVMs'; }, 2000);
+    } else {
+      showProgress('<b style="color:#f44336;">✗ ' + (result.error || 'Failed') + '</b>');
+    }
+  });
+}
+
+function done() {
+  location = '/MicroVMs';
+}
+</script>

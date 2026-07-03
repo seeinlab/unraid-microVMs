@@ -1,0 +1,145 @@
+Menu="MicroVMs:2"
+Title="RootFS"
+Tag="hdd-o"
+Cond="is_file('/usr/local/bin/cloud-hypervisor')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.manager";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/appdata/microvm';
+$crane_installed = !empty(trim(shell_exec('which crane 2>/dev/null')));
+$crane_version = $crane_installed ? trim(shell_exec('crane version 2>/dev/null')) : '';
+
+// List existing rootfs images
+$images = [];
+if (is_dir($vmdir)) {
+    foreach (glob("$vmdir/*/rootfs.raw") as $f) {
+        $name = basename(dirname($f));
+        $size = filesize($f);
+        $images[] = ['name' => $name, 'path' => $f, 'size' => $size];
+    }
+}
+?>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="4">Existing RootFS Images</td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr>
+  <th>VM Name</th>
+  <th>Path</th>
+  <th>Size</th>
+  <th>Actions</th>
+</tr></thead>
+<tbody>
+<?php if (empty($images)): ?>
+  <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No rootfs images found.</td></tr>
+<?php else: ?>
+  <?php foreach ($images as $img): ?>
+  <tr>
+    <td><b><?=htmlspecialchars($img['name'])?></b></td>
+    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img['path'])?></td>
+    <td><?=number_format($img['size'] / 1048576, 0)?> MB</td>
+    <td><button class="vm-btn" onclick="deleteRootfs('<?=htmlspecialchars($img['name'])?>')">Delete</button></td>
+  </tr>
+  <?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
+
+<br>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="2">Pull OCI/Docker Image → RootFS</td></tr></thead>
+</table>
+
+<?php if (!$crane_installed): ?>
+<p class="notice">crane is not installed. Install via terminal: <span style="font-family:monospace;">curl -fsSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane</span></p>
+<?php else: ?>
+
+<form markdown="1" onsubmit="return pullImage()">
+
+_(OCI/Docker Image)_:
+: <input type="text" id="pull_image" placeholder="nginx:alpine" value="nginx:alpine" style="width:300px;" required>
+
+_(Target VM Name)_:
+: <input type="text" id="pull_name" placeholder="my-web" pattern="[a-z0-9\-]+" required style="width:200px;">
+
+_(Disk Size)_ (MB):
+: <input type="number" id="pull_size" value="500" min="100" step="100" style="width:100px;">
+
+&nbsp;
+: <input type="submit" value="_(Pull & Convert)_"><span style="margin-left:15px; opacity:0.6;">crane <?=$crane_version?></span>
+
+</form>
+<?php endif; ?>
+
+<div id="pullOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
+
+<br>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="2">Kernel Images</td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr><th>File</th><th>Size</th></tr></thead>
+<tbody>
+<?php
+$kernelDir = "$vmdir/kernels";
+if (is_dir($kernelDir)) {
+    foreach (glob("$kernelDir/*") as $k) {
+        echo "<tr><td style='font-family:monospace;'>".htmlspecialchars(basename($k))."</td><td>".number_format(filesize($k)/1048576,0)." MB</td></tr>";
+    }
+} else {
+    echo "<tr><td colspan='2' style='text-align:center;opacity:0.6;'>No kernels found</td></tr>";
+}
+?>
+</tbody>
+</table>
+
+<style>
+.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; }
+.vm-btn:hover { background:#555; }
+</style>
+
+<script>
+function pullImage() {
+  var image = document.getElementById('pull_image').value;
+  var name = document.getElementById('pull_name').value;
+  var size = document.getElementById('pull_size').value;
+  var el = document.getElementById('pullOutput');
+  el.style.display = 'block';
+  el.innerHTML = 'Pulling ' + image + ' and converting to rootfs (this may take 20-60s)...<br>';
+  
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+    cmd: 'pull_rootfs',
+    image: image,
+    name: name,
+    disk_size: size
+  }, function(data) {
+    var result = JSON.parse(data);
+    if (result.success) {
+      el.innerHTML += '<b style="color:#4CAF50;">✓ RootFS created: ' + result.path + '</b><br>';
+      setTimeout(function(){ location.reload(); }, 2000);
+    } else {
+      el.innerHTML += '<b style="color:#f44336;">✗ Error: ' + (result.error || 'Unknown') + '</b><br>';
+    }
+  }).fail(function(xhr) {
+    el.innerHTML += '<b style="color:#f44336;">✗ Request failed</b><br>';
+  });
+  return false;
+}
+
+function deleteRootfs(name) {
+  if (!confirm('Delete rootfs for "' + name + '"? This cannot be undone!')) return;
+  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
+    location.reload();
+  });
+}
+</script>
