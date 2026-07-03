@@ -33,7 +33,7 @@ echo "=== Serial console active on /dev/ttyS0 ==="
 if [ -c /dev/ttyS0 ]; then
   # Launch shell on serial port for interactive access
   while true; do
-    setsid sh -l < /dev/ttyS0 > /dev/ttyS0 2>&1
+    TERM=linux setsid sh -c "stty sane; exec sh -l" < /dev/ttyS0 > /dev/ttyS0 2>&1
     sleep 1
   done &
 fi
