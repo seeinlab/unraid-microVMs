@@ -104,6 +104,7 @@ switch ($cmd) {
 
         // Generate MAC
         $mac = sprintf("52:54:00:%02x:%02x:%02x", rand(0,255), rand(0,255), rand(0,255));
+        $engine = $_POST['engine'] ?? 'cloud-hypervisor';
 
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
@@ -166,6 +167,7 @@ INIT;
         // Create config.json
         $config = [
             'name' => $name,
+            'engine' => $engine,
             'kernel' => $kernel,
             'disk' => $rootfs,
             'cmdline' => "console=hvc0 root=/dev/vda rw init=/init ip=$ip::$gateway:255.255.255.0:::off",
