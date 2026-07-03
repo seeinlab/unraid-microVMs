@@ -17,7 +17,7 @@ $crane_version = $crane_installed ? trim(shell_exec('crane version 2>/dev/null')
 // List existing rootfs images
 $images = [];
 if (is_dir($vmdir)) {
-    foreach (glob("$vmdir/*/rootfs.raw") as $f) {
+    foreach (glob("$vmdir/*/rootfs.{raw,ext4}", GLOB_BRACE) as $f) {
         $name = basename(dirname($f));
         $size = filesize($f);
         $images[] = ['name' => $name, 'path' => $f, 'size' => $size];
@@ -93,7 +93,7 @@ _(Disk Size)_ (MB):
 <?php
 $kernelDir = "$vmdir/kernels";
 if (is_dir($kernelDir)) {
-    foreach (glob("$kernelDir/*") as $k) {
+    foreach (glob("$kernelDir/{vmlinux,cloud-hypervisor/vmlinux,firecracker/vmlinux}", GLOB_BRACE) as $k) {
         echo "<tr><td style='font-family:monospace;'>".htmlspecialchars(basename($k))."</td><td>".number_format(filesize($k)/1048576,0)." MB</td></tr>";
     }
 } else {

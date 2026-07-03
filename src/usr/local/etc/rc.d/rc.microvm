@@ -109,6 +109,11 @@ start_vm() {
   local engine=$(cat "$config" | grep -oP '"engine"\s*:\s*"\K[^"]+')
   engine=${engine:-cloud-hypervisor}
   
+  # If kernel points to default vmlinux, use engine-specific one if available
+  if [[ "$kernel" == */kernels/vmlinux ]] && [ -f "${kernel%vmlinux}${engine}/vmlinux" ]; then
+    kernel="${kernel%vmlinux}${engine}/vmlinux"
+  fi
+  
   if [ "$engine" = "firecracker" ]; then
     # Generate Firecracker native config file
     local fc_cfg="/tmp/microvm-${name}-fc.json"

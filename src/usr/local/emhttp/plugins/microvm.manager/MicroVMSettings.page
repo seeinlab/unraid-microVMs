@@ -85,6 +85,12 @@ _(Enable microVM Manager)_:
 _(VM Storage Location)_:
 : <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
 
+_(Default Engine)_:
+: <select name="DEFAULT_ENGINE">
+  <?=mk_option($cfg['DEFAULT_ENGINE'] ?? 'cloud-hypervisor', 'cloud-hypervisor', _('Cloud Hypervisor'))?>
+  <?=mk_option($cfg['DEFAULT_ENGINE'] ?? 'cloud-hypervisor', 'firecracker', _('Firecracker'))?>
+  </select>
+
 _(Network Bridge)_:
 : <select name="BRIDGE">
   <?php foreach(glob('/sys/class/net/br*') as $br): $name=basename($br); ?>
