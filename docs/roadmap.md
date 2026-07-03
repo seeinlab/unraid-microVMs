@@ -14,10 +14,12 @@
 - [x] TAP networking on br0
 
 ## Next (Priority)
-- [ ] VM list with engine icon (Cloud Hypervisor / Firecracker logo per VM)
-- [ ] Context menu on VM row (like VMs page: Stop, Restart, Snapshot, Logs, Edit)
-- [ ] Engine selector on Add page (Cloud Hypervisor or Firecracker)
-- [ ] Serial console access (WebSocket → serial TTY)
+- [ ] Fix engine logo sizes on Add page (both same dimensions)
+- [ ] VM list: show engine icon + name + state per row (like VMs page shows OS icons)
+- [ ] VM list: context menu dropdown per VM (Stop, Restart, Snapshot, Logs)
+- [ ] Engine selector on Add page — both same card size
+- [ ] Firecracker engine backend (curl-based API instead of ch-remote)
+- [ ] Serial console access (WebSocket → serial TTY via xterm.js)
 - [ ] Edit rootfs (mount image, modify files, unmount)
 - [ ] Custom init script injection at create time
 - [ ] Nchan real-time VM status updates (no page refresh needed)
