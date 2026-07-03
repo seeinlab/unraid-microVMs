@@ -119,30 +119,21 @@ if (is_dir($vmdir)) {
 
 <table class="unraid tablesorter"><thead><tr><td>_(Service Control)_</td></tr></thead></table>
 
-<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},3000)">
-<input type="hidden" name="#command" value="/plugins/microvm.manager/start.sh">
 <dl>
-  <dt>_(Start MicroVM service)_:</dt>
-  <dd><input type="submit" value="_(Start)_" <?=$is_running ? 'disabled' : ''?>></dd>
+  <dt>&nbsp;</dt>
+  <dd>
+    <input type="button" value="_(Start)_" onclick="serviceCmd('start')" <?=$is_running ? 'disabled' : ''?>>
+    <input type="button" value="_(Stop)_" onclick="serviceCmd('stop')" <?=$is_running ? '' : 'disabled'?>>
+    <input type="button" value="_(Restart)_" onclick="serviceCmd('restart')">
+  </dd>
 </dl>
-</form>
-
-<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},3000)">
-<input type="hidden" name="#command" value="/plugins/microvm.manager/stop.sh">
-<dl>
-  <dt>_(Stop MicroVM service)_ (graceful shutdown all VMs):</dt>
-  <dd><input type="submit" value="_(Stop)_" <?=$is_running ? '' : 'disabled'?>></dd>
-</dl>
-</form>
-
-<form method="POST" action="/update.php" target="progressFrame" onsubmit="setTimeout(function(){location.reload()},5000)">
-<input type="hidden" name="#command" value="/plugins/microvm.manager/restart.sh">
-<dl>
-  <dt>_(Restart service)_:</dt>
-  <dd><input type="submit" value="_(Restart)_"></dd>
-</dl>
-</form>
 
 <script>
 function done() { location = '/Settings'; }
+function serviceCmd(action) {
+  var script = '/plugins/microvm.manager/' + action + '.sh';
+  $.post('/update.php', {'#command': script}, function() {
+    setTimeout(function(){ location.reload(); }, 3000);
+  });
+}
 </script>
