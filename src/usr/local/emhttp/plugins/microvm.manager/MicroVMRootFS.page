@@ -26,7 +26,7 @@ if (is_dir($vmdir)) {
 ?>
 
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="4"><b>Existing RootFS Images</b></td></tr></thead>
+<thead><tr><td colspan="4"><b>Existing rootFS Images</b></td></tr></thead>
 </table>
 
 <table class="tablesorter shift ups">
@@ -55,7 +55,7 @@ if (is_dir($vmdir)) {
 <br>
 
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="2"><b>Pull OCI/Docker Image → RootFS</b></td></tr></thead>
+<thead><tr><td colspan="2"><b>Pull OCI/Docker Image → rootFS</b></td></tr></thead>
 </table>
 
 <?php if (!$crane_installed): ?>
@@ -147,20 +147,21 @@ function pullImage() {
 
 function deleteRootfs(name, path) {
   swal({
-    title: 'Delete RootFS?',
-    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nThis cannot be undone!',
+    title: 'Delete rootFS?',
+    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nNote: If the VM is running, it must be stopped first. The VM config (config.json) will be kept.',
     type: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Delete',
-    cancelButtonText: 'Cancel'
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
   }, function(confirmed) {
     if (confirmed) {
       $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
         if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
         if (data.success) {
-          location.reload();
+          swal({title: 'Deleted', text: data.message, type: 'success'}, function() { location.reload(); });
         } else {
-          swal({title: 'Error', text: data.error || 'Delete failed', type: 'error'});
+          swal({title: 'Cannot Delete', text: data.error || 'Delete failed', type: 'error'});
         }
       });
     }
