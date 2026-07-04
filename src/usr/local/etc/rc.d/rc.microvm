@@ -565,12 +565,13 @@ stop_vm() {
     fi
     rm -f "$sock"
   else
-    # Cloud Hypervisor: graceful ACPI shutdown
+    # Cloud Hypervisor: graceful ACPI shutdown with timeout
     if [ -S "$sock" ]; then
       "$REMOTE_BIN" --api-socket "$sock" power-button 2>/dev/null
       log "Sent ACPI power-button to: $name"
 
-      local timeout=30
+      # Wait for graceful shutdown (max 90s)
+      local timeout=90
       local elapsed=0
       while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
         sleep 1
@@ -578,8 +579,10 @@ stop_vm() {
       done
 
       if [ -S "$sock" ]; then
-        "$REMOTE_BIN" --api-socket "$sock" shutdown-vmm 2>/dev/null
-        log "Force shutdown: $name"
+        log "ACPI timeout ($timeout s): $name did not respond"
+        echo "ACPI_TIMEOUT"
+      else
+        log "VM stopped gracefully: $name"
       fi
     fi
   fi

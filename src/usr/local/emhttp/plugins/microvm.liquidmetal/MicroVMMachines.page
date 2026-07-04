@@ -209,7 +209,7 @@ function addMicroVMContext(name, state, engine) {
     opts.push({divider:true});
     opts.push({text:'Remove', icon:'fa-trash', action:function(e){
       e.preventDefault();
-      vmDelete(name);
+      vmDelete(name, state);
     }});
   } else {
     opts.push({text:'Start', icon:'fa-play', action:function(e){
@@ -232,7 +232,7 @@ function addMicroVMContext(name, state, engine) {
     opts.push({divider:true});
     opts.push({text:'Remove', icon:'fa-trash', action:function(e){
       e.preventDefault();
-      vmDelete(name);
+      vmDelete(name, state);
     }});
   }
 
@@ -245,56 +245,35 @@ function addmicroVM() {
 }
 
 function vmAction(action, name) {
-  var label = action.replace('_', ' ');
-  var logHtml = '<div id="action-log" style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:12px;font-family:monospace;font-size:12px;color:#0f0;text-align:left;max-height:300px;overflow-y:auto;min-height:80px;">';
-  logHtml += '<div>$ ' + label + ' ' + name + '</div>';
-  logHtml += '</div>';
-  swal({title: label.charAt(0).toUpperCase() + label.slice(1) + ' — ' + name, text: logHtml, html: true, showConfirmButton: false, showCancelButton: false});
-
-  var log = document.getElementById('action-log');
-  function addLine(msg, color) {
-    var line = document.createElement('div');
-    line.style.color = color || '#0f0';
-    line.textContent = msg;
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
-  }
-
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-    var success = data.success !== false;
-    var msg = data.message || data.output || JSON.stringify(data);
-    addLine('');
-    addLine(success ? '✓ ' + msg : '✗ ' + (data.error || msg), success ? '#4CAF50' : '#f44336');
-    addLine('');
-    addLine('Done.', success ? '#4CAF50' : '#f44336');
-    setTimeout(function() {
-      var btn = document.createElement('button');
-      btn.textContent = 'DONE';
-      btn.style.cssText = 'margin-top:12px;padding:8px 24px;border:1px solid #f0a30a;background:transparent;color:#f0a30a;border-radius:3px;cursor:pointer;font-weight:bold;';
-      btn.onclick = function() { location.reload(); };
-      log.parentNode.appendChild(btn);
-    }, 300);
-  }).fail(function() {
-    addLine('✗ Request failed', '#f44336');
-    setTimeout(function() {
-      var btn = document.createElement('button');
-      btn.textContent = 'CLOSE';
-      btn.style.cssText = 'margin-top:12px;padding:8px 24px;border:1px solid #f44336;background:transparent;color:#f44336;border-radius:3px;cursor:pointer;font-weight:bold;';
-      btn.onclick = function() { swal.close(); };
-      log.parentNode.appendChild(btn);
-    }, 300);
+    if (data.acpi_timeout) {
+      swal({
+        title: 'ACPI Timeout',
+        text: "microVM '" + name + "' did not respond to ACPI power-button within 90 seconds.\n\nThe VM may not have an ACPI daemon installed. Use Force Stop to terminate it.",
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Force Stop',
+        cancelButtonText: 'Cancel'
+      }, function(confirmed) {
+        if (confirmed) {
+          $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'force_stop', name: name}, function() {
+            location.reload();
+          });
+        }
+      });
+    } else {
+      setTimeout(function(){ location.reload(); }, 1500);
+    }
   });
 }
 
 function vmConsole(name) {
-  showOutput('Opening console for ' + name + '...');
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console', name: name}, function(data) {
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch(e) {}
     }
     if (data.success && data.url) {
-      // ttyd serves its own xterm.js web terminal — open in popup
       var w = 900, h = 600;
       var left = (screen.width - w) / 2;
       var top = (screen.height - h) / 2;
@@ -304,17 +283,13 @@ function vmConsole(name) {
         'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no'
       );
       if (!popup) {
-        // Popup blocked — fall back to new tab
         window.open(data.url, '_blank');
       }
-      showOutput('Console opened for ' + name + ' at ' + data.url);
     } else {
       var errMsg = data.error || 'Failed to start console relay';
-      showOutput('Console error: ' + errMsg);
       swal({title: 'Console Error', text: errMsg, type: 'error'});
     }
   }).fail(function() {
-    showOutput('Console error: request failed');
     swal({title: 'Console Error', text: 'Failed to connect to backend', type: 'error'});
   });
 }
@@ -382,21 +357,38 @@ function vmLogs(name) {
   });
 }
 
-function vmDelete(name) {
-  swal({
-    title: 'Delete ' + name + '?',
-    text: 'This will delete the VM and all its data (config, rootfs, snapshots). This cannot be undone.',
-    type: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete',
-    cancelButtonText: 'Cancel'
-  }, function(confirmed) {
-    if (confirmed) {
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
-        showOutput(typeof data === 'object' ? JSON.stringify(data) : data);
-        setTimeout(function(){ location.reload(); }, 2000);
-      });
+function vmDelete(name, state) {
+  if (state === 'running') {
+    swal({title: 'Cannot Delete', text: "VM '" + name + "' is running. Stop it first.", type: 'error'});
+    return;
+  }
+  // Check for snapshots via backend
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'list_snapshots', name: name}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    var snaps = (data.snapshots || []).length;
+    if (snaps > 0) {
+      swal({title: 'Cannot Delete', text: "VM '" + name + "' has " + snaps + " snapshot(s). Remove them first.", type: 'error'});
+      return;
     }
+    swal({
+      title: 'Delete ' + name + '?',
+      text: 'This will delete the VM and all its data (config, rootfs). This cannot be undone.',
+      type: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel'
+    }, function(confirmed) {
+      if (confirmed) {
+        $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
+          if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+          if (data.success) {
+            swal({title: 'Deleted', text: data.message, type: 'success'}, function() { location.reload(); });
+          } else {
+            swal({title: 'Error', text: data.error || 'Delete failed', type: 'error'});
+          }
+        });
+      }
+    });
   });
 }
 

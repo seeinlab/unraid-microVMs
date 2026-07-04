@@ -179,7 +179,10 @@ switch ($cmd) {
         // Remove entire VM folder (config + rootfs)
         if (is_dir($vmPath)) {
             exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);
-            echo json_encode(['success' => ($ret === 0), 'message' => "VM '$name' deleted completely"]);
+            // On Unraid user shares, .fuse_hidden files may linger — treat as success
+            $remaining = is_dir($vmPath) ? glob("$vmPath/*") : [];
+            $deleted = ($ret === 0) || empty($remaining);
+            echo json_encode(['success' => $deleted, 'message' => "VM '$name' deleted."]);
         } else {
             echo json_encode(['success' => false, 'error' => 'VM folder not found']);
         }
@@ -297,16 +300,16 @@ INIT;
         file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
 
         microvm_log("VM created: $name at $vmPath");
-        // Auto-start the VM if requested
+        // Auto-start the VM if autostart is enabled
         if (($_POST['autostart'] ?? 'false') === 'true') {
             $startResult = microvm_start_vm($name);
             if (!empty($startResult['success'])) {
-                echo json_encode(['success' => true, 'message' => "VM '$name' created and started."]);
+                echo json_encode(['success' => true, 'message' => "VM '$name' created and started.", 'started' => true, 'output' => $startResult['output'] ?? '']);
             } else {
-                echo json_encode(['success' => true, 'message' => "VM '$name' created but failed to start: " . ($startResult['error'] ?? 'unknown')]);
+                echo json_encode(['success' => true, 'message' => "VM '$name' created but failed to start: " . ($startResult['error'] ?? 'unknown'), 'started' => false, 'output' => $startResult['output'] ?? '']);
             }
         } else {
-            echo json_encode(['success' => true, 'message' => "VM '$name' created. Click Start to boot."]);
+            echo json_encode(['success' => true, 'message' => "VM '$name' created. Turn on Autostart to auto-boot after create."]);
         }
         break;
 

@@ -103,7 +103,11 @@ function microvm_start_vm($name) {
 
 function microvm_stop_vm($name) {
     exec("/etc/rc.d/rc.microvm stop_vm " . escapeshellarg($name) . " 2>&1", $output, $ret);
-    return ['success' => ($ret === 0), 'output' => implode("\n", $output)];
+    $outputStr = implode("\n", $output);
+    if (strpos($outputStr, 'ACPI_TIMEOUT') !== false) {
+        return ['success' => false, 'acpi_timeout' => true, 'output' => $outputStr];
+    }
+    return ['success' => ($ret === 0), 'output' => $outputStr];
 }
 
 function microvm_resize_vm($name, $cpus = null, $memory = null) {
