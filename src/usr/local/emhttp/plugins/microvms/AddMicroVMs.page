@@ -18,7 +18,7 @@ $nproc = trim(shell_exec('nproc'));
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
 
-<div class="title"><span class="left"><a href="/MicroVM" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
+<div class="title"><span class="left"><a href="/MicroVMs" title="Back to microVMs"><i class="fa fa-arrow-left"></i></a> Add microVM</span></div>
 
 <form id="microvm_add_form" onsubmit="return submitForm()">
 
@@ -260,7 +260,7 @@ function submitForm() {
       }
       setTimeout(function() {
         swal.close();
-        location = '/MicroVM';
+        location = '/MicroVMs';
       }, 2500);
     } else {
       addLine('✗ ' + (result.error || 'Unknown error'), '#f44336');
@@ -297,14 +297,14 @@ function createFromJson() {
     var r = (typeof data === 'object') ? data : JSON.parse(data);
     if (r.success) {
       showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
-      setTimeout(function(){ location = '/MicroVM'; }, 2000);
+      setTimeout(function(){ location = '/MicroVMs'; }, 2000);
     } else {
       showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
     }
   });
 }
 
-function done() { location = '/MicroVM'; }
+function done() { location = '/MicroVMs'; }
 
 $('input[name="engine"]').change(function() {
   $('#label_ch').css({'border-color': '#555', 'background': 'transparent'});

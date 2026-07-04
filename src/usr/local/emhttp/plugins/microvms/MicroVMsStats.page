@@ -1,4 +1,4 @@
-Menu="MicroVM:3"
+Menu="MicroVMs:3"
 Title="Usage Statistics"
 Tag="bar-chart"
 Cond="is_file('/usr/local/bin/flintlockd')"

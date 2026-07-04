@@ -1,4 +1,4 @@
-Menu="MicroVM:1"
+Menu="MicroVMs:1"
 Title="microVMs"
 Tag="server"
 Cond="is_file('/usr/local/bin/flintlockd')"
@@ -92,7 +92,7 @@ img.vm-icon-stopped { opacity:0.4; }
 <?php if (!$kernel_exists): ?>
 <p style="margin:12px 0 16px; padding:10px 14px; border:1px solid rgba(240,163,10,0.4); border-radius:4px; background:rgba(240,163,10,0.08); display:flex; align-items:center; gap:8px;">
   <i class="fa fa-exclamation-triangle" style="color:#f0a30a;"></i>
-  <b>Not Ready</b> — Kernel images are missing. <a href="/Settings/MicroVMSettings">Configure in Settings</a>
+  <b>Not Ready</b> — Kernel images are missing. <a href="/Settings/MicroVMsControlplane">Configure in Settings</a>
 </p>
 <?php endif; ?>
 
@@ -241,7 +241,7 @@ function addMicroVMContext(name, state, engine) {
 }
 
 function addmicroVM() {
-  location = location.pathname + '/AddMicroVM';
+  location = location.pathname + '/AddMicroVMs';
 }
 
 function vmAction(action, name) {
