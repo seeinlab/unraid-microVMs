@@ -75,12 +75,26 @@
 
 ### 🚧 Not Yet Wired (Next Steps)
 
-1. **WebGUI → flintlockd gRPC**: MicroVMAdmin.php to call `grpcurl` for VM lifecycle
-2. **UI shows gRPC calls**: Progress popup displays actual flintlockd API calls
+1. **Test WebGUI → flintlockd**: The PHP backend is fully wired (auto-detects flintlockd). Need to test from browser.
+2. **UI shows gRPC calls**: Progress popup should display actual flintlockd API calls in dark log panel
 3. **PLG installer**: Not tested (manual install so far)
 4. **nchan real-time**: VM status streaming via ListMicroVMsStream
 5. **macvtap support**: Available in flintlockd, not exposed in UI
-6. **Boot step numbering**: Fix cosmetic `/6` vs `/7` inconsistency
+6. **Upgrade containerd**: v1.7.27 → v1.7.33 (latest LTS, security patches, exact SDK match)
+
+---
+
+### 📋 Containerd Version Research
+
+| Question | Answer |
+|----------|--------|
+| Current binary | flintlock-containerd v1.7.27 |
+| Flintlock go.mod dependency | containerd v1.7.33 (client SDK) |
+| Highest compatible | **v1.7.33** (any 1.7.x works) |
+| containerd 2.x compatible? | ❌ NO — different Go module path, API changes |
+| Upgrade benefit | Security CVE fixes (6 patches), exact SDK match |
+| Upgrade risk | None — drop-in replacement, same config/socket/API |
+| 1.7.x LTS support | Until September 2026 |
 
 ---
 

@@ -705,7 +705,7 @@ microvm_start() {
   mkdir -p "$SYSTEM_DIR"
 
   # Step 1: Load kernel module
-  log "[1/6] Loading dm_thin_pool module..."
+  log "[1/7] Loading dm_thin_pool module..."
   modprobe dm_thin_pool
   if [ $? -ne 0 ]; then
     log "ERROR: Failed to load dm_thin_pool kernel module"
@@ -713,7 +713,7 @@ microvm_start() {
   fi
 
   # Step 2: Setup thin pool
-  log "[2/6] Setting up thin pool..."
+  log "[2/7] Setting up thin pool..."
   setup_thinpool
   if [ $? -ne 0 ]; then
     log "ERROR: Thin pool setup failed"
