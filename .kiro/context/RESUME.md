@@ -1,133 +1,183 @@
-# Session Resume Context — microVM Manager Unraid Plugin
+# Session Resume Context — microVM Liquidmetal Unraid Plugin
 
-## Date: 2026-07-01 to 2026-07-03
+## Date: 2026-07-01 to 2026-07-04
 ## Project: C:\Users\seein\Workspaces\github\unraid-microVMs
 
 ---
 
-## Current State
+## NEXT SESSION: Refactor to microvm.liquidmetal (Orchestrated Mode)
+
+### What to do:
+1. ~~Write cleanup script~~ ✅ (`scripts/cleanup-old-plugin.sh`)
+2. Create new plugin structure with name `microvm.liquidmetal`
+3. Update all file references (plugin name, paths, settings title)
+4. Refactor rc.microvm for orchestrated mode (flintlock-containerd + flintlockd + thin pool)
+5. Update paths (see below)
+6. Run cleanup on Unraid, deploy new version, test
+
+### Key Decisions (LOCKED):
+- **Plugin name**: `microvm.liquidmetal` (was `microvm.manager`)
+- **Settings title**: "microVM Liquidmetal"
+- **Containerd binary name**: `flintlock-containerd` (standard containerd, just renamed)
+- **Mode**: Orchestrated ONLY (flintlockd + containerd, no Direct mode)
+- **Clean install**: Destroy all old VMs, fresh start
+
+### Final Path Layout:
+```
+Binaries (ephemeral, /usr/local/bin/):
+  cloud-hypervisor, ch-remote, firecracker, flintlockd, flintlock-containerd, crane, ttyd
+
+Kernels (persistent):
+  /mnt/user/system/microvm/kernels/cloud-hypervisor/vmlinux  (60MB)
+  /mnt/user/system/microvm/kernels/firecracker/vmlinux       (37MB)
+
+Containerd data (persistent, OCI layers):
+  /mnt/user/system/microvm/containerd/
+
+VM data (persistent):
+  /mnt/user/microvms/{vm-name}/config.json
+  /mnt/user/microvms/{vm-name}/vm.log
+  /mnt/user/microvms/{vm-name}/snapshots/
+
+Thin pool (persistent, sparse files):
+  /mnt/user/microvms/thinpool/data    (50GB sparse)
+  /mnt/user/microvms/thinpool/meta    (500MB sparse)
+  /dev/mapper/microvm-thinpool        (dm device, recreated each boot)
+
+Runtime (ephemeral, recreated each boot):
+  /var/run/microvm/containerd.sock
+  /var/run/microvm/flintlockd.pid
+  /var/run/microvm/containerd.pid
+
+Flash cache (persistent, survives reboot):
+  /boot/config/plugins/microvm.liquidmetal/
+  ├── cloud-hypervisor, ch-remote, firecracker
+  ├── flintlockd, flintlock-containerd
+  ├── crane, ttyd
+  └── microvm.liquidmetal.cfg
+
+Config file:
+  /boot/config/plugins/microvm.liquidmetal/microvm.liquidmetal.cfg
+```
+
+### Boot Sequence (Orchestrated):
+```
+1. PLG copies binaries from flash → /usr/local/bin/
+2. rc.microvm start:
+   a. modprobe dm_thin_pool
+   b. Setup thin pool (losetup + dmsetup)
+   c. Start flintlock-containerd (separate from Docker's)
+   d. Start flintlockd (connects to containerd, manages CH/FC)
+   e. Create TAP interfaces
+   f. Start VMs (if autostart=yes)
+```
+
+---
+
+## Current State (before refactor)
 
 ### Plugin Deployed on Unraid (192.168.50.6)
-- **Version**: 68+ iterations (microvm.manager-2026.07.03.66.tgz latest build)
-- **Git commits**: 60+ commits on main branch (latest: d1cf7b7)
+- **Version**: v71 (microvm.manager-2026.07.04.71.tgz)
+- **Git commits**: 70+ on main branch (latest: b3f767a)
 - **SSH**: `ssh -i ~/.ssh/mastervault root@192.168.50.6`
-- **Shell**: All commands use `& "C:\Program Files\Git\bin\bash.exe" -c "..."` (Windows + Git Bash)
+- **Shell**: `& "C:\Program Files\Git\bin\bash.exe" -c "..."` (Windows + Git Bash)
 
-### Running VMs on Unraid
-- **nginx-ch** — Cloud Hypervisor v52.0, IP 192.168.50.220, nginx serving, serial console on /dev/ttyS0
-- **nginx-fc** — Firecracker v1.16.0, IP 192.168.50.221, nginx serving
+### Running VMs (will be destroyed during cleanup)
+- **nginx-ch** — Cloud Hypervisor v52.0, IP 192.168.50.220
+- **nginx-fc** — Firecracker v1.16.0, IP 192.168.50.221
 
 ### Installed Binaries on Unraid
-- `/usr/local/bin/cloud-hypervisor` (v52.0, 5.5MB static)
+- `/usr/local/bin/cloud-hypervisor` (v52.0)
 - `/usr/local/bin/ch-remote` (v52.0)
 - `/usr/local/bin/firecracker` (v1.16.0)
-- `/usr/local/bin/crane` (v0.21.7, OCI image tool)
-- `/usr/local/bin/ttyd` (v1.7.7, web terminal)
-- `/usr/local/bin/microvm-console` (bidirectional PTY helper)
+- `/usr/local/bin/crane` (v0.21.7)
+- `/usr/local/bin/ttyd` (v1.7.7)
+- `/usr/local/bin/microvm-console`
 - All cached on flash: `/boot/config/plugins/microvm.manager/`
 
-### Kernel Layout
-```
-/mnt/user/microvms/kernels/
-├── cloud-hypervisor/vmlinux  (60MB, kernel 6.2.0+)
-└── firecracker/vmlinux       (37MB, kernel 5.10.225)
-```
+### Unraid Environment
+- Unraid 6.12.90, kernel 6.12.90-Unraid
+- Docker 29.5.1 (containerd at `/var/run/docker/containerd/`, overlay2 storage)
+- dm_thin_pool module: AVAILABLE (`/lib/modules/6.12.90-Unraid/kernel/drivers/md/dm-thin-pool.ko.xz`)
+- Docker uses overlay2 (NOT devicemapper) → no conflict
+- `/dev/mapper/`: only `control` (clean)
+- br0 bridge (Unraid default)
+- `/usr/bin/containerd` exists (Docker's, DON'T touch)
 
-### Plugin Config
-- `/boot/config/plugins/microvm.manager/microvm.manager.cfg`
-- VMDIR="/mnt/user/microvms"
-- BRIDGE="br0"
-- DEFAULT_ENGINE="cloud-hypervisor"
-
----
-
-## Architecture
-
-### File Layout (source)
-```
-src/usr/local/emhttp/plugins/microvm.manager/
-├── MicroVMs.page              ← Parent tab (Tabs=true)
-├── MicroVMMachines.page       ← Tab 1: VM list + context menu + switchButton autostart
-├── MicroVMRootFS.page         ← Tab 2: rootFS images + OCI pull + kernel list
-├── MicroVMStats.page          ← Tab 3: usage statistics
-├── MicroVMSettings.page       ← Settings → OtherSettings
-├── AddMicroVM.page            ← Create VM form (dl/dt/dd layout, engine selector)
-├── backend/MicroVMAdmin.php   ← AJAX command handler (all commands)
-├── include/common.php         ← PHP helpers (list, start, stop, status, snapshots)
-├── console.html               ← Standalone xterm.js page (fallback)
-├── images/cloud-hypervisor.png  (official GitHub org logo, rounded corners)
-├── images/firecracker.png       (official flame logo, transparent)
-├── microvm.manager.png        ← Settings icon (LiquidMetal droplet from SVG)
-├── microvm.manager.svg        ← LiquidMetal SVG source
-├── start.sh, stop.sh, restart.sh
-└── microvm-console            ← Bidirectional PTY script (exec 3<>PTY)
-src/usr/local/etc/rc.d/rc.microvm  ← Service script
-src/usr/local/bin/microvm-console  ← PTY helper binary
-```
-
-### Key Technical Details
-
-1. **Log path**: VM logs at `VMDIR/NAME/vm.log` (persistent). Fallback to `/var/log/microvm-NAME.log`.
-
-2. **Serial console (CH only)**: `--serial pty` → PTY path in log → ttyd on unix socket (`/var/tmp/microvm-NAME.console.sock`) → nginx proxies at `/logterminal/microvm-NAME.console/`
-
-3. **Log viewer**: ttyd on unix socket (`/var/tmp/microvm-NAME.log.sock`) → proxied at `/logterminal/microvm-NAME.log/`
-
-4. **Context menu**: Uses Unraid's built-in `context.js` (bundled in dynamix.js). Pattern: `context.attach('#vm-NAME', opts)`
-
-5. **Firecracker stop**: Uses `kill PID` (no ACPI support). CH uses `ch-remote power-button`.
-
-6. **TAP display**: Shows `tap-NAME@br0` format.
-
-7. **Autostart**: jQuery switchButton (same as Docker/VMs pages).
-
-8. **Resize (CH only)**: swal input dialogs, updates config.json after success.
-
-9. **Init script**: CH gets serial shell on ttyS0 (`TERM=linux sh`). FC just runs nginx (no interactive console).
+### Binaries to Download for New Plugin
+- **flintlockd**: `https://github.com/liquidmetal-dev/flintlock/releases/download/v0.9.0/flintlockd`
+- **containerd** (rename to flintlock-containerd): `https://github.com/containerd/containerd/releases` (static tarball, v1.7.24+)
+- **ctr** (optional CLI): same tarball
 
 ---
 
-## What Works ✅
-- Create VM from OCI image (crane pull → rootfs)
-- Start/Stop VMs (CH: ACPI, FC: kill)
-- Force Stop (kill -9)
-- Live resize CPU/RAM (CH only, updates config.json)
-- Snapshot (CH: pause→snap→resume)
-- Snapshot management (list/restore/delete via swal)
-- Remove VM (blocked if has snapshots)
-- Serial console (CH: ttyd + unix socket + nginx proxy)
-- Log viewer (ttyd + tail -f via logterminal)
+## Architecture (Orchestrated Mode)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Unraid WebGUI                             │
+│  MicroVMs tab → MicroVMAdmin.php (AJAX backend)            │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ gRPC (localhost:9090)
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    flintlockd                                │
+│  - Receives VM create/delete/list requests                  │
+│  - Manages network (TAP on br0)                             │
+│  - Picks engine: Cloud Hypervisor OR Firecracker            │
+│  - Injects cloud-init metadata                              │
+└────────────┬──────────────────────┬─────────────────────────┘
+             │                      │
+             ▼                      ▼
+┌────────────────────┐   ┌────────────────────────────────────┐
+│  Cloud Hypervisor  │   │  Firecracker                       │
+│  (--serial pty)    │   │  (--config-file)                   │
+└────────────────────┘   └────────────────────────────────────┘
+             │                      │
+             ▼                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              flintlock-containerd                            │
+│  - OCI image pull/store                                     │
+│  - devmapper snapshotter (thin pool)                        │
+│  - Provides rootfs as /dev/mapper/thin-vol                  │
+└─────────────────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Device-Mapper Thin Pool                           │
+│  /dev/mapper/microvm-thinpool                               │
+│  Backed by: /mnt/user/microvms/thinpool/{data,meta}        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Documentation Available
+- `docs/flintlock-implementation-plan.md` — Full implementation details
+- `docs/flintlock-devmapper-research.md` — Research + kernel module confirmed
+- `docs/cloud-hypervisor-api.md` — Full CH API reference
+- `docs/firecracker-api.md` — Full FC API reference
+- `docs/feature-api-mapping.md` — UI → Backend → Engine mapping
+- `docs/code-style-guide.md` — Coding conventions
+- `docs/test-results-v69.md` — All features verified working
+
+---
+
+## Reference Repos
+- `D:/github/unraid-webgui` — Unraid 7.2.7 WebGUI source
+- `D:/github/unraid-tailscale` — Official Tailscale plugin (modern pattern)
+- `D:/github/ZFS-Master-Unraid` — ZFS Master plugin (AJAX, SweetAlert2)
+
+---
+
+## What Works in Current Version (to preserve in refactor)
+- Context menu (Unraid native context.js)
+- Snapshot management (CH + FC, list/restore/delete)
+- Serial console (CH: ttyd + unix socket + /logterminal/ proxy)
+- Log viewer (ttyd + tail -f)
+- Autostart (switchButton)
+- Resize (CH only, swal dialogs)
+- RootFS management page
+- Add VM form (dl/dt/dd layout)
+- Usage Statistics
 - Settings page with health checks
-- Engine selector on Add page (CH or FC with logos)
-- Context menu per VM (Unraid native context.js)
-- switchButton autostart toggle
-- RootFS tab (list images, pull OCI, delete, kernel engine column)
-- Usage Statistics tab
-- Both engines use own kernel subfolder
-- TAP display as tap-NAME@br0
-
----
-
-## Known Issues / Remaining
-- [ ] Console shows `^[[32;5R` once at start (busybox DSR query, cosmetic)
-- [ ] Add VM form: buttons now horizontal but might need more CSS testing
-- [ ] No serial console for Firecracker (only log viewer)
-- [ ] Cloud Hypervisor logo has text (not ideal at 32x32 but official)
-- [ ] LiquidMetal settings icon slightly cropped (SVG viewBox vs render)
-
----
-
-## Build & Deploy Command (one-liner)
-```bash
-cd /c/Users/seein/Workspaces/github/unraid-microVMs && rm -rf build && mkdir -p build/microvm.manager/backend build/microvm.manager/include build/microvm.manager/images && cp src/usr/local/emhttp/plugins/microvm.manager/*.page build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.sh build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.png build/microvm.manager/ && cp src/usr/local/emhttp/plugins/microvm.manager/*.svg build/microvm.manager/ 2>/dev/null; cp src/usr/local/emhttp/plugins/microvm.manager/*.html build/microvm.manager/ 2>/dev/null; cp src/usr/local/emhttp/plugins/microvm.manager/images/* build/microvm.manager/images/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/include build/microvm.manager/ && cp -r src/usr/local/emhttp/plugins/microvm.manager/backend build/microvm.manager/ && cp src/usr/local/etc/rc.d/rc.microvm build/microvm.manager/rc.microvm && cp src/usr/local/bin/microvm-console build/microvm.manager/ && cd build && tar -czf ../plugin/microvm.manager-VERSION.tgz microvm.manager && cd .. && rm -rf build && cat plugin/microvm.manager-VERSION.tgz | ssh -i ~/.ssh/mastervault root@192.168.50.6 'cat > /tmp/p.tgz && rm -rf /usr/local/emhttp/plugins/microvm.manager && tar -xf /tmp/p.tgz -C /usr/local/emhttp/plugins/ && chmod +x /usr/local/emhttp/plugins/microvm.manager/*.sh /usr/local/emhttp/plugins/microvm.manager/rc.microvm && cp /usr/local/emhttp/plugins/microvm.manager/rc.microvm /etc/rc.d/rc.microvm && cp /usr/local/emhttp/plugins/microvm.manager/microvm-console /usr/local/bin/microvm-console && chmod +x /usr/local/bin/microvm-console && rm /tmp/p.tgz && echo ok'
-```
-
----
-
-## Next Priorities
-1. PLG installer for Community Applications
-2. nchan real-time VM status (no page refresh)
-3. Add VM form refinements (match VMs page exactly)
-4. macvtap support (tap0@br0 naming)
-5. VM edit page
-6. Import/export VM
