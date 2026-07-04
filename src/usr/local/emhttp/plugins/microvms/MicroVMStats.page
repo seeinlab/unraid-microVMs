@@ -5,7 +5,7 @@ Cond="is_file('/usr/local/bin/flintlockd')"
 Markdown="false"
 ---
 <?php
-$plugin = "microvm.liquidmetal";
+$plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 

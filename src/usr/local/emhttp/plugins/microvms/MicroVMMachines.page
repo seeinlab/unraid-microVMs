@@ -5,7 +5,7 @@ Cond="is_file('/usr/local/bin/flintlockd')"
 Markdown="false"
 ---
 <?php
-$plugin = "microvm.liquidmetal";
+$plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
@@ -99,7 +99,7 @@ img.vm-icon-stopped { opacity:0.4; }
 <table class="tablesorter microvm shift ups">
 <thead><tr>
   <th>Name</th>
-  <th>Engine</th>
+  <th>VMM</th>
   <th>vCPUs</th>
   <th>Memory</th>
   <th>IP Address</th>
@@ -119,7 +119,7 @@ img.vm-icon-stopped { opacity:0.4; }
     $ip = htmlspecialchars($vm['config']['ip'] ?? '-');
     $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
-    $icon = "/plugins/microvm.liquidmetal/images/{$engine}.png";
+    $icon = "/plugins/microvms/images/{$engine}.png";
     $tap_id = $vm['config']['tap_id'] ?? '-';
     $bridge_name = $vm['config']['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
     $tap_display = ($tap_id !== '-') ? "tap{$tap_id}@{$bridge_name}" : "-";

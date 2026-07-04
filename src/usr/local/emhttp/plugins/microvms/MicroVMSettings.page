@@ -1,16 +1,16 @@
 Menu="OtherSettings"
-Icon="microvm.liquidmetal.png"
-Title="microVM Liquidmetal"
+Icon="microvms.png"
+Title="microVMs Controlplane"
 Tag="microchip"
 ---
 <?php
-$plugin = "microvm.liquidmetal";
+$plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
 $cfg = microvm_load_config();
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-$kernelDir = "/mnt/user/system/liquidmetal";
+$kernelDir = "/mnt/user/system/microvms";
 
 // --- Component status checks ---
 $flintlockd_bin = is_file('/usr/local/bin/flintlockd');
@@ -105,9 +105,9 @@ $status_text = $is_ready ? 'Ready' : 'Not Ready';
   <summary><i class="fa fa-gears"></i> General Settings</summary>
   <div class="mvm-section-body">
     <form markdown="1" method="POST" action="/update.php" target="progressFrame">
-    <input type="hidden" name="#file" value="microvm.liquidmetal/microvm.liquidmetal.cfg">
+    <input type="hidden" name="#file" value="microvms/microvms.cfg">
 
-_(Enable microVM Liquidmetal)_:
+_(Enable microVMs)_:
 : <select name="SERVICE">
   <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
   <?=mk_option($cfg['SERVICE'] ?? 'disable', 'enable', _('Yes'))?>
@@ -171,7 +171,7 @@ _(Autostart VMs on array start)_:
       <span class="mvm-row-label">Bridge:</span>
       <span class="mvm-row-value"><?=$domain_cfg['BRNAME'] ?? 'br0'?> (shared with microVMs)</span>
     </div>
-    <p style="margin:8px 0 0; font-size:0.85em; opacity:0.7;">microVM Liquidmetal shares KVM, bridge, and kernel modules with Unraid's native VM Manager.</p>
+    <p style="margin:8px 0 0; font-size:0.85em; opacity:0.7;">microVMs shares KVM, bridge, and kernel modules with Unraid's native VM Manager.</p>
   </div>
 </details>
 
@@ -384,7 +384,7 @@ function downloadKernel(engine) {
       log.scrollTop = log.scrollHeight;
     }
 
-    addLog('$ mkdir -p /mnt/user/system/liquidmetal/' + engine.replace('_','-') + '/kernels/');
+    addLog('$ mkdir -p /mnt/user/system/microvms/' + engine.replace('_','-') + '/kernels/');
     setTimeout(function() {
       addLog('$ curl -fsSL -o vmlinux <url>');
       addLog('Downloading... this may take 1-2 minutes');

@@ -1,6 +1,6 @@
 <?php
 /*
- * microVM Liquidmetal for Unraid
+ * microVMs for Unraid
  * Copyright (C) 2026
  * License: GPL-2.0 (consistent with Unraid plugin ecosystem)
  *
@@ -8,7 +8,7 @@
  * Description: Shared PHP functions for microVM lifecycle management.
  *              Provides helpers for listing, starting, stopping, resizing,
  *              snapshotting, and managing VMs across both Cloud Hypervisor
- *              and Firecracker engines.
+ *              and Firecracker VMMs.
  *
  * References:
  *   - Cloud Hypervisor API: docs/cloud-hypervisor-api.md
@@ -17,10 +17,10 @@
  */
 
 // --- Constants ---
-define('MICROVM_PLUGIN', 'microvm.liquidmetal');
-define('MICROVM_CFG_PATH', '/boot/config/plugins/' . MICROVM_PLUGIN . '/' . MICROVM_PLUGIN . '.cfg');
-define('MICROVM_RUNTIME', '/var/run/liquidmetal');
-define('MICROVM_SYSTEM', '/mnt/user/system/liquidmetal');
+define('MICROVM_PLUGIN', 'microvms');
+define('MICROVM_CFG_PATH', '/boot/config/plugins/' . MICROVM_PLUGIN . '/' . MICROVM_PLUGIN . '.controlplane.cfg');
+define('MICROVM_RUNTIME', '/var/run/microvms');
+define('MICROVM_SYSTEM', '/mnt/user/system/microvms');
 
 function microvm_load_config() {
     if (file_exists(MICROVM_CFG_PATH)) {
@@ -442,6 +442,290 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
         'message' => "VM '$name' restored from Firecracker snapshot '$tag' and is running",
     ];
 }
+
+// ============================================================================
+// Flintlockd / gRPC Orchestrated Mode
+// ============================================================================
+
+define('FLINTLOCKD_ENDPOINT', 'localhost:9090');
+define('FLINTLOCKD_SERVICE', 'microvm.services.api.v1alpha1.MicroVM');
+define('GRPCURL_BIN', '/usr/local/bin/grpcurl');
+define('FLINTLOCK_KERNEL_IMAGE', 'localhost:5050/kernel/ch:latest');
+define('FLINTLOCK_NAMESPACE', 'default');
+
+/**
+ * Detect whether flintlockd orchestrated mode is active.
+ * Returns true if:
+ *   1. The config setting ORCHESTRATOR_MODE is 'flintlockd', OR
+ *   2. Auto-detect: flintlockd is running and grpcurl binary exists
+ */
+/**
+ * Check if Liquidmetal services (flintlockd + containerd) are running.
+ * This does NOT affect UI flow — UI always uses direct mode.
+ * Used only by the "Enable Liquidmetal" toggle and remote automation.
+ *
+ * @return bool True if flintlockd is running and reachable
+ */
+function microvm_is_flintlock_running() {
+    if (!is_executable(GRPCURL_BIN)) return false;
+    $pid = trim(shell_exec("pgrep -x flintlockd 2>/dev/null"));
+    return !empty($pid);
+}
+
+/**
+ * Execute a grpcurl command against flintlockd.
+ *
+ * @param string $method  gRPC method name (e.g. 'CreateMicroVM')
+ * @param array  $payload Request payload as associative array
+ * @return array ['success' => bool, 'data' => array|null, 'error' => string|null, 'raw' => string]
+ */
+function flintlock_grpc_call($method, $payload = []) {
+    $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    $cmd = sprintf(
+        '%s -plaintext -d %s %s %s.%s 2>&1',
+        GRPCURL_BIN,
+        escapeshellarg($jsonPayload),
+        FLINTLOCKD_ENDPOINT,
+        FLINTLOCKD_SERVICE,
+        $method
+    );
+
+    exec($cmd, $output, $ret);
+    $raw = implode("\n", $output);
+
+    if ($ret !== 0) {
+        return [
+            'success' => false,
+            'data' => null,
+            'error' => "grpcurl exited $ret: $raw",
+            'raw' => $raw,
+        ];
+    }
+
+    $data = json_decode($raw, true);
+    return [
+        'success' => true,
+        'data' => $data,
+        'error' => null,
+        'raw' => $raw,
+    ];
+}
+
+/**
+ * Create a MicroVM via flintlockd gRPC (also starts it).
+ *
+ * @param string $name     VM identifier
+ * @param int    $vcpu     Number of vCPUs
+ * @param int    $memoryMb Memory in MB
+ * @param string $ociImage OCI container image for rootfs
+ * @param int    $diskMb   Root volume size in MB
+ * @param string $namespace Flintlock namespace
+ * @return array ['success' => bool, 'uid' => string|null, 'error' => string|null]
+ */
+function flintlock_create_vm($name, $vcpu = 1, $memoryMb = 1024, $ociImage = 'docker.io/library/alpine:3.18', $diskMb = 500, $namespace = null) {
+    $namespace = $namespace ?? FLINTLOCK_NAMESPACE;
+
+    $payload = [
+        'microvm' => [
+            'id' => $name,
+            'namespace' => $namespace,
+            'vcpu' => (int)$vcpu,
+            'memory_in_mb' => (int)$memoryMb,
+            'kernel' => [
+                'image' => FLINTLOCK_KERNEL_IMAGE,
+                'filename' => 'boot/vmlinux',
+                'cmdline' => [
+                    'console' => 'ttyS0',
+                    'root' => '/dev/vda',
+                    'rw' => '',
+                    'reboot' => 'k',
+                    'panic' => '1',
+                ],
+                'add_network_config' => true,
+            ],
+            'root_volume' => [
+                'id' => 'rootvol',
+                'is_read_only' => false,
+                'source' => [
+                    'container_source' => $ociImage,
+                ],
+                'size_in_mb' => (int)$diskMb,
+            ],
+            'interfaces' => [
+                [
+                    'device_id' => 'eth0',
+                    'type' => 'TAP',
+                ],
+            ],
+            'provider' => 'cloudhypervisor',
+        ],
+    ];
+
+    $result = flintlock_grpc_call('CreateMicroVM', $payload);
+
+    if (!$result['success']) {
+        return ['success' => false, 'uid' => null, 'error' => $result['error']];
+    }
+
+    // Extract UID from response
+    $uid = $result['data']['microvm']['spec']['uid'] ?? null;
+    if (!$uid) {
+        // Try alternate response paths
+        $uid = $result['data']['microvm']['uid'] ?? ($result['data']['uid'] ?? null);
+    }
+
+    return [
+        'success' => true,
+        'uid' => $uid,
+        'data' => $result['data'],
+        'error' => null,
+    ];
+}
+
+/**
+ * List/get MicroVMs from flintlockd by namespace (optionally filter by name).
+ *
+ * @param string      $namespace Flintlock namespace
+ * @param string|null $name      Optional VM name to filter
+ * @return array ['success' => bool, 'vms' => array, 'error' => string|null]
+ */
+function flintlock_list_vms($namespace = null, $name = null) {
+    $namespace = $namespace ?? FLINTLOCK_NAMESPACE;
+    $payload = ['namespace' => $namespace];
+    if ($name) {
+        $payload['name'] = $name;
+    }
+
+    $result = flintlock_grpc_call('ListMicroVMs', $payload);
+
+    if (!$result['success']) {
+        return ['success' => false, 'vms' => [], 'error' => $result['error']];
+    }
+
+    $vms = $result['data']['microvm'] ?? [];
+    return ['success' => true, 'vms' => $vms, 'error' => null];
+}
+
+/**
+ * Get the status of a specific MicroVM via flintlockd.
+ *
+ * @param string $name      VM name/id
+ * @param string $namespace Flintlock namespace
+ * @return array ['success' => bool, 'state' => string, 'uid' => string|null, 'vm' => array|null]
+ */
+function flintlock_get_vm_status($name, $namespace = null) {
+    $namespace = $namespace ?? FLINTLOCK_NAMESPACE;
+    $result = flintlock_list_vms($namespace, $name);
+
+    if (!$result['success']) {
+        return ['success' => false, 'state' => 'unknown', 'uid' => null, 'vm' => null, 'error' => $result['error']];
+    }
+
+    if (empty($result['vms'])) {
+        return ['success' => true, 'state' => 'not_found', 'uid' => null, 'vm' => null, 'error' => null];
+    }
+
+    // Find the matching VM
+    $vm = $result['vms'][0] ?? null;
+    if ($vm) {
+        $uid = $vm['spec']['uid'] ?? ($vm['uid'] ?? null);
+        $state = $vm['status']['state'] ?? 'unknown';
+        return ['success' => true, 'state' => $state, 'uid' => $uid, 'vm' => $vm, 'error' => null];
+    }
+
+    return ['success' => true, 'state' => 'not_found', 'uid' => null, 'vm' => null, 'error' => null];
+}
+
+/**
+ * Delete a MicroVM via flintlockd gRPC (shuts down then removes).
+ *
+ * @param string $uid The UID of the MicroVM to delete
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function flintlock_delete_vm($uid) {
+    if (empty($uid)) {
+        return ['success' => false, 'error' => 'No UID provided for delete'];
+    }
+
+    $payload = ['uid' => $uid];
+    $result = flintlock_grpc_call('DeleteMicroVM', $payload);
+
+    return [
+        'success' => $result['success'],
+        'error' => $result['error'],
+        'raw' => $result['raw'] ?? '',
+    ];
+}
+
+/**
+ * Stop a MicroVM via flintlockd. Since flintlockd doesn't support stop-without-delete,
+ * this deletes the VM spec (which triggers graceful shutdown).
+ *
+ * @param string $name      VM name
+ * @param string $namespace Flintlock namespace
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function flintlock_stop_vm($name, $namespace = null) {
+    $namespace = $namespace ?? FLINTLOCK_NAMESPACE;
+
+    // First, get the UID for this VM
+    $status = flintlock_get_vm_status($name, $namespace);
+    if (!$status['success']) {
+        return ['success' => false, 'error' => $status['error']];
+    }
+    if ($status['state'] === 'not_found') {
+        return ['success' => true, 'error' => null]; // Already gone
+    }
+
+    $uid = $status['uid'];
+    if (empty($uid)) {
+        return ['success' => false, 'error' => "Could not determine UID for VM '$name'"];
+    }
+
+    return flintlock_delete_vm($uid);
+}
+
+/**
+ * Save the flintlockd UID mapping for a VM to its config.json.
+ * This allows correlating local VM names with flintlockd UIDs.
+ */
+function flintlock_save_uid($name, $uid) {
+    $cfg = microvm_load_config();
+    $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+    $configFile = "$vmdir/$name/config.json";
+
+    if (file_exists($configFile)) {
+        $config = json_decode(file_get_contents($configFile), true) ?: [];
+    } else {
+        @mkdir("$vmdir/$name", 0755, true);
+        $config = [];
+    }
+
+    $config['flintlock_uid'] = $uid;
+    $config['flintlock_namespace'] = FLINTLOCK_NAMESPACE;
+    file_put_contents($configFile, json_encode($config, JSON_PRETTY_PRINT));
+}
+
+/**
+ * Load the flintlockd UID for a VM from its config.json.
+ *
+ * @param string $name VM name
+ * @return string|null The UID or null if not found
+ */
+function flintlock_load_uid($name) {
+    $cfg = microvm_load_config();
+    $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+    $configFile = "$vmdir/$name/config.json";
+
+    if (!file_exists($configFile)) return null;
+
+    $config = json_decode(file_get_contents($configFile), true);
+    return $config['flintlock_uid'] ?? null;
+}
+
+// ============================================================================
+// End Flintlockd / gRPC Section
+// ============================================================================
 
 function microvm_pull_oci_image($image, $outputPath) {
     // Use crane to export OCI image as filesystem

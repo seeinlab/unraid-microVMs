@@ -3,10 +3,10 @@ Type="xmenu"
 Code="e918"
 Lock="true"
 Tabs="true"
-Cond="is_file('/usr/local/bin/flintlockd')"
+Cond="is_file('/usr/local/bin/cloud-hypervisor') || is_file('/usr/local/bin/firecracker')"
 ---
 <?php
-$plugin = "microvm.liquidmetal";
+$plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
@@ -16,7 +16,7 @@ $noticeMessage = null;
 if (($var['fsState'] ?? '') != "Started") {
     $noticeMessage = "Array must be <b>started</b> to manage microVMs";
 } elseif (($cfg['SERVICE'] ?? 'disable') !== 'enable') {
-    $noticeMessage = "microVM Liquidmetal is disabled. <a href='/Settings/MicroVMLiquidmetal'>Enable in Settings</a>";
+    $noticeMessage = "microVMs service is disabled. <a href='/Settings/MicroVMsControlplane'>Enable in Settings</a>";
 }
 ?>
 <?php if ($noticeMessage): ?>

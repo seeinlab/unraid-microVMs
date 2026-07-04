@@ -1,11 +1,11 @@
 #!/bin/bash
-# /etc/rc.d/rc.microvm - MicroVM Liquidmetal service (orchestrated mode)
-# Manages: thin pool, flintlock-containerd, flintlockd, and direct VM lifecycle
+# /etc/rc.d/rc.microvm - microVMs service
+# Manages: thin pool, flintlock-containerd, crane registry, flintlockd, and direct VM lifecycle
 
-PLUGIN="microvm.liquidmetal"
-CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.cfg"
-SYSTEM_DIR="/mnt/user/system/liquidmetal"
-RUNTIME_DIR="/var/run/liquidmetal"
+PLUGIN="microvms"
+CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg"
+SYSTEM_DIR="/mnt/user/system/microvms"
+RUNTIME_DIR="/var/run/microvms"
 
 # Binaries
 CH_BIN="/usr/local/bin/cloud-hypervisor"
@@ -15,11 +15,11 @@ CONTAINERD_BIN="/usr/local/bin/flintlock-containerd"
 FLINTLOCKD_BIN="/usr/local/bin/flintlockd"
 
 # PID files
-CONTAINERD_PID="${RUNTIME_DIR}/containerd.pid"
+CONTAINERD_PID="${RUNTIME_DIR}/flintlock-containerd.pid"
 FLINTLOCKD_PID="${RUNTIME_DIR}/flintlockd.pid"
 
 # Sockets
-CONTAINERD_SOCK="${RUNTIME_DIR}/containerd.sock"
+CONTAINERD_SOCK="${RUNTIME_DIR}/flintlock-containerd.sock"
 
 # Logs
 CONTAINERD_LOG="/var/log/flintlock-containerd.log"
@@ -32,7 +32,7 @@ VMDIR="${VMDIR:-/mnt/user/microvms}"
 BRIDGE="${BRIDGE:-br0}"
 DEFAULT_CPUS="${DEFAULT_CPUS:-1}"
 DEFAULT_MEMORY="${DEFAULT_MEMORY:-256}"
-DEFAULT_ENGINE="${DEFAULT_ENGINE:-cloud-hypervisor}"
+DEFAULT_VMM="${DEFAULT_VMM:-cloud-hypervisor}"
 AUTOSTART="${AUTOSTART:-no}"
 THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE:-50G}"
 THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
@@ -229,16 +229,16 @@ start_containerd() {
   log "Starting flintlock-containerd..."
 
   # Create runtime directories
-  mkdir -p "${SYSTEM_DIR}/containerd"
-  mkdir -p "${RUNTIME_DIR}/containerd-state"
+  mkdir -p "${SYSTEM_DIR}/flintlock-containerd"
+  mkdir -p "${RUNTIME_DIR}/flintlock-containerd-state"
 
   # Generate containerd config with devmapper snapshotter
-  local containerd_config="${RUNTIME_DIR}/containerd-config.toml"
+  local containerd_config="${RUNTIME_DIR}/flintlock-containerd-config.toml"
   cat > "$containerd_config" << EOF
 version = 2
 
-root = "${SYSTEM_DIR}/containerd"
-state = "${RUNTIME_DIR}/containerd-state"
+root = "${SYSTEM_DIR}/flintlock-containerd"
+state = "${RUNTIME_DIR}/flintlock-containerd-state"
 
 [grpc]
   address = "${CONTAINERD_SOCK}"
@@ -246,7 +246,7 @@ state = "${RUNTIME_DIR}/containerd-state"
 [plugins]
   [plugins."io.containerd.snapshotter.v1.devmapper"]
     pool_name = "${THINPOOL_NAME}"
-    root_path = "${SYSTEM_DIR}/containerd/devmapper"
+    root_path = "${SYSTEM_DIR}/flintlock-containerd/devmapper"
     base_image_size = "10GB"
     discard_blocks = true
 
@@ -553,7 +553,7 @@ start_vm() {
   cpus=${cpus:-$DEFAULT_CPUS}
   max_cpus=${max_cpus:-$((cpus * 2))}
   memory=${memory:-$DEFAULT_MEMORY}
-  engine=${engine:-$DEFAULT_ENGINE}
+  engine=${engine:-$DEFAULT_VMM}
 
   # Resolve FUSE paths to real disk paths
   kernel=$(resolve_path "$kernel")
@@ -642,10 +642,10 @@ stop_vm() {
   fi
 
   # Detect engine
-  local engine="$DEFAULT_ENGINE"
+  local engine="$DEFAULT_VMM"
   if [ -f "$vmdir/config.json" ]; then
     engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$vmdir/config.json" 2>/dev/null)
-    engine=${engine:-$DEFAULT_ENGINE}
+    engine=${engine:-$DEFAULT_VMM}
   fi
 
   if [ "$engine" = "firecracker" ]; then
@@ -688,7 +688,7 @@ stop_vm() {
 
 microvm_start() {
   if [ "$SERVICE" != "enable" ]; then
-    log "MicroVM Liquidmetal service disabled in settings"
+    log "microVMs service disabled in settings"
     return 0
   fi
 
@@ -697,7 +697,7 @@ microvm_start() {
     return 1
   fi
 
-  log "=== Starting MicroVM Liquidmetal service ==="
+  log "=== Starting microVMs service ==="
 
   # Create runtime directory
   mkdir -p "$RUNTIME_DIR"
@@ -764,11 +764,11 @@ microvm_start() {
     done
   fi
 
-  log "=== MicroVM Liquidmetal service started ==="
+  log "=== microVMs service started ==="
 }
 
 microvm_stop() {
-  log "=== Stopping MicroVM Liquidmetal service ==="
+  log "=== Stopping microVMs service ==="
 
   # Step 1: Stop all running VMs
   log "[1/6] Stopping all VMs..."
@@ -801,11 +801,11 @@ microvm_stop() {
   # Cleanup runtime
   rm -rf "$RUNTIME_DIR"
 
-  log "=== MicroVM Liquidmetal service stopped ==="
+  log "=== microVMs service stopped ==="
 }
 
 microvm_status() {
-  echo "=== MicroVM Liquidmetal Status ==="
+  echo "=== microVMs Status ==="
   echo ""
 
   # Thin pool status
@@ -855,7 +855,7 @@ microvm_status() {
   echo "--- Configuration ---"
   echo "  VMDIR:    $VMDIR"
   echo "  BRIDGE:   $BRIDGE"
-  echo "  ENGINE:   $DEFAULT_ENGINE"
+  echo "  VMM:   $DEFAULT_VMM"
   echo "  AUTOSTART: $AUTOSTART"
   echo "  SERVICE:  $SERVICE"
 }
@@ -871,10 +871,16 @@ case "$1" in
   status)            microvm_status ;;
   start_vm)          start_vm "$2" ;;
   stop_vm)           stop_vm "$2" ;;
+  start_containerd)  start_containerd ;;
+  stop_containerd)   stop_containerd ;;
+  start_registry)    start_registry ;;
+  stop_registry)     stop_registry ;;
+  start_flintlockd)  start_flintlockd ;;
+  stop_flintlockd)   stop_flintlockd ;;
   setup_thinpool)    setup_thinpool ;;
   teardown_thinpool) teardown_thinpool ;;
   *)
-    echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME|setup_thinpool|teardown_thinpool}"
+    echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME|start_containerd|stop_containerd|start_registry|stop_registry|start_flintlockd|stop_flintlockd|setup_thinpool|teardown_thinpool}"
     exit 1
     ;;
 esac

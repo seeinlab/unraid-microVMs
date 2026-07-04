@@ -1,6 +1,6 @@
 <?php
 /*
- * microVM Liquidmetal for Unraid
+ * microVMs for Unraid
  * Copyright (C) 2026
  * License: GPL-2.0
  *
@@ -18,11 +18,7 @@
  *   CRUD:      create, create_json, delete, delete_rootfs, pull_rootfs
  *   Config:    autostart, service
  *
- * Orchestrator Modes:
- *   - 'direct': Uses rc.microvm + Cloud Hypervisor/Firecracker directly (default)
- *   - 'flintlockd': Uses grpcurl → flintlockd gRPC for VM lifecycle
- *   - 'auto': Auto-detects based on whether flintlockd is running
- *   Set via ORCHESTRATOR_MODE in plugin config (.cfg file)
+ * Mode: Direct (CH/FC via rc.microvm). Flintlock services available for remote automation.
  *
  * References:
  *   - docs/feature-api-mapping.md (UI ΓåÆ Backend ΓåÆ Engine API)
@@ -31,7 +27,7 @@
  */
 error_reporting(0); // Suppress warnings from mixing with JSON output
 
-$plugin = "microvm.liquidmetal";
+$plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
@@ -39,7 +35,7 @@ header('Content-Type: application/json');
 
 // Log function
 function microvm_log($msg) {
-    $logfile = '/var/log/microvm-liquidmetal.log';
+    $logfile = '/var/log/microvms.log';
     $ts = date('Y-m-d H:i:s');
     file_put_contents($logfile, "[$ts] $msg\n", FILE_APPEND);
 }
@@ -54,158 +50,46 @@ $name = $_POST['name'] ?? '';
 switch ($cmd) {
     case 'list':
         $vms = microvm_list_vms();
-        // If in flintlockd mode, enrich status from gRPC
-        if (microvm_is_flintlock_mode()) {
-            $flResult = flintlock_list_vms();
-            if ($flResult['success'] && !empty($flResult['vms'])) {
-                // Build lookup by VM id
-                $flMap = [];
-                foreach ($flResult['vms'] as $flVm) {
-                    $id = $flVm['spec']['id'] ?? '';
-                    if ($id) $flMap[$id] = $flVm;
-                }
-                // Merge flintlockd state into local VM list
-                foreach ($vms as &$vm) {
-                    $vmName = $vm['name'];
-                    if (isset($flMap[$vmName])) {
-                        $flState = $flMap[$vmName]['status']['state'] ?? 'unknown';
-                        $vm['state'] = ($flState === 'CREATED' || $flState === 'RUNNING') ? 'running' : 'stopped';
-                        $vm['flintlock_uid'] = $flMap[$vmName]['spec']['uid'] ?? null;
-                        $vm['orchestrator'] = 'flintlockd';
-                    }
-                }
-                unset($vm);
-            }
-        }
         echo json_encode($vms);
         break;
 
     case 'start':
-        if (microvm_is_flintlock_mode()) {
-            // Flintlockd: "start" means re-create the VM (flintlock doesn't support start of stopped VM)
-            $configFile = "$vmdir/$name/config.json";
-            if (!file_exists($configFile)) {
-                echo json_encode(['success' => false, 'error' => "VM '$name' config not found"]);
-                break;
-            }
-            $vmConfig = json_decode(file_get_contents($configFile), true);
-            $vcpu = $vmConfig['boot_vcpus'] ?? ($cfg['DEFAULT_CPUS'] ?? 1);
-            $memMb = $vmConfig['memory_mb'] ?? ($cfg['DEFAULT_MEMORY'] ?? 256);
-            $ociImage = $vmConfig['oci_image'] ?? 'docker.io/library/alpine:3.18';
-            $diskMb = $vmConfig['disk_size_mb'] ?? 500;
-
-            // Check if already running in flintlockd
-            $status = flintlock_get_vm_status($name);
-            if ($status['state'] === 'CREATED' || $status['state'] === 'RUNNING') {
-                echo json_encode(['success' => true, 'message' => "VM '$name' is already running (flintlockd)"]);
-                break;
-            }
-
-            $result = flintlock_create_vm($name, $vcpu, $memMb, $ociImage, $diskMb);
-            if ($result['success']) {
-                flintlock_save_uid($name, $result['uid']);
-                microvm_log("FLINTLOCK START (re-create): $name uid={$result['uid']}");
-                echo json_encode(['success' => true, 'message' => "VM '$name' started via flintlockd", 'uid' => $result['uid'], 'orchestrator' => 'flintlockd']);
-            } else {
-                echo json_encode(['success' => false, 'error' => "Flintlockd create failed: " . $result['error']]);
-            }
-        } else {
-            $result = microvm_start_vm($name);
-            echo json_encode($result);
-        }
+        $result = microvm_start_vm($name);
+        echo json_encode($result);
         break;
 
     case 'stop':
-        if (microvm_is_flintlock_mode()) {
-            // Flintlockd DeleteMicroVM handles graceful shutdown internally:
-            //   1. Calls vm.shutdown on CH API (graceful OS halt)
-            //   2. Waits 30s for VM state == Shutdown
-            //   3. Sends SIGHUP to CH process
-            //   4. Waits for process exit
-            $result = flintlock_stop_vm($name);
-            if ($result['success']) {
-                microvm_log("FLINTLOCK STOP: $name (DeleteMicroVM with graceful shutdown)");
-                echo json_encode(['success' => true, 'message' => "VM '$name' stopped via flintlockd", 'orchestrator' => 'flintlockd']);
-            } else {
-                echo json_encode(['success' => false, 'error' => "Flintlockd stop failed: " . $result['error']]);
-            }
-        } else {
-            $result = microvm_stop_vm($name);
-            echo json_encode($result);
-        }
+        $result = microvm_stop_vm($name);
+        echo json_encode($result);
         break;
 
     case 'force_stop':
-        if (microvm_is_flintlock_mode()) {
-            // Force: kill CH process directly, then clean up flintlockd spec
-            $status = flintlock_get_vm_status($name);
-            $uid = $status['uid'] ?? flintlock_load_uid($name);
-
-            // Find CH process for this VM in flintlockd state dir
-            $escapedName = preg_quote($name, '/');
-            $pid = trim(shell_exec("pgrep -f 'flintlockd-state/vm/.*/{$escapedName}/' 2>/dev/null | head -1"));
-            if ($pid) {
-                exec("kill -9 $pid 2>&1");
-                microvm_log("FLINTLOCK FORCE_STOP: killed PID $pid for $name");
-            }
-
-            // Kill any ttyd console relay
-            $ttydPid = "/tmp/ttyd-microvm-{$name}.pid";
-            if (file_exists($ttydPid)) {
-                $tpid = trim(file_get_contents($ttydPid));
-                if ($tpid) exec("kill $tpid 2>/dev/null");
-                @unlink($ttydPid);
-            }
-
-            // Delete spec from flintlockd
-            if ($uid) {
-                flintlock_delete_vm($uid);
-            }
-            echo json_encode(['success' => true, 'message' => "Force killed VM '$name' (flintlockd)", 'orchestrator' => 'flintlockd']);
+        $sock = "/tmp/microvm-{$name}.sock";
+        // Kill any ttyd console relay
+        $ttydPid = "/tmp/ttyd-microvm-{$name}.pid";
+        if (file_exists($ttydPid)) {
+            $tpid = trim(file_get_contents($ttydPid));
+            if ($tpid) exec("kill $tpid 2>/dev/null");
+            @unlink($ttydPid);
+        }
+        // Kill the process
+        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        if ($pid) {
+            exec("kill -9 $pid 2>&1");
+            sleep(1);
+            @unlink($sock);
+            echo json_encode(['success' => true, 'message' => "Force killed VM $name (PID: $pid)"]);
         } else {
-            $sock = "/tmp/microvm-{$name}.sock";
-            // Kill any ttyd console relay
-            $ttydPid = "/tmp/ttyd-microvm-{$name}.pid";
-            if (file_exists($ttydPid)) {
-                $tpid = trim(file_get_contents($ttydPid));
-                if ($tpid) exec("kill $tpid 2>/dev/null");
-                @unlink($ttydPid);
-            }
-            // Kill the process - search for the socket path in cmdline
-            $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
-            if ($pid) {
-                exec("kill -9 $pid 2>&1");
-                sleep(1);
-                @unlink($sock);
-                echo json_encode(['success' => true, 'message' => "Force killed VM $name (PID: $pid)"]);
-            } else {
-                // Try removing stale socket
-                @unlink($sock);
-                echo json_encode(['success' => true, 'message' => "No process found, cleaned stale socket"]);
-            }
+            @unlink($sock);
+            echo json_encode(['success' => true, 'message' => "No process found, cleaned stale socket"]);
         }
         break;
 
     case 'info':
-        // If flintlockd mode, merge gRPC status
-        if (microvm_is_flintlock_mode()) {
-            $flStatus = flintlock_get_vm_status($name);
-            $configFile = "$vmdir/$name/config.json";
-            $localConfig = file_exists($configFile) ? json_decode(file_get_contents($configFile), true) : [];
-            $info = array_merge($localConfig, [
-                'orchestrator' => 'flintlockd',
-                'flintlock_state' => $flStatus['state'],
-                'flintlock_uid' => $flStatus['uid'],
-                'flintlock_vm' => $flStatus['vm'],
-            ]);
-            echo json_encode($info);
-            break;
-        }
         $info = microvm_get_vm_info($name);
         if ($info) {
             echo json_encode($info);
         } else {
-            // Return the config file content
             $configFile = "$vmdir/$name/config.json";
             if (file_exists($configFile)) {
                 echo file_get_contents($configFile);
@@ -216,31 +100,17 @@ switch ($cmd) {
         break;
 
     case 'status':
-        // Dedicated status check — works in both modes
-        if (microvm_is_flintlock_mode()) {
-            $flStatus = flintlock_get_vm_status($name);
-            echo json_encode([
-                'success' => $flStatus['success'],
-                'name' => $name,
-                'state' => $flStatus['state'],
-                'uid' => $flStatus['uid'],
-                'orchestrator' => 'flintlockd',
-                'error' => $flStatus['error'],
-            ]);
-        } else {
-            $sock = "/tmp/microvm-{$name}.sock";
-            $running = false;
-            if (file_exists($sock)) {
-                exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
-                $running = ($ret === 0);
-            }
-            echo json_encode([
-                'success' => true,
-                'name' => $name,
-                'state' => $running ? 'running' : 'stopped',
-                'orchestrator' => 'direct',
-            ]);
+        $sock = "/tmp/microvm-{$name}.sock";
+        $running = false;
+        if (file_exists($sock)) {
+            exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
+            $running = ($ret === 0);
         }
+        echo json_encode([
+            'success' => true,
+            'name' => $name,
+            'state' => $running ? 'running' : 'stopped',
+        ]);
         break;
 
     case 'resize':
@@ -251,7 +121,7 @@ switch ($cmd) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
             $vmEngine = $vmConfig['engine'] ?? 'cloud-hypervisor';
             if ($vmEngine === 'firecracker') {
-                echo json_encode(['success' => false, 'error' => 'Live resize not supported for Firecracker engine. Recreate VM with new config.']);
+                echo json_encode(['success' => false, 'error' => 'Live resize not supported for Firecracker VMM. Recreate VM with new config.']);
                 break;
             }
         }
@@ -308,46 +178,6 @@ switch ($cmd) {
     case 'delete':
         $vmPath = "$vmdir/$name";
 
-        // --- Flintlockd mode: delete via gRPC first, then clean up local files ---
-        if (microvm_is_flintlock_mode()) {
-            // Check for snapshots - block delete if any exist
-            $snapDir = "$vmPath/snapshots";
-            if (is_dir($snapDir) && count(glob("$snapDir/*")) > 0) {
-                $snapCount = count(glob("$snapDir/*"));
-                echo json_encode(['success' => false, 'error' => "Cannot delete: VM has $snapCount snapshot(s). Remove snapshots first."]);
-                break;
-            }
-
-            // Try to delete from flintlockd
-            $uid = flintlock_load_uid($name);
-            if ($uid) {
-                $flResult = flintlock_delete_vm($uid);
-                if (!$flResult['success']) {
-                    microvm_log("FLINTLOCK DELETE warning: $name uid=$uid - " . ($flResult['error'] ?? 'unknown'));
-                    // Continue to local cleanup even if flintlock delete fails (VM may already be gone)
-                }
-            } else {
-                // Try to find by name
-                $status = flintlock_get_vm_status($name);
-                if ($status['uid']) {
-                    flintlock_delete_vm($status['uid']);
-                }
-            }
-
-            // Remove local VM folder
-            if (is_dir($vmPath)) {
-                exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);
-                $remaining = is_dir($vmPath) ? glob("$vmPath/*") : [];
-                $deleted = ($ret === 0) || empty($remaining);
-                microvm_log("FLINTLOCK DELETE: $name local cleanup " . ($deleted ? 'OK' : 'PARTIAL'));
-                echo json_encode(['success' => $deleted, 'message' => "VM '$name' deleted (flintlockd + local).", 'orchestrator' => 'flintlockd']);
-            } else {
-                echo json_encode(['success' => true, 'message' => "VM '$name' deleted from flintlockd (no local folder).", 'orchestrator' => 'flintlockd']);
-            }
-            break;
-        }
-
-        // --- Direct mode (original code path) ---
         // Check for snapshots - block delete if any exist
         $snapDir = "$vmPath/snapshots";
         if (is_dir($snapDir) && count(glob("$snapDir/*")) > 0) {
@@ -392,57 +222,10 @@ switch ($cmd) {
         $rootfsPath = $_POST['rootfs_path'] ?? '';
         $engine = $_POST['engine'] ?? 'cloud-hypervisor';
 
-        // --- Flintlockd Orchestrated Mode ---
-        if (microvm_is_flintlock_mode()) {
-            // Normalize OCI image to full registry path
-            $fullOciImage = $ociImage;
-            if (strpos($ociImage, '/') === false) {
-                $fullOciImage = "docker.io/library/$ociImage";
-            } elseif (strpos($ociImage, '.') === false && strpos($ociImage, ':') === false) {
-                $fullOciImage = "docker.io/$ociImage";
-            }
-
-            $result = flintlock_create_vm($name, $cpus, $memory, $fullOciImage, $diskSize);
-
-            if ($result['success']) {
-                // Save config locally for reference
-                $vmPath = "$vmdir/$name";
-                @mkdir($vmPath, 0755, true);
-                $config = [
-                    'name' => $name,
-                    'engine' => $engine,
-                    'boot_vcpus' => $cpus,
-                    'memory_mb' => $memory,
-                    'oci_image' => $fullOciImage,
-                    'disk_size_mb' => $diskSize,
-                    'ip' => $ip,
-                    'bridge' => $bridge,
-                    'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
-                    'orchestrator' => 'flintlockd',
-                    'flintlock_uid' => $result['uid'],
-                    'flintlock_namespace' => FLINTLOCK_NAMESPACE,
-                    'created_at' => date('c'),
-                ];
-                file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
-
-                microvm_log("FLINTLOCK CREATE: $name uid={$result['uid']}");
-                echo json_encode([
-                    'success' => true,
-                    'message' => "VM '$name' created and started via flintlockd",
-                    'started' => true,
-                    'uid' => $result['uid'],
-                    'orchestrator' => 'flintlockd',
-                ]);
-            } else {
-                echo json_encode(['success' => false, 'error' => "Flintlockd create failed: " . $result['error']]);
-            }
-            break;
-        }
-
-        // --- Direct Mode (original code path) ---
+        // --- Direct Mode ---
         $vmPath = "$vmdir/$name";
         $rootfs = "$vmPath/rootfs.raw";
-        $systemDir = '/mnt/user/system/liquidmetal';
+        $systemDir = '/mnt/user/system/microvms';
         $kernel = "$systemDir/$engine/kernels/vmlinux";
 
         // Create VM directory
@@ -759,6 +542,47 @@ INIT;
         }
         break;
 
+    case 'liquidmetal':
+        // Toggle Liquidmetal services (flintlockd + containerd + registry) for remote automation
+        $action = $_POST['action'] ?? '';
+        if ($action === 'status') {
+            $running = microvm_is_flintlock_running();
+            $containerdPid = trim(shell_exec("cat /var/run/microvms/flintlock-containerd.pid 2>/dev/null"));
+            $registryPid = trim(shell_exec("cat /var/run/microvms/crane-registry.pid 2>/dev/null"));
+            echo json_encode([
+                'success' => true,
+                'running' => $running,
+                'services' => [
+                    'flintlockd' => !empty(trim(shell_exec("pgrep -x flintlockd 2>/dev/null"))),
+                    'containerd' => !empty($containerdPid) && file_exists("/proc/$containerdPid"),
+                    'registry' => !empty($registryPid) && file_exists("/proc/$registryPid"),
+                ],
+                'grpc_port' => 9090,
+            ]);
+        } elseif ($action === 'start') {
+            // Start containerd, registry, flintlockd
+            exec("/etc/rc.d/rc.microvm start_containerd 2>&1", $o1, $r1);
+            exec("/etc/rc.d/rc.microvm start_registry 2>&1", $o2, $r2);
+            exec("/etc/rc.d/rc.microvm start_flintlockd 2>&1", $o3, $r3);
+            $allOk = ($r1 === 0 && $r3 === 0);
+            echo json_encode([
+                'success' => $allOk,
+                'message' => implode("\n", array_merge($o1, $o2, $o3)),
+            ]);
+        } elseif ($action === 'stop') {
+            // Stop flintlockd, registry, containerd
+            exec("/etc/rc.d/rc.microvm stop_flintlockd 2>&1", $o1, $r1);
+            exec("/etc/rc.d/rc.microvm stop_registry 2>&1", $o2, $r2);
+            exec("/etc/rc.d/rc.microvm stop_containerd 2>&1", $o3, $r3);
+            echo json_encode([
+                'success' => true,
+                'message' => implode("\n", array_merge($o1, $o2, $o3)),
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Invalid action (start/stop/status)']);
+        }
+        break;
+
     case 'delete_rootfs':
         $rootfsPath = "$vmdir/$name";
         // Check VM is not running
@@ -833,7 +657,7 @@ INIT;
     case 'download_kernels':
         $dl_ch = ($_POST['cloud_hypervisor'] ?? '0') === '1';
         $dl_fc = ($_POST['firecracker'] ?? '0') === '1';
-        $kernelDir = "/mnt/user/system/liquidmetal";
+        $kernelDir = "/mnt/user/system/microvms";
         $results = [];
         $errors = [];
 
