@@ -1,0 +1,429 @@
+Menu="OtherSettings"
+Icon="microvm.liquidmetal.png"
+Title="microVM Liquidmetal"
+Tag="microchip"
+---
+<?php
+$plugin = "microvm.liquidmetal";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+$kernelDir = "/mnt/user/system/liquidmetal";
+
+// --- Component status checks ---
+$flintlockd_bin = is_file('/usr/local/bin/flintlockd');
+$flintlockd_running = !empty(trim(shell_exec('pgrep -f flintlockd 2>/dev/null')));
+$flintlockd_version = $flintlockd_bin ? trim(shell_exec('flintlockd version 2>/dev/null')) : false;
+
+$containerd_bin = is_file('/usr/local/bin/flintlock-containerd');
+$containerd_running = !empty(trim(shell_exec('pgrep -f flintlock-containerd 2>/dev/null')));
+$containerd_version = $containerd_bin ? trim(shell_exec('flintlock-containerd --version 2>/dev/null | head -1')) : false;
+
+$ch_bin = is_file('/usr/local/bin/cloud-hypervisor');
+$ch_version = $ch_bin ? trim(shell_exec('cloud-hypervisor --version 2>/dev/null')) : false;
+$ch_kernel = is_file("$kernelDir/cloud-hypervisor/kernels/vmlinux");
+$ch_kernel_size = $ch_kernel ? round(filesize("$kernelDir/cloud-hypervisor/kernels/vmlinux") / 1048576) . ' MB' : false;
+$ch_kernel_ver = $ch_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/cloud-hypervisor/kernels/vmlinux") . " 2>/dev/null | head -1")) : false;
+
+$fc_bin = is_file('/usr/local/bin/firecracker');
+$fc_version = $fc_bin ? trim(shell_exec('firecracker --version 2>&1 | head -1')) : false;
+$fc_kernel = is_file("$kernelDir/firecracker/kernels/vmlinux");
+$fc_kernel_size = $fc_kernel ? round(filesize("$kernelDir/firecracker/kernels/vmlinux") / 1048576) . ' MB' : false;
+$fc_kernel_ver = $fc_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/firecracker/kernels/vmlinux") . " 2>/dev/null | head -1")) : false;
+
+$kvm_available = is_readable('/dev/kvm');
+$thinpool_name = 'microvm-thinpool';
+$thinpool_exists = file_exists("/dev/mapper/{$thinpool_name}");
+
+// VM Manager (libvirt) status
+$libvirt_running = !empty(trim(shell_exec('pgrep -x libvirtd 2>/dev/null')));
+$libvirt_version = $libvirt_running ? trim(shell_exec("virsh version --daemon 2>/dev/null | grep -oP 'libvirt \\K[\\d.]+'| head -1")) : false;
+$qemu_version = $libvirt_running ? trim(shell_exec("virsh version 2>/dev/null | grep -oP 'QEMU \\K[\\d.]+'| tail -1")) : false;
+$domain_cfg = @parse_ini_file('/boot/config/domain.cfg') ?: [];
+$vm_manager_enabled = ($domain_cfg['SERVICE'] ?? '') === 'enable';
+
+// Overall readiness
+$issues = [];
+if (!$flintlockd_bin) $issues[] = "flintlockd not installed";
+if ($flintlockd_bin && !$flintlockd_running) $issues[] = "flintlockd not running";
+if (!$containerd_bin) $issues[] = "flintlock-containerd not installed";
+if ($containerd_bin && !$containerd_running) $issues[] = "flintlock-containerd not running";
+if (!$kvm_available) $issues[] = "/dev/kvm not available";
+if (!$ch_kernel && !$fc_kernel) $issues[] = "No kernel images downloaded";
+
+$is_ready = empty($issues);
+$status_class = $is_ready ? 'color:#4CAF50' : 'color:#f44336';
+$status_text = $is_ready ? 'Ready' : 'Not Ready';
+?>
+
+<style>
+.mvm-section { margin-bottom: 4px; border: 1px solid rgba(128,128,128,0.3); border-radius: 4px; overflow: hidden; }
+.mvm-section > summary { padding: 12px 16px; font-weight: 600; font-size: 15px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; background: rgba(128,128,128,0.08); border-bottom: 1px solid transparent; user-select: none; }
+.mvm-section[open] > summary { border-bottom-color: rgba(128,128,128,0.3); }
+.mvm-section > summary::-webkit-details-marker { display: none; }
+.mvm-section > summary::before { content: '\f054'; font-family: FontAwesome; font-size: 0.75em; transition: transform 0.15s; display: inline-block; width: 1em; text-align: center; }
+.mvm-section[open] > summary::before { transform: rotate(90deg); }
+.mvm-section > summary:hover { background: rgba(128,128,128,0.15); }
+.mvm-section-body { padding: 16px; }
+.mvm-badge { font-size: 0.8em; padding: 2px 8px; border-radius: 3px; margin-left: auto; }
+.mvm-badge-ok { background: rgba(76,175,80,0.15); color: #4CAF50; }
+.mvm-badge-warn { background: rgba(244,67,54,0.15); color: #f44336; }
+.mvm-badge-off { background: rgba(128,128,128,0.15); color: #999; }
+.mvm-row { display: flex; align-items: center; padding: 8px 0; gap: 12px; }
+.mvm-row-label { min-width: 140px; font-weight: 500; }
+.mvm-row-value { flex: 1; font-family: monospace; font-size: 0.9em; }
+.mvm-btn { padding: 5px 14px; border: 1px solid rgba(128,128,128,0.4); border-radius: 3px; background: rgba(128,128,128,0.1); color: inherit; cursor: pointer; font-size: 0.85em; }
+.mvm-btn:hover { background: rgba(128,128,128,0.2); }
+.mvm-btn-primary { border-color: #4CAF50; color: #4CAF50; }
+.mvm-btn-primary:hover { background: rgba(76,175,80,0.15); }
+.mvm-advanced { display: none; }
+.mvm-advanced.show { display: block; }
+</style>
+
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+
+<!-- Status + Mode Toggle -->
+<div class="title">
+  <span class="left"><i class="title fa fa-fire"></i>Status</span>
+  <span class="right" style="display:flex;align-items:center;gap:16px;">
+    <span style="font-size:0.85em;">BASIC VIEW</span>
+    <input type="checkbox" id="mvm-mode-toggle" class="advmode">
+    Status: <b style="<?=$status_class?>"><?=$status_text?></b>
+  </span>
+</div>
+
+<?php if (!$is_ready): ?>
+<?php foreach ($issues as $issue): ?>
+<blockquote style="color:#f44336; margin:4px 0;">✗ <?=$issue?></blockquote>
+<?php endforeach; ?>
+<?php endif; ?>
+
+<!-- General Settings (top, always visible) -->
+<details class="mvm-section" open>
+  <summary><i class="fa fa-gears"></i> General Settings</summary>
+  <div class="mvm-section-body">
+    <form markdown="1" method="POST" action="/update.php" target="progressFrame">
+    <input type="hidden" name="#file" value="microvm.liquidmetal/microvm.liquidmetal.cfg">
+
+_(Enable microVM Liquidmetal)_:
+: <select name="SERVICE">
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', 'disable', _('No'))?>
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', 'enable', _('Yes'))?>
+  </select>
+
+_(VM Storage Location)_:
+: <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
+
+_(Network Bridge)_:
+: <select name="BRIDGE">
+  <?php foreach(glob('/sys/class/net/br*') as $br): $name=basename($br); ?>
+  <?=mk_option($cfg['BRIDGE'] ?? 'br0', $name, $name)?>
+  <?php endforeach; ?>
+  </select>
+
+_(Default vCPUs)_:
+: <input type="number" name="DEFAULT_CPUS" min="1" max="<?=exec('nproc')?>" value="<?=htmlspecialchars($cfg['DEFAULT_CPUS'] ?? '1')?>">
+
+_(Default Memory)_ (MB):
+: <input type="number" name="DEFAULT_MEMORY" min="64" step="64" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>">
+
+_(Autostart VMs on array start)_:
+: <select name="AUTOSTART">
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'no', _('No'))?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'yes', _('Yes'))?>
+  </select>
+
+&nbsp;
+: <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
+
+    </form>
+  </div>
+</details>
+
+<!-- VM Manager (libvirt) -->
+<details class="mvm-section" open>
+  <summary>
+    <i class="fa fa-desktop"></i> VM Manager (libvirt)
+    <?php if ($vm_manager_enabled && $libvirt_running): ?>
+      <span class="mvm-badge mvm-badge-ok">linked</span>
+    <?php elseif ($vm_manager_enabled): ?>
+      <span class="mvm-badge mvm-badge-warn">not running</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">disabled</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <div class="mvm-row">
+      <span class="mvm-row-label">Service:</span>
+      <span class="mvm-row-value"><?=$vm_manager_enabled ? 'Enabled' : '<span style="color:#999">Disabled</span>'?> — <a href="/Settings/VMSettings">VM Manager Settings</a></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">libvirtd:</span>
+      <span class="mvm-row-value"><?=$libvirt_running ? 'running' : '<span style="color:#f44336">not running</span>'?><?=$libvirt_version ? " (libvirt $libvirt_version)" : ''?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">QEMU:</span>
+      <span class="mvm-row-value"><?=$qemu_version ?: '—'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Bridge:</span>
+      <span class="mvm-row-value"><?=$domain_cfg['BRNAME'] ?? 'br0'?> (shared with microVMs)</span>
+    </div>
+    <p style="margin:8px 0 0; font-size:0.85em; opacity:0.7;">microVM Liquidmetal shares KVM, bridge, and kernel modules with Unraid's native VM Manager.</p>
+  </div>
+</details>
+
+<!-- Cloud Hypervisor -->
+<details class="mvm-section" open>
+  <summary>
+    <i class="fa fa-cloud"></i> Cloud Hypervisor
+    <?php if ($ch_bin && $ch_kernel): ?>
+      <span class="mvm-badge mvm-badge-ok">ready</span>
+    <?php elseif ($ch_bin): ?>
+      <span class="mvm-badge mvm-badge-warn">kernel missing</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">not installed</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <div class="mvm-row">
+      <span class="mvm-row-label">Binary:</span>
+      <span class="mvm-row-value"><?=$ch_version ?: '<span style="color:#f44336">not installed</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Kernel:</span>
+      <span class="mvm-row-value">
+        <?php if ($ch_kernel): ?>
+          Linux <?=$ch_kernel_ver ?: '?'?> — vmlinux (<?=$ch_kernel_size?>) <span style="color:#4CAF50">✓</span>
+        <?php else: ?>
+          <span style="color:#f44336">not downloaded</span>
+          <button class="mvm-btn mvm-btn-primary" onclick="downloadKernel('cloud_hypervisor')" style="margin-left:12px;">
+            <i class="fa fa-download"></i> Download
+          </button>
+        <?php endif; ?>
+      </span>
+    </div>
+  </div>
+</details>
+
+<!-- Firecracker -->
+<details class="mvm-section" open>
+  <summary>
+    <i class="fa fa-fire"></i> Firecracker
+    <?php if ($fc_bin && $fc_kernel): ?>
+      <span class="mvm-badge mvm-badge-ok">ready</span>
+    <?php elseif ($fc_bin): ?>
+      <span class="mvm-badge mvm-badge-warn">kernel missing</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">not installed</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <div class="mvm-row">
+      <span class="mvm-row-label">Binary:</span>
+      <span class="mvm-row-value"><?=$fc_version ?: '<span style="color:#f44336">not installed</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Kernel:</span>
+      <span class="mvm-row-value">
+        <?php if ($fc_kernel): ?>
+          Linux <?=$fc_kernel_ver ?: '?'?> — vmlinux (<?=$fc_kernel_size?>) <span style="color:#4CAF50">✓</span>
+        <?php else: ?>
+          <span style="color:#f44336">not downloaded</span>
+          <button class="mvm-btn mvm-btn-primary" onclick="downloadKernel('firecracker')" style="margin-left:12px;">
+            <i class="fa fa-download"></i> Download
+          </button>
+        <?php endif; ?>
+      </span>
+    </div>
+  </div>
+</details>
+
+<!-- Advanced: Containerd -->
+<details class="mvm-section mvm-advanced">
+  <summary>
+    <i class="fa fa-database"></i> Containerd
+    <?php if ($containerd_running): ?>
+      <span class="mvm-badge mvm-badge-ok">running</span>
+    <?php elseif ($containerd_bin): ?>
+      <span class="mvm-badge mvm-badge-warn">stopped</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">not installed</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <div class="mvm-row">
+      <span class="mvm-row-label">Binary:</span>
+      <span class="mvm-row-value"><?=$containerd_bin ? '/usr/local/bin/flintlock-containerd' : '<span style="color:#f44336">not found</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Version:</span>
+      <span class="mvm-row-value"><?=$containerd_version ?: '—'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Thin Pool:</span>
+      <span class="mvm-row-value">
+        <?php if ($thinpool_exists): ?>
+          /dev/mapper/<?=$thinpool_name?> <span style="color:#4CAF50">✓ active</span>
+        <?php else: ?>
+          <span style="color:#f44336">✗ inactive</span>
+        <?php endif; ?>
+      </span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">KVM:</span>
+      <span class="mvm-row-value"><?=$kvm_available ? '/dev/kvm <span style="color:#4CAF50">✓</span>' : '<span style="color:#f44336">✗ not available</span>'?></span>
+    </div>
+    <div style="margin-top:10px;">
+      <input type="button" value="VIEW CONTAINERD LOG" onclick="viewLog('flintlock-containerd')" class="btn">
+    </div>
+  </div>
+</details>
+
+<!-- Advanced: Flintlockd -->
+<details class="mvm-section mvm-advanced">
+  <summary>
+    <i class="fa fa-bolt"></i> Flintlockd
+    <?php if ($flintlockd_running): ?>
+      <span class="mvm-badge mvm-badge-ok">running</span>
+    <?php elseif ($flintlockd_bin): ?>
+      <span class="mvm-badge mvm-badge-warn">stopped</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">not installed</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <div class="mvm-row">
+      <span class="mvm-row-label">Binary:</span>
+      <span class="mvm-row-value"><?=$flintlockd_bin ? '/usr/local/bin/flintlockd' : '<span style="color:#f44336">not found</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Version:</span>
+      <span class="mvm-row-value"><?=$flintlockd_version ?: '—'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">gRPC endpoint:</span>
+      <span class="mvm-row-value">0.0.0.0:<?=$cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090'?></span>
+    </div>
+    <div style="margin-top:10px;">
+      <input type="button" value="VIEW FLINTLOCKD LOG" onclick="viewLog('flintlockd')" class="btn">
+    </div>
+  </div>
+</details>
+
+<script>
+var plugin = '<?=$plugin?>';
+
+function done() { location = '/Settings'; }
+
+// Initialize switchButton for Advanced mode toggle
+$(function() {
+  var adv = localStorage.getItem('mvm-mode') === 'advanced';
+  $('.advmode').switchButton({labels_placement:'left', on_label:'ADVANCED VIEW', off_label:'BASIC VIEW', checked: adv});
+  if (adv) setMode('advanced');
+  $('.advmode').change(function() {
+    setMode($(this).prop('checked') ? 'advanced' : 'basic');
+  });
+});
+
+function setMode(mode) {
+  var advSections = document.querySelectorAll('.mvm-advanced');
+  if (mode === 'advanced') {
+    advSections.forEach(function(el) { el.classList.add('show'); });
+    localStorage.setItem('mvm-mode', 'advanced');
+  } else {
+    advSections.forEach(function(el) { el.classList.remove('show'); });
+    localStorage.setItem('mvm-mode', 'basic');
+  }
+}
+
+function viewLog(service) {
+  var logFile = (service === 'flintlockd') ? '/var/log/flintlockd.log' : '/var/log/flintlock-containerd.log';
+  var title = service === 'flintlockd' ? 'Flintlockd Log' : 'Containerd Log';
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', logfile: logFile}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success) {
+      var html = '<pre style="text-align:left;max-height:500px;overflow:auto;font-size:11px;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;white-space:pre-wrap;word-break:break-all;">' + (data.log || '(empty)') + '</pre>';
+      swal({title: title, text: html, html: true, confirmButtonText: 'Close'});
+    } else {
+      swal({title: 'Error', text: data.error || 'Failed to read log', type: 'error'});
+    }
+  });
+}
+
+function downloadKernel(engine) {
+  var label = engine === 'cloud_hypervisor' ? 'Cloud Hypervisor' : 'Firecracker';
+  var size = engine === 'cloud_hypervisor' ? '~60 MB' : '~37 MB';
+  var html = '<div style="text-align:left;">';
+  html += '<p>Download <b>' + label + '</b> kernel (' + size + ')?</p>';
+  html += '<p style="font-size:0.85em;opacity:0.7;">Source: ' + (engine === 'cloud_hypervisor' ? 'github.com/cloud-hypervisor/linux' : 's3.amazonaws.com/spec.ccfc.min') + '</p>';
+  html += '</div>';
+
+  swal({
+    title: 'Download Kernel',
+    text: html,
+    html: true,
+    showCancelButton: true,
+    confirmButtonText: 'Download',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    var logHtml = '<div id="dl-log" style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:12px;font-family:monospace;font-size:12px;color:#0f0;text-align:left;max-height:300px;overflow-y:auto;min-height:120px;">';
+    logHtml += '<div>Starting download...</div>';
+    logHtml += '</div>';
+    swal({title: label + ' Kernel', text: logHtml, html: true, showConfirmButton: false, showCancelButton: false});
+
+    var log = document.getElementById('dl-log');
+    function addLog(msg, color) {
+      var line = document.createElement('div');
+      line.style.color = color || '#0f0';
+      line.textContent = msg;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    addLog('$ mkdir -p /mnt/user/system/liquidmetal/' + engine.replace('_','-') + '/kernels/');
+    setTimeout(function() {
+      addLog('$ curl -fsSL -o vmlinux <url>');
+      addLog('Downloading... this may take 1-2 minutes');
+      addLog('');
+
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {
+        cmd: 'download_kernels',
+        cloud_hypervisor: engine === 'cloud_hypervisor' ? '1' : '0',
+        firecracker: engine === 'firecracker' ? '1' : '0'
+      }, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.success) {
+          addLog('');
+          addLog('✓ ' + data.message, '#4CAF50');
+          addLog('');
+          addLog('Done.', '#4CAF50');
+          setTimeout(function() {
+            var btn = document.createElement('button');
+            btn.textContent = 'DONE';
+            btn.style.cssText = 'margin-top:12px;padding:8px 24px;border:1px solid #f0a30a;background:transparent;color:#f0a30a;border-radius:3px;cursor:pointer;font-weight:bold;';
+            btn.onclick = function() { location.reload(); };
+            log.parentNode.appendChild(btn);
+          }, 300);
+        } else {
+          addLog('');
+          addLog('✗ ERROR: ' + (data.error || 'Download failed'), '#f44336');
+          setTimeout(function() {
+            var btn = document.createElement('button');
+            btn.textContent = 'CLOSE';
+            btn.style.cssText = 'margin-top:12px;padding:8px 24px;border:1px solid #f44336;background:transparent;color:#f44336;border-radius:3px;cursor:pointer;font-weight:bold;';
+            btn.onclick = function() { swal.close(); };
+            log.parentNode.appendChild(btn);
+          }, 300);
+        }
+      }).fail(function() {
+        addLog('✗ Request failed — check network', '#f44336');
+      });
+    }, 500);
+  });
+}
+</script>

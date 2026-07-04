@@ -1,0 +1,86 @@
+Menu="MicroVM:3"
+Title="Usage Statistics"
+Tag="bar-chart"
+Cond="is_file('/usr/local/bin/flintlockd')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.liquidmetal";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+$vms = microvm_list_vms();
+
+// Gather stats
+$total_vms = count($vms);
+$running_vms = count(array_filter($vms, fn($v) => $v['state'] === 'running'));
+$stopped_vms = $total_vms - $running_vms;
+
+$total_cpus_allocated = 0;
+$total_mem_allocated = 0;
+$total_disk_used = 0;
+
+foreach ($vms as $vm) {
+    if ($vm['state'] === 'running') {
+        $total_cpus_allocated += $vm['config']['boot_vcpus'] ?? 0;
+        $total_mem_allocated += $vm['config']['memory_mb'] ?? 0;
+    }
+    $rootfs = $vm['config']['disk'] ?? "$vmdir/{$vm['name']}/rootfs.raw";
+    if (file_exists($rootfs)) {
+        $total_disk_used += filesize($rootfs);
+    }
+}
+
+// Host info
+$host_cpus = intval(trim(shell_exec('nproc')));
+$host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print $2}'")));
+$host_mem_used = intval(trim(shell_exec("free -m | awk '/^Mem:/{print $3}'")));
+
+// Storage
+$vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null | cut -f1")) ?: '0';
+?>
+
+<style>
+.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin:15px 0; }
+.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:8px; padding:15px; text-align:center; }
+.stat-card .number { font-size:2em; font-weight:bold; color:#89b4fa; }
+.stat-card .label { font-size:0.85em; opacity:0.7; margin-top:5px; }
+.stat-card.running .number { color:#4CAF50; }
+.stat-card.stopped .number { color:#f44336; }
+</style>
+
+<table class="tablesorter shift ups">
+<thead><tr><td>Overview</td></tr></thead>
+</table>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total microVMs</div></div>
+  <div class="stat-card running"><div class="number"><?=$running_vms?></div><div class="label">Running</div></div>
+  <div class="stat-card stopped"><div class="number"><?=$stopped_vms?></div><div class="label">Stopped</div></div>
+  <div class="stat-card"><div class="number"><?=$total_cpus_allocated?>/<?=$host_cpus?></div><div class="label">vCPUs Allocated</div></div>
+  <div class="stat-card"><div class="number"><?=$total_mem_allocated?>M</div><div class="label">Memory Allocated</div></div>
+  <div class="stat-card"><div class="number"><?=$vmdir_size?></div><div class="label">Disk Used</div></div>
+</div>
+
+<?php if ($running_vms > 0): ?>
+<table class="tablesorter shift ups">
+<thead><tr><td>Running VM Details</td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr><th>Name</th><th>vCPUs</th><th>Memory</th><th>IP</th><th>PID</th></tr></thead>
+<tbody>
+<?php foreach ($vms as $vm): if ($vm['state'] !== 'running') continue; ?>
+  <tr>
+    <td><b><?=htmlspecialchars($vm['name'])?></b></td>
+    <td><?=$vm['config']['boot_vcpus'] ?? '-'?></td>
+    <td><?=$vm['config']['memory_mb'] ?? '-'?> MB</td>
+    <td><?=htmlspecialchars($vm['config']['ip'] ?? '-')?></td>
+    <td style="font-family:monospace;"><?=trim(shell_exec("pgrep -f 'microvm-{$vm['name']}.sock' 2>/dev/null")) ?: '-'?></td>
+  </tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+<?php endif; ?>

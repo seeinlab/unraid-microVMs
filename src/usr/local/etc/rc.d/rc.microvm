@@ -1,25 +1,56 @@
 #!/bin/bash
-# /etc/rc.d/rc.microvm - start/stop the microVM Manager service
+# /etc/rc.d/rc.microvm - MicroVM Liquidmetal service (orchestrated mode)
+# Manages: thin pool, flintlock-containerd, flintlockd, and direct VM lifecycle
 
-PLUGIN="microvm.manager"
+PLUGIN="microvm.liquidmetal"
 CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.cfg"
-PIDFILE="/var/run/microvm-manager.pid"
+SYSTEM_DIR="/mnt/user/system/liquidmetal"
+RUNTIME_DIR="/var/run/liquidmetal"
+
+# Binaries
 CH_BIN="/usr/local/bin/cloud-hypervisor"
+FC_BIN="/usr/local/bin/firecracker"
 REMOTE_BIN="/usr/local/bin/ch-remote"
+CONTAINERD_BIN="/usr/local/bin/flintlock-containerd"
+FLINTLOCKD_BIN="/usr/local/bin/flintlockd"
+
+# PID files
+CONTAINERD_PID="${RUNTIME_DIR}/containerd.pid"
+FLINTLOCKD_PID="${RUNTIME_DIR}/flintlockd.pid"
+
+# Sockets
+CONTAINERD_SOCK="${RUNTIME_DIR}/containerd.sock"
+
+# Logs
+CONTAINERD_LOG="/var/log/flintlock-containerd.log"
+FLINTLOCKD_LOG="/var/log/flintlockd.log"
 
 # Load config
 [ -f "$CFGFILE" ] && source "$CFGFILE"
-VMDIR="${VMDIR:-/mnt/user/appdata/microvm}"
+SERVICE="${SERVICE:-disable}"
+VMDIR="${VMDIR:-/mnt/user/microvms}"
 BRIDGE="${BRIDGE:-br0}"
+DEFAULT_CPUS="${DEFAULT_CPUS:-1}"
+DEFAULT_MEMORY="${DEFAULT_MEMORY:-256}"
+DEFAULT_ENGINE="${DEFAULT_ENGINE:-cloud-hypervisor}"
 AUTOSTART="${AUTOSTART:-no}"
+THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE:-50G}"
+THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
+FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
+
+# Thin pool paths
+THINPOOL_DIR="${VMDIR}/thinpool"
+THINPOOL_DATA="${THINPOOL_DIR}/data"
+THINPOOL_META="${THINPOOL_DIR}/meta"
+THINPOOL_NAME="microvm-thinpool"
+
+# --------------------------------------------------------------------------
+# Utility functions
+# --------------------------------------------------------------------------
 
 log() {
   logger -t "rc.microvm" "$1"
   echo "$1"
-}
-
-microvm_running() {
-  [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null
 }
 
 wait_for_array() {
@@ -31,6 +62,352 @@ wait_for_array() {
   done
   [ -d "/mnt/user" ]
 }
+
+resolve_path() {
+  local path="$1"
+  if [[ "$path" == /mnt/user/* ]]; then
+    local rel="${path#/mnt/user/}"
+    for base in /mnt/cache /mnt/mtier /mnt/ztier /mnt/rtier /mnt/disk1 /mnt/disk2 /mnt/disk3 /mnt/disk4; do
+      if [ -f "$base/$rel" ]; then
+        echo "$base/$rel"
+        return
+      fi
+    done
+  fi
+  echo "$path"
+}
+
+# Convert human size (50G, 500M) to bytes
+size_to_bytes() {
+  local size="$1"
+  local num="${size%[GgMmKk]}"
+  local unit="${size: -1}"
+  case "$unit" in
+    G|g) echo $((num * 1024 * 1024 * 1024)) ;;
+    M|m) echo $((num * 1024 * 1024)) ;;
+    K|k) echo $((num * 1024)) ;;
+    *)   echo "$size" ;;
+  esac
+}
+
+# Convert bytes to 512-byte sectors
+bytes_to_sectors() {
+  echo $(($1 / 512))
+}
+
+
+# --------------------------------------------------------------------------
+# Thin Pool management
+# --------------------------------------------------------------------------
+
+setup_thinpool() {
+  if dmsetup info "$THINPOOL_NAME" &>/dev/null; then
+    log "Thin pool '$THINPOOL_NAME' already active"
+    return 0
+  fi
+
+  log "Setting up thin pool..."
+
+  # Load device-mapper thin provisioning module
+  modprobe dm_thin_pool
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to load dm_thin_pool module"
+    return 1
+  fi
+
+  # Create thinpool directory
+  mkdir -p "$THINPOOL_DIR"
+
+  # Create sparse data file if not exists
+  if [ ! -f "$THINPOOL_DATA" ]; then
+    local data_bytes=$(size_to_bytes "$THINPOOL_DATA_SIZE")
+    log "Creating sparse data file: $THINPOOL_DATA ($THINPOOL_DATA_SIZE)"
+    truncate -s "$data_bytes" "$THINPOOL_DATA"
+  fi
+
+  # Create sparse metadata file if not exists
+  if [ ! -f "$THINPOOL_META" ]; then
+    local meta_bytes=$(size_to_bytes "$THINPOOL_META_SIZE")
+    log "Creating sparse metadata file: $THINPOOL_META ($THINPOOL_META_SIZE)"
+    truncate -s "$meta_bytes" "$THINPOOL_META"
+  fi
+
+  # Setup loop devices
+  local data_loop=$(losetup --find --show "$THINPOOL_DATA" 2>/dev/null)
+  if [ -z "$data_loop" ]; then
+    log "ERROR: Failed to create loop device for data"
+    return 1
+  fi
+  log "Data loop device: $data_loop"
+
+  local meta_loop=$(losetup --find --show "$THINPOOL_META" 2>/dev/null)
+  if [ -z "$meta_loop" ]; then
+    log "ERROR: Failed to create loop device for metadata"
+    losetup -d "$data_loop" 2>/dev/null
+    return 1
+  fi
+  log "Meta loop device: $meta_loop"
+
+  # Calculate sector sizes
+  local data_size_bytes=$(stat -c%s "$THINPOOL_DATA")
+  local data_sectors=$(bytes_to_sectors "$data_size_bytes")
+
+  # Create thin-pool device mapper target
+  # Format: dmsetup create <name> --table '0 <data_sectors> thin-pool <meta_dev> <data_dev> <block_size> <low_water_mark>'
+  # block_size=128 sectors (64KB), low_water_mark=32768 sectors (16MB)
+  dmsetup create "$THINPOOL_NAME" \
+    --table "0 $data_sectors thin-pool $meta_loop $data_loop 128 32768" 2>/dev/null
+
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to create thin pool device"
+    losetup -d "$data_loop" 2>/dev/null
+    losetup -d "$meta_loop" 2>/dev/null
+    return 1
+  fi
+
+  # Save loop device paths for teardown
+  echo "$data_loop" > "${RUNTIME_DIR}/thinpool-data-loop"
+  echo "$meta_loop" > "${RUNTIME_DIR}/thinpool-meta-loop"
+
+  log "Thin pool '$THINPOOL_NAME' created successfully"
+  return 0
+}
+
+teardown_thinpool() {
+  log "Tearing down thin pool..."
+
+  # Remove device mapper target
+  if dmsetup info "$THINPOOL_NAME" &>/dev/null; then
+    dmsetup remove "$THINPOOL_NAME" 2>/dev/null
+    if [ $? -eq 0 ]; then
+      log "Removed thin pool device: $THINPOOL_NAME"
+    else
+      log "WARNING: Failed to remove thin pool device (may be in use)"
+    fi
+  fi
+
+  # Detach loop devices
+  if [ -f "${RUNTIME_DIR}/thinpool-data-loop" ]; then
+    local data_loop=$(cat "${RUNTIME_DIR}/thinpool-data-loop")
+    losetup -d "$data_loop" 2>/dev/null && log "Detached data loop: $data_loop"
+    rm -f "${RUNTIME_DIR}/thinpool-data-loop"
+  fi
+
+  if [ -f "${RUNTIME_DIR}/thinpool-meta-loop" ]; then
+    local meta_loop=$(cat "${RUNTIME_DIR}/thinpool-meta-loop")
+    losetup -d "$meta_loop" 2>/dev/null && log "Detached meta loop: $meta_loop"
+    rm -f "${RUNTIME_DIR}/thinpool-meta-loop"
+  fi
+
+  # Also try to find and detach any orphaned loops pointing to our files
+  for loop in $(losetup -j "$THINPOOL_DATA" 2>/dev/null | cut -d: -f1); do
+    losetup -d "$loop" 2>/dev/null
+  done
+  for loop in $(losetup -j "$THINPOOL_META" 2>/dev/null | cut -d: -f1); do
+    losetup -d "$loop" 2>/dev/null
+  done
+
+  log "Thin pool teardown complete"
+}
+
+
+# --------------------------------------------------------------------------
+# Flintlock Containerd management
+# --------------------------------------------------------------------------
+
+start_containerd() {
+  if [ -f "$CONTAINERD_PID" ] && kill -0 $(cat "$CONTAINERD_PID") 2>/dev/null; then
+    log "flintlock-containerd already running (PID $(cat $CONTAINERD_PID))"
+    return 0
+  fi
+
+  if [ ! -x "$CONTAINERD_BIN" ]; then
+    log "ERROR: $CONTAINERD_BIN not found or not executable"
+    return 1
+  fi
+
+  log "Starting flintlock-containerd..."
+
+  # Create runtime directories
+  mkdir -p "${RUNTIME_DIR}/containerd"
+  mkdir -p "${RUNTIME_DIR}/containerd-state"
+
+  # Generate containerd config with devmapper snapshotter
+  local containerd_config="${RUNTIME_DIR}/containerd-config.toml"
+  cat > "$containerd_config" << EOF
+version = 2
+
+root = "${RUNTIME_DIR}/containerd"
+state = "${RUNTIME_DIR}/containerd-state"
+
+[grpc]
+  address = "${CONTAINERD_SOCK}"
+
+[plugins]
+  [plugins."io.containerd.snapshotter.v1.devmapper"]
+    pool_name = "${THINPOOL_NAME}"
+    root_path = "${RUNTIME_DIR}/containerd/devmapper"
+    base_image_size = "10GB"
+    discard_blocks = true
+
+[plugins."io.containerd.grpc.v1.cri"]
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+    snapshotter = "devmapper"
+EOF
+
+  # Start containerd
+  "$CONTAINERD_BIN" \
+    --config "$containerd_config" \
+    >> "$CONTAINERD_LOG" 2>&1 &
+  local pid=$!
+
+  echo "$pid" > "$CONTAINERD_PID"
+
+  # Wait for socket to appear
+  local timeout=15
+  local elapsed=0
+  while [ ! -S "$CONTAINERD_SOCK" ] && [ $elapsed -lt $timeout ]; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      log "ERROR: flintlock-containerd exited prematurely. Check $CONTAINERD_LOG"
+      rm -f "$CONTAINERD_PID"
+      return 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  if [ ! -S "$CONTAINERD_SOCK" ]; then
+    log "ERROR: flintlock-containerd failed to create socket within ${timeout}s"
+    kill "$pid" 2>/dev/null
+    rm -f "$CONTAINERD_PID"
+    return 1
+  fi
+
+  log "flintlock-containerd started (PID $pid)"
+  return 0
+}
+
+stop_containerd() {
+  if [ ! -f "$CONTAINERD_PID" ]; then
+    log "flintlock-containerd not running (no PID file)"
+    return 0
+  fi
+
+  local pid=$(cat "$CONTAINERD_PID")
+  if kill -0 "$pid" 2>/dev/null; then
+    log "Stopping flintlock-containerd (PID $pid)..."
+    kill "$pid" 2>/dev/null
+
+    # Wait for graceful exit
+    local timeout=10
+    local elapsed=0
+    while kill -0 "$pid" 2>/dev/null && [ $elapsed -lt $timeout ]; do
+      sleep 1
+      elapsed=$((elapsed + 1))
+    done
+
+    # Force kill if still alive
+    if kill -0 "$pid" 2>/dev/null; then
+      log "Force killing flintlock-containerd..."
+      kill -9 "$pid" 2>/dev/null
+    fi
+
+    log "flintlock-containerd stopped"
+  fi
+
+  rm -f "$CONTAINERD_PID"
+  rm -f "$CONTAINERD_SOCK"
+}
+
+# --------------------------------------------------------------------------
+# Flintlockd management
+# --------------------------------------------------------------------------
+
+start_flintlockd() {
+  if [ -f "$FLINTLOCKD_PID" ] && kill -0 $(cat "$FLINTLOCKD_PID") 2>/dev/null; then
+    log "flintlockd already running (PID $(cat $FLINTLOCKD_PID))"
+    return 0
+  fi
+
+  if [ ! -x "$FLINTLOCKD_BIN" ]; then
+    log "ERROR: $FLINTLOCKD_BIN not found or not executable"
+    return 1
+  fi
+
+  # Ensure containerd is running
+  if [ ! -S "$CONTAINERD_SOCK" ]; then
+    log "ERROR: containerd socket not found. Start containerd first."
+    return 1
+  fi
+
+  log "Starting flintlockd (gRPC port $FLINTLOCKD_GRPC_PORT)..."
+
+  # Create state directory
+  mkdir -p "${RUNTIME_DIR}/flintlockd-state"
+
+  "$FLINTLOCKD_BIN" run \
+    --grpc-endpoint "0.0.0.0:${FLINTLOCKD_GRPC_PORT}" \
+    --containerd-socket "$CONTAINERD_SOCK" \
+    --bridge-name "$BRIDGE" \
+    --parent-iface "$BRIDGE" \
+    --insecure \
+    --default-provider "cloudhypervisor" \
+    --cloudhypervisor-bin "$CH_BIN" \
+    --firecracker-bin "$FC_BIN" \
+    --state-dir "${RUNTIME_DIR}/flintlockd-state" \
+    -v 1 \
+    >> "$FLINTLOCKD_LOG" 2>&1 &
+  local pid=$!
+
+  echo "$pid" > "$FLINTLOCKD_PID"
+
+  # Brief pause to check it didn't crash immediately
+  sleep 2
+  if ! kill -0 "$pid" 2>/dev/null; then
+    log "ERROR: flintlockd exited prematurely. Check $FLINTLOCKD_LOG"
+    rm -f "$FLINTLOCKD_PID"
+    return 1
+  fi
+
+  log "flintlockd started (PID $pid)"
+  return 0
+}
+
+stop_flintlockd() {
+  if [ ! -f "$FLINTLOCKD_PID" ]; then
+    log "flintlockd not running (no PID file)"
+    return 0
+  fi
+
+  local pid=$(cat "$FLINTLOCKD_PID")
+  if kill -0 "$pid" 2>/dev/null; then
+    log "Stopping flintlockd (PID $pid)..."
+    kill "$pid" 2>/dev/null
+
+    # Wait for graceful exit
+    local timeout=10
+    local elapsed=0
+    while kill -0 "$pid" 2>/dev/null && [ $elapsed -lt $timeout ]; do
+      sleep 1
+      elapsed=$((elapsed + 1))
+    done
+
+    # Force kill if still alive
+    if kill -0 "$pid" 2>/dev/null; then
+      log "Force killing flintlockd..."
+      kill -9 "$pid" 2>/dev/null
+    fi
+
+    log "flintlockd stopped"
+  fi
+
+  rm -f "$FLINTLOCKD_PID"
+}
+
+
+# --------------------------------------------------------------------------
+# TAP interface management
+# --------------------------------------------------------------------------
 
 create_taps() {
   [ -d "$VMDIR" ] || return
@@ -53,50 +430,44 @@ remove_taps() {
   done
 }
 
+# --------------------------------------------------------------------------
+# VM lifecycle (direct CH/FC management)
+# --------------------------------------------------------------------------
+
 start_vm() {
   local name="$1"
   local vmdir="$VMDIR/$name"
   local config="$vmdir/config.json"
   local sock="/tmp/microvm-${name}.sock"
-  
-  [ -f "$config" ] || return 1
-  [ -S "$sock" ] && return 0  # Already running
-  
-  # Read config (parse JSON, strip backslashes from escaped paths)
-  local kernel=$(cat "$config" | grep -oP '"kernel"\s*:\s*"\K[^"]+' | tr -d '\\')
-  local disk=$(cat "$config" | grep -oP '"disk"\s*:\s*"\K[^"]+' | tr -d '\\')
-  local cmdline=$(cat "$config" | grep -oP '"cmdline"\s*:\s*"\K[^"]+' | tr -d '\\')
-  local cpus=$(cat "$config" | grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+')
-  local max_cpus=$(cat "$config" | grep -oP '"max_vcpus"\s*:\s*\K[0-9]+')
-  local memory=$(cat "$config" | grep -oP '"memory_mb"\s*:\s*\K[0-9]+')
-  local mac=$(cat "$config" | grep -oP '"mac"\s*:\s*"\K[^"]+')
-  
+
+  [ -f "$config" ] || { log "ERROR: No config for VM '$name'"; return 1; }
+  [ -S "$sock" ] && { log "VM '$name' already running"; return 0; }
+
+  # Read config
+  local kernel=$(grep -oP '"kernel"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+  local disk=$(grep -oP '"disk"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+  local cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+  local cpus=$(grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+' "$config")
+  local max_cpus=$(grep -oP '"max_vcpus"\s*:\s*\K[0-9]+' "$config")
+  local memory=$(grep -oP '"memory_mb"\s*:\s*\K[0-9]+' "$config")
+  local mac=$(grep -oP '"mac"\s*:\s*"\K[^"]+' "$config")
+  local engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config")
+
   # Defaults
-  cpus=${cpus:-${DEFAULT_CPUS:-1}}
+  cpus=${cpus:-$DEFAULT_CPUS}
   max_cpus=${max_cpus:-$((cpus * 2))}
-  memory=${memory:-${DEFAULT_MEMORY:-256}}
-  
-  # Resolve /mnt/user/ paths to actual tier paths (CH can't read FUSE/shfs)
-  # /mnt/user/X → find actual file on /mnt/disk*, /mnt/cache, /mnt/*tier
-  resolve_path() {
-    local path="$1"
-    if [[ "$path" == /mnt/user/* ]]; then
-      local rel="${path#/mnt/user/}"
-      # Search all actual mount points for the file
-      for base in /mnt/cache /mnt/mtier /mnt/ztier /mnt/rtier /mnt/disk1 /mnt/disk2 /mnt/disk3 /mnt/disk4; do
-        if [ -f "$base/$rel" ]; then
-          echo "$base/$rel"
-          return
-        fi
-      done
-    fi
-    echo "$path"
-  }
-  
+  memory=${memory:-$DEFAULT_MEMORY}
+  engine=${engine:-$DEFAULT_ENGINE}
+
+  # Resolve FUSE paths to real disk paths
   kernel=$(resolve_path "$kernel")
   disk=$(resolve_path "$disk")
-  
-  log "Starting $name: kernel=$kernel disk=$disk cpus=$cpus mem=${memory}M"
+
+  # Use engine-specific kernel
+  kernel="${SYSTEM_DIR}/${engine}/kernels/vmlinux"
+  kernel=$(resolve_path "$kernel")
+
+  log "Starting VM '$name': engine=$engine cpus=$cpus mem=${memory}M"
 
   # Create TAP if not exists
   if ! ip link show "tap-$name" &>/dev/null; then
@@ -104,16 +475,9 @@ start_vm() {
     ip link set "tap-$name" master "$BRIDGE" 2>/dev/null
     ip link set "tap-$name" up 2>/dev/null
   fi
-  
-  # Detect engine
-  local engine=$(cat "$config" | grep -oP '"engine"\s*:\s*"\K[^"]+')
-  engine=${engine:-cloud-hypervisor}
-  
-  # Always use engine-specific kernel
-  kernel="${VMDIR}/kernels/${engine}/vmlinux"
-  
+
   if [ "$engine" = "firecracker" ]; then
-    # Generate Firecracker native config file
+    # Firecracker config
     local fc_cfg="/tmp/microvm-${name}-fc.json"
     cat > "$fc_cfg" << FCEOF
 {
@@ -133,14 +497,14 @@ start_vm() {
   }
 }
 FCEOF
-    /usr/local/bin/firecracker --api-sock "$sock" --config-file "$fc_cfg" \
+    "$FC_BIN" --api-sock "$sock" --config-file "$fc_cfg" \
       >> "$vmdir/vm.log" 2>&1 &
   else
     # Cloud Hypervisor
-    # Ensure cmdline uses ttyS0 for serial console (not hvc0)
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
     [ -z "$ch_cmdline" ] && ch_cmdline="$cmdline"
-    $CH_BIN \
+
+    "$CH_BIN" \
       --api-socket "$sock" \
       --kernel "$kernel" \
       --disk "path=$disk" \
@@ -151,15 +515,15 @@ FCEOF
       --serial pty --console off \
       -v >> "$vmdir/vm.log" 2>&1 &
   fi
-  
-  log "Started VM: $name (engine=$engine, PID: $!)"
+
+  log "Started VM '$name' (engine=$engine, PID=$!)"
 }
 
 stop_vm() {
   local name="$1"
   local sock="/tmp/microvm-${name}.sock"
   local vmdir="$VMDIR/$name"
-  
+
   # Kill any ttyd console relay for this VM
   local ttyd_pid_file="/var/tmp/ttyd-microvm-${name}.pid"
   if [ -f "$ttyd_pid_file" ]; then
@@ -167,79 +531,113 @@ stop_vm() {
     rm -f "$ttyd_pid_file"
     log "Stopped console relay for: $name"
   fi
-  # Also kill log viewer ttyd
   local ttyd_log_pid="/var/tmp/ttyd-microvm-${name}-log.pid"
   if [ -f "$ttyd_log_pid" ]; then
     kill $(cat "$ttyd_log_pid") 2>/dev/null
     rm -f "$ttyd_log_pid"
   fi
-  
+
   # Detect engine
-  local engine="cloud-hypervisor"
+  local engine="$DEFAULT_ENGINE"
   if [ -f "$vmdir/config.json" ]; then
     engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$vmdir/config.json" 2>/dev/null)
-    engine=${engine:-cloud-hypervisor}
+    engine=${engine:-$DEFAULT_ENGINE}
   fi
-  
+
   if [ "$engine" = "firecracker" ]; then
-    # Firecracker: no ACPI, kill the process directly
     local pid=$(pgrep -f "microvm-${name}" 2>/dev/null | head -1)
     if [ -n "$pid" ]; then
       kill "$pid" 2>/dev/null
       sleep 2
-      # Force kill if still alive
       kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
-      log "Killed Firecracker VM: $name (PID: $pid)"
+      log "Killed Firecracker VM: $name (PID $pid)"
     fi
     rm -f "$sock"
   else
     # Cloud Hypervisor: graceful ACPI shutdown
     if [ -S "$sock" ]; then
-      $REMOTE_BIN --api-socket "$sock" power-button 2>/dev/null
+      "$REMOTE_BIN" --api-socket "$sock" power-button 2>/dev/null
       log "Sent ACPI power-button to: $name"
-      
-      # Wait for graceful shutdown (max 30s)
+
       local timeout=30
       local elapsed=0
       while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
         sleep 1
         elapsed=$((elapsed + 1))
       done
-      
+
       if [ -S "$sock" ]; then
-        $REMOTE_BIN --api-socket "$sock" shutdown-vmm 2>/dev/null
+        "$REMOTE_BIN" --api-socket "$sock" shutdown-vmm 2>/dev/null
         log "Force shutdown: $name"
       fi
     fi
   fi
 }
 
+
+# --------------------------------------------------------------------------
+# Service start/stop/status (orchestrated boot sequence)
+# --------------------------------------------------------------------------
+
 microvm_start() {
   if [ "$SERVICE" != "enable" ]; then
-    log "microVM Manager disabled in settings"
-    return
+    log "MicroVM Liquidmetal service disabled in settings"
+    return 0
   fi
-  
+
   if ! wait_for_array; then
     log "ERROR: Array not started, cannot access VM storage"
     return 1
   fi
-  
-  log "Starting microVM Manager..."
-  
-  # Create VM storage directory
+
+  log "=== Starting MicroVM Liquidmetal service ==="
+
+  # Create runtime directory
+  mkdir -p "$RUNTIME_DIR"
   mkdir -p "$VMDIR/kernels"
-  
-  # Create TAP interfaces
-  create_taps
-  
-  # Start nchan monitoring (if WebGUI integration exists)
-  if [ -f "/usr/local/emhttp/plugins/$PLUGIN/nchan/microvm_manager" ]; then
-    /usr/local/emhttp/plugins/$PLUGIN/nchan/microvm_manager &
-    echo $! > "$PIDFILE"
+  mkdir -p "$SYSTEM_DIR"
+
+  # Step 1: Load kernel module
+  log "[1/6] Loading dm_thin_pool module..."
+  modprobe dm_thin_pool
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to load dm_thin_pool kernel module"
+    return 1
   fi
-  
-  # Autostart VMs
+
+  # Step 2: Setup thin pool
+  log "[2/6] Setting up thin pool..."
+  setup_thinpool
+  if [ $? -ne 0 ]; then
+    log "ERROR: Thin pool setup failed"
+    return 1
+  fi
+
+  # Step 3: Start flintlock-containerd
+  log "[3/6] Starting flintlock-containerd..."
+  start_containerd
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to start flintlock-containerd"
+    teardown_thinpool
+    return 1
+  fi
+
+  # Step 4: Start flintlockd
+  log "[4/6] Starting flintlockd..."
+  start_flintlockd
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to start flintlockd"
+    stop_containerd
+    teardown_thinpool
+    return 1
+  fi
+
+  # Step 5: Create TAP interfaces
+  log "[5/6] Creating TAP interfaces..."
+  create_taps
+
+  # Step 6: Autostart VMs
+  log "[6/6] Autostarting VMs..."
   if [ "$AUTOSTART" = "yes" ]; then
     for vmdir in "$VMDIR"/*/; do
       [ -f "$vmdir/config.json" ] || continue
@@ -250,59 +648,114 @@ microvm_start() {
       fi
     done
   fi
-  
-  log "microVM Manager started"
+
+  log "=== MicroVM Liquidmetal service started ==="
 }
 
 microvm_stop() {
-  log "Stopping microVM Manager..."
-  
-  # Graceful shutdown all running VMs
+  log "=== Stopping MicroVM Liquidmetal service ==="
+
+  # Step 1: Stop all running VMs
+  log "[1/5] Stopping all VMs..."
   for sock in /tmp/microvm-*.sock; do
     [ -S "$sock" ] || continue
     local name=$(basename "$sock" .sock | sed 's/microvm-//')
     stop_vm "$name"
   done
-  
-  # Stop nchan daemon
-  if [ -f "$PIDFILE" ]; then
-    kill $(cat "$PIDFILE") 2>/dev/null
-    rm -f "$PIDFILE"
-  fi
-  
-  # Remove TAP interfaces
+
+  # Step 2: Stop flintlockd
+  log "[2/5] Stopping flintlockd..."
+  stop_flintlockd
+
+  # Step 3: Stop flintlock-containerd
+  log "[3/5] Stopping flintlock-containerd..."
+  stop_containerd
+
+  # Step 4: Remove thin pool
+  log "[4/5] Tearing down thin pool..."
+  teardown_thinpool
+
+  # Step 5: Remove TAP interfaces
+  log "[5/5] Removing TAP interfaces..."
   remove_taps
-  
-  log "microVM Manager stopped"
+
+  # Cleanup runtime
+  rm -rf "$RUNTIME_DIR"
+
+  log "=== MicroVM Liquidmetal service stopped ==="
 }
 
 microvm_status() {
-  if microvm_running; then
-    echo "microVM Manager: running (PID $(cat $PIDFILE))"
+  echo "=== MicroVM Liquidmetal Status ==="
+  echo ""
+
+  # Thin pool status
+  echo "--- Thin Pool ---"
+  if dmsetup info "$THINPOOL_NAME" &>/dev/null; then
+    echo "  Status: ACTIVE"
+    dmsetup status "$THINPOOL_NAME" 2>/dev/null | sed 's/^/  /'
   else
-    echo "microVM Manager: stopped"
+    echo "  Status: INACTIVE"
   fi
-  
-  # List running VMs
+  echo ""
+
+  # Containerd status
+  echo "--- flintlock-containerd ---"
+  if [ -f "$CONTAINERD_PID" ] && kill -0 $(cat "$CONTAINERD_PID") 2>/dev/null; then
+    echo "  Status: RUNNING (PID $(cat $CONTAINERD_PID))"
+    echo "  Socket: $CONTAINERD_SOCK"
+  else
+    echo "  Status: STOPPED"
+  fi
+  echo ""
+
+  # Flintlockd status
+  echo "--- flintlockd ---"
+  if [ -f "$FLINTLOCKD_PID" ] && kill -0 $(cat "$FLINTLOCKD_PID") 2>/dev/null; then
+    echo "  Status: RUNNING (PID $(cat $FLINTLOCKD_PID))"
+    echo "  gRPC:   0.0.0.0:${FLINTLOCKD_GRPC_PORT}"
+    echo "  Bridge: $BRIDGE"
+  else
+    echo "  Status: STOPPED"
+  fi
+  echo ""
+
+  # VM status
+  echo "--- Virtual Machines ---"
   local count=0
   for sock in /tmp/microvm-*.sock; do
     [ -S "$sock" ] || continue
     local name=$(basename "$sock" .sock | sed 's/microvm-//')
-    local info=$($REMOTE_BIN --api-socket "$sock" ping 2>/dev/null)
-    if [ -n "$info" ]; then
-      echo "  VM: $name (running)"
-      count=$((count + 1))
-    fi
+    echo "  VM: $name (running)"
+    count=$((count + 1))
   done
-  echo "  Total VMs running: $count"
+  echo "  Total running: $count"
+  echo ""
+
+  # Config summary
+  echo "--- Configuration ---"
+  echo "  VMDIR:    $VMDIR"
+  echo "  BRIDGE:   $BRIDGE"
+  echo "  ENGINE:   $DEFAULT_ENGINE"
+  echo "  AUTOSTART: $AUTOSTART"
+  echo "  SERVICE:  $SERVICE"
 }
 
+# --------------------------------------------------------------------------
+# Command dispatch
+# --------------------------------------------------------------------------
+
 case "$1" in
-  start)   microvm_start ;;
-  stop)    microvm_stop ;;
-  restart) microvm_stop; sleep 2; microvm_start ;;
-  status)  microvm_status ;;
-  start_vm)  start_vm "$2" ;;
-  stop_vm)   stop_vm "$2" ;;
-  *)       echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME}" ;;
+  start)             microvm_start ;;
+  stop)              microvm_stop ;;
+  restart)           microvm_stop; sleep 2; microvm_start ;;
+  status)            microvm_status ;;
+  start_vm)          start_vm "$2" ;;
+  stop_vm)           stop_vm "$2" ;;
+  setup_thinpool)    setup_thinpool ;;
+  teardown_thinpool) teardown_thinpool ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME|setup_thinpool|teardown_thinpool}"
+    exit 1
+    ;;
 esac

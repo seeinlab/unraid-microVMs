@@ -1,0 +1,501 @@
+Menu="MicroVM:1"
+Title="microVMs"
+Tag="server"
+Cond="is_file('/usr/local/bin/flintlockd')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.liquidmetal";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vms = microvm_list_vms();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+$kernel_path = "$vmdir/kernels";
+$kernel_exists = is_file(MICROVM_SYSTEM . "/cloud-hypervisor/kernels/vmlinux") || is_file(MICROVM_SYSTEM . "/firecracker/kernels/vmlinux");
+?>
+
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+
+<style>
+/* Table layout */
+table.tablesorter.microvm { width:100%; }
+table.tablesorter.microvm tr:nth-child(odd) { background:none; }
+table.tablesorter.microvm tr:nth-child(even) { background:none; }
+table.tablesorter.microvm th { text-align:left; padding:8px; }
+table.tablesorter.microvm td { padding:8px; vertical-align:middle; }
+table.tablesorter.microvm th:first-child { width:240px; }
+
+/* VM icon - pre-rendered with rounded corners */
+.vm-icon {
+  width:32px;
+  height:32px;
+  object-fit:contain;
+  display:block;
+}
+
+/* Icon + name container */
+span.outer {
+  display:inline-flex;
+  align-items:center;
+  position:relative;
+}
+span.outer .hand {
+  cursor:pointer;
+  display:inline-block;
+  width:32px;
+  height:32px;
+}
+span.outer .hand img {
+  width:32px;
+  height:32px;
+  object-fit:contain;
+  display:block;
+}
+span.inner {
+  display:inline-block;
+  margin-left:10px;
+  line-height:1.3;
+}
+span.inner a {
+  font-weight:bold;
+  font-size:1.1rem;
+  color:inherit;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+/* Status indicators */
+.started { color:#009900; }
+.stopped { color:#EF3D47; }
+.green-text { color:#009900; }
+.red-text { color:#EF3D47; }
+
+/* Opacity for stopped icons */
+img.vm-icon-started { opacity:1.0; }
+img.vm-icon-stopped { opacity:0.4; }
+
+/* Bottom button bar */
+.microvm-btnbar {
+  margin-top:20px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.microvm-btnbar input[type="button"] {
+  padding:6px 16px;
+}
+</style>
+
+<?php if (!$kernel_exists): ?>
+<p style="margin:12px 0 16px; padding:10px 14px; border:1px solid rgba(240,163,10,0.4); border-radius:4px; background:rgba(240,163,10,0.08); display:flex; align-items:center; gap:8px;">
+  <i class="fa fa-exclamation-triangle" style="color:#f0a30a;"></i>
+  <b>Not Ready</b> — Kernel images are missing. <a href="/Settings/MicroVMSettings">Configure in Settings</a>
+</p>
+<?php endif; ?>
+
+<table class="tablesorter microvm shift ups">
+<thead><tr>
+  <th>Name</th>
+  <th>Engine</th>
+  <th>vCPUs</th>
+  <th>Memory</th>
+  <th>IP Address</th>
+  <th>TAP</th>
+  <th>Autostart</th>
+</tr></thead>
+<tbody>
+<?php if (empty($vms)): ?>
+  <tr><td colspan="7" style="text-align:center;padding:20px;">No microVMs configured yet.</td></tr>
+<?php else: ?>
+  <?php foreach ($vms as $vm):
+    $name = htmlspecialchars($vm['name']);
+    $state = $vm['state'];
+    $cpus = $vm['config']['boot_vcpus'] ?? '-';
+    $mem_mb = $vm['config']['memory_mb'] ?? '-';
+    $mem_display = ($mem_mb !== '-' && $mem_mb >= 1024) ? round($mem_mb / 1024, 1) . ' GB' : $mem_mb . ' MB';
+    $ip = htmlspecialchars($vm['config']['ip'] ?? '-');
+    $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
+    $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
+    $icon = "/plugins/microvm.liquidmetal/images/{$engine}.png";
+    $tap = 'tap-' . $vm['name'];
+    $bridge_name = $vm['config']['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
+    $tap_display = $tap . '@' . $bridge_name;
+    $autostart = !empty($vm['config']['autostart']);
+
+    $status_class = ($state === 'running') ? 'started' : 'stopped';
+    $color_class = ($state === 'running') ? 'green-text' : 'red-text';
+    $status_symbol = ($state === 'running') ? '&#9654;' : '&#9632;';
+    $icon_opacity = ($state === 'running') ? 'vm-icon-started' : 'vm-icon-stopped';
+  ?>
+  <tr class="sortable">
+    <td>
+      <span class="outer">
+        <span id="vm-<?=$name?>" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>')" class="hand">
+          <img src="<?=$icon?>" class="vm-icon <?=$icon_opacity?>" onerror="this.src='/plugins/dynamix.vm.manager/images/default.png';">
+        </span>
+        <span class="inner">
+          <a href="#" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>');return false;"><?=$name?></a><br>
+          <span class="<?=$color_class?>" style="font-size:0.85rem;"><?=$status_symbol?> <?=$state?></span>
+        </span>
+      </span>
+    </td>
+    <td><?=$engine_display?></td>
+    <td><?=$cpus?></td>
+    <td><?=$mem_display?></td>
+    <td><?=$ip?></td>
+    <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap_display)?></td>
+    <td><input class="autostart" type="checkbox" name="auto_<?=$name?>" title="Toggle autostart" data-name="<?=$name?>" <?=$autostart ? 'checked' : ''?>></td>
+  </tr>
+  <?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
+
+<div class="microvm-btnbar">
+  <input type="button" onclick="addmicroVM()" value="ADD MICROVM" class="btn">
+  <input type="button" onclick="startAll()" value="START ALL" class="btn">
+  <input type="button" onclick="stopAll()" value="STOP ALL" class="btn">
+</div>
+
+<!-- Output area -->
+<div id="vmOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
+
+<script>
+var plugin = '<?=$plugin?>';
+
+function addMicroVMContext(name, state, engine) {
+  var opts = [];
+  context.settings({right:false, above:false});
+
+  if (state == 'running') {
+    opts.push({text:'Console', icon:'fa-terminal', action:function(e){
+      e.preventDefault();
+      vmConsole(name);
+    }});
+    opts.push({text:'Stop', icon:'fa-stop', action:function(e){
+      e.preventDefault();
+      vmAction('stop', name);
+    }});
+    opts.push({text:'Force Stop', icon:'fa-power-off', action:function(e){
+      e.preventDefault();
+      vmAction('force_stop', name);
+    }});
+    if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Resize', icon:'fa-expand', action:function(e){
+        e.preventDefault();
+        vmResize(name, engine);
+      }});
+    }
+    opts.push({text:'Snapshot', icon:'fa-camera', action:function(e){
+      e.preventDefault();
+      vmAction('snapshot', name);
+    }});
+    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+      e.preventDefault();
+      vmSnapshots(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
+      e.preventDefault();
+      vmInfo(name);
+    }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmLogs(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
+      e.preventDefault();
+      vmDelete(name);
+    }});
+  } else {
+    opts.push({text:'Start', icon:'fa-play', action:function(e){
+      e.preventDefault();
+      vmAction('start', name);
+    }});
+    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+      e.preventDefault();
+      vmSnapshots(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
+      e.preventDefault();
+      vmInfo(name);
+    }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmLogs(name);
+    }});
+    opts.push({divider:true});
+    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
+      e.preventDefault();
+      vmDelete(name);
+    }});
+  }
+
+  context.destroy('#vm-' + name);
+  context.attach('#vm-' + name, opts);
+}
+
+function addmicroVM() {
+  location = location.pathname + '/AddMicroVM';
+}
+
+function vmAction(action, name) {
+  showOutput('Running: ' + action + ' ' + name + '...');
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: action, name: name}, function(data) {
+    var msg = (typeof data === 'object') ? JSON.stringify(data) : data;
+    showOutput('Done: ' + msg);
+    setTimeout(function(){ location.reload(); }, 3000);
+  });
+}
+
+function vmConsole(name) {
+  showOutput('Opening console for ' + name + '...');
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console', name: name}, function(data) {
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch(e) {}
+    }
+    if (data.success && data.url) {
+      // ttyd serves its own xterm.js web terminal — open in popup
+      var w = 900, h = 600;
+      var left = (screen.width - w) / 2;
+      var top = (screen.height - h) / 2;
+      var popup = window.open(
+        data.url,
+        'microvm_console_' + name,
+        'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no'
+      );
+      if (!popup) {
+        // Popup blocked — fall back to new tab
+        window.open(data.url, '_blank');
+      }
+      showOutput('Console opened for ' + name + ' at ' + data.url);
+    } else {
+      var errMsg = data.error || 'Failed to start console relay';
+      showOutput('Console error: ' + errMsg);
+      swal({title: 'Console Error', text: errMsg, type: 'error'});
+    }
+  }).fail(function() {
+    showOutput('Console error: request failed');
+    swal({title: 'Console Error', text: 'Failed to connect to backend', type: 'error'});
+  });
+}
+
+function vmResize(name, engine) {
+  if (engine === 'firecracker') {
+    swal({title: 'Not Supported', text: 'Live resize is not supported for Firecracker. Recreate the VM with new settings.', type: 'error'});
+    return;
+  }
+  swal({
+    title: 'Resize ' + name,
+    text: 'Enter new CPU count:',
+    type: 'input',
+    inputValue: '2',
+    showCancelButton: true,
+    closeOnConfirm: false
+  }, function(cpus) {
+    if (!cpus) return;
+    swal({
+      title: 'Resize ' + name,
+      text: 'Enter new memory (MB):',
+      type: 'input',
+      inputValue: '512',
+      showCancelButton: true,
+      closeOnConfirm: false
+    }, function(memMB) {
+      if (!memMB) return;
+      var memBytes = parseInt(memMB) * 1048576;
+      swal({title: 'Resizing...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.cpus || data.memory) {
+          swal({title: 'Resized!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
+            location.reload();
+          });
+        } else {
+          swal({title: 'Resize Failed', text: JSON.stringify(data), type: 'error'});
+        }
+      });
+    });
+  });
+}
+
+function vmInfo(name) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+    var text;
+    if (typeof data === 'object') {
+      text = JSON.stringify(data, null, 2);
+    } else {
+      try { text = JSON.stringify(JSON.parse(data), null, 2); } catch(e) { text = data; }
+    }
+    swal({title: name, text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:12px;">' + text + '</pre>', html: true});
+  });
+}
+
+function vmLogs(name) {
+  // Start a ttyd log viewer via backend, then open the logterminal URL
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'logs_terminal', name: name}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success && data.url) {
+      window.open(data.url, 'microvm_log_' + name, 'width=900,height=600,resizable=yes,scrollbars=yes');
+    } else {
+      swal({title: 'Logs Error', text: data.error || 'Failed to open logs', type: 'error'});
+    }
+  });
+}
+
+function vmDelete(name) {
+  swal({
+    title: 'Delete ' + name + '?',
+    text: 'This will delete the VM and all its data (config, rootfs, snapshots). This cannot be undone.',
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel'
+  }, function(confirmed) {
+    if (confirmed) {
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete', name: name}, function(data) {
+        showOutput(typeof data === 'object' ? JSON.stringify(data) : data);
+        setTimeout(function(){ location.reload(); }, 2000);
+      });
+    }
+  });
+}
+
+// Initialize switchButton for autostart toggles
+$(function() {
+  $('.autostart').switchButton({labels_placement:'right', on_label:'On', off_label:'Off'});
+  $('.autostart').change(function() {
+    var name = $(this).data('name');
+    var enabled = $(this).prop('checked') ? 'true' : 'false';
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'autostart', name: name, enabled: enabled});
+  });
+});
+
+function startAll() {
+  <?php foreach ($vms as $vm): ?>
+    <?php if ($vm['state'] !== 'running'): ?>
+    vmAction('start', '<?=htmlspecialchars($vm['name'])?>');
+    <?php endif; ?>
+  <?php endforeach; ?>
+}
+
+function stopAll() {
+  <?php foreach ($vms as $vm): ?>
+    <?php if ($vm['state'] === 'running'): ?>
+    vmAction('stop', '<?=htmlspecialchars($vm['name'])?>');
+    <?php endif; ?>
+  <?php endforeach; ?>
+}
+
+function vmSnapshots(name) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'list_snapshots', name: name}, function(data) {
+    if (!data.success) {
+      swal({title: 'Error', text: data.error || 'Failed to list snapshots', type: 'error'});
+      return;
+    }
+    var snaps = data.snapshots || [];
+    var html = '<div style="text-align:left;max-height:400px;overflow-y:auto;">';
+
+    if (snaps.length === 0) {
+      html += '<p style="text-align:center;color:#999;">No snapshots for this VM.</p>';
+      html += '<p style="text-align:center;font-size:0.85em;color:#666;">Create one using the <b>Snapshot</b> action while the VM is running.</p>';
+    } else {
+      html += '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">';
+      html += '<tr style="border-bottom:1px solid #444;"><th style="padding:6px;text-align:left;">Tag / Date</th><th style="padding:6px;text-align:left;">Size</th><th style="padding:6px;text-align:right;">Actions</th></tr>';
+      for (var i = 0; i < snaps.length; i++) {
+        var s = snaps[i];
+        html += '<tr style="border-bottom:1px solid #333;">';
+        html += '<td style="padding:6px;"><b>' + escapeHtml(s.tag) + '</b><br><span style="font-size:0.8em;color:#999;">' + escapeHtml(s.date) + '</span></td>';
+        html += '<td style="padding:6px;color:#ccc;">' + escapeHtml(s.size) + '</td>';
+        html += '<td style="padding:6px;text-align:right;">';
+        html += '<a href="#" onclick="vmSnapshotRestore(\'' + escapeHtml(name) + '\',\'' + escapeHtml(s.tag) + '\');return false;" style="color:#4caf50;margin-right:12px;" title="Restore"><i class="fa fa-undo"></i> Restore</a>';
+        html += '<a href="#" onclick="vmSnapshotDelete(\'' + escapeHtml(name) + '\',\'' + escapeHtml(s.tag) + '\');return false;" style="color:#ef5350;" title="Delete"><i class="fa fa-trash"></i> Delete</a>';
+        html += '</td></tr>';
+      }
+      html += '</table>';
+    }
+    html += '</div>';
+
+    swal({
+      title: name + ' — Snapshots (' + snaps.length + ')',
+      text: html,
+      html: true,
+      showCancelButton: false,
+      confirmButtonText: 'Close'
+    });
+  });
+}
+
+function vmSnapshotRestore(name, tag) {
+  swal({
+    title: 'Restore Snapshot?',
+    text: 'This will stop the current VM and restore from snapshot <b>' + escapeHtml(tag) + '</b>.<br><br>Any unsaved state in the running VM will be lost.',
+    html: true,
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Restore',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (confirmed) {
+      swal({title: 'Restoring...', text: 'Please wait while the VM is restored from snapshot.', showConfirmButton: false});
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'restore_snapshot', name: name, tag: tag}, function(data) {
+        if (data.success) {
+          swal({title: 'Restored!', text: data.message, type: 'success'}, function() {
+            location.reload();
+          });
+        } else {
+          swal({title: 'Restore Failed', text: data.error || data.message || 'Unknown error', type: 'error'});
+        }
+      }).fail(function() {
+        swal({title: 'Error', text: 'Request failed. Check server logs.', type: 'error'});
+      });
+    }
+  });
+}
+
+function vmSnapshotDelete(name, tag) {
+  swal({
+    title: 'Delete Snapshot?',
+    text: 'Delete snapshot <b>' + escapeHtml(tag) + '</b>? This cannot be undone.',
+    html: true,
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (confirmed) {
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_snapshot', name: name, tag: tag}, function(data) {
+        if (data.success) {
+          swal({title: 'Deleted', text: data.message, type: 'success'}, function() {
+            vmSnapshots(name); // Refresh the list
+          });
+        } else {
+          swal({title: 'Delete Failed', text: data.error || 'Unknown error', type: 'error'});
+        }
+      }).fail(function() {
+        swal({title: 'Error', text: 'Request failed. Check server logs.', type: 'error'});
+      });
+    }
+  });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+function showOutput(msg) {
+  var el = document.getElementById('vmOutput');
+  el.style.display = 'block';
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+</script>

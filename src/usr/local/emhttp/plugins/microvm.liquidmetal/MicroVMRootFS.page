@@ -1,0 +1,163 @@
+Menu="MicroVM:2"
+Title="rootFS"
+Tag="hdd-o"
+Cond="is_file('/usr/local/bin/flintlockd')"
+Markdown="false"
+---
+<?php
+$plugin = "microvm.liquidmetal";
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+$crane_installed = !empty(trim(shell_exec('which crane 2>/dev/null')));
+$crane_version = $crane_installed ? trim(shell_exec('crane version 2>/dev/null')) : '';
+
+// List existing rootfs images
+$images = [];
+if (is_dir($vmdir)) {
+    foreach (glob("$vmdir/*/rootfs.{raw,ext4}", GLOB_BRACE) as $f) {
+        $name = basename(dirname($f));
+        $size = filesize($f);
+        $images[] = ['name' => $name, 'path' => $f, 'size' => $size];
+    }
+}
+?>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="4"><b>Existing rootFS Images</b></td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr>
+  <th>VM Name</th>
+  <th>Path</th>
+  <th>Size</th>
+  <th>Actions</th>
+</tr></thead>
+<tbody>
+<?php if (empty($images)): ?>
+  <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No rootfs images found.</td></tr>
+<?php else: ?>
+  <?php foreach ($images as $img): ?>
+  <tr>
+    <td><b><?=htmlspecialchars($img['name'])?></b></td>
+    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img['path'])?></td>
+    <td><?=number_format($img['size'] / 1048576, 0)?> MB</td>
+    <td><button class="vm-btn" onclick="deleteRootfs('<?=htmlspecialchars($img['name'])?>', '<?=htmlspecialchars($img['path'])?>')">DELETE</button></td>
+  </tr>
+  <?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
+
+<br>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="2"><b>Pull OCI/Docker Image → rootFS</b></td></tr></thead>
+</table>
+
+<?php if (!$crane_installed): ?>
+<p class="notice">crane is not installed. Install via terminal: <span style="font-family:monospace;">curl -fsSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane</span></p>
+<?php else: ?>
+
+<div style="display:flex; gap:20px; align-items:center; padding:10px 0;">
+  <span>OCI/Docker Image: <input type="text" id="pull_image" placeholder="docker.io/nginx:alpine" style="width:250px;" required></span>
+  <span>Target VM Name: <input type="text" id="pull_name" placeholder="my-web" pattern="[a-z0-9\-]+" required style="width:150px;"></span>
+  <span>Disk Size (MB): <input type="number" id="pull_size" placeholder="500" min="100" step="100" style="width:80px;"></span>
+  <input type="button" value="Pull &amp; Convert" onclick="pullImage()">
+  <span style="opacity:0.6;">crane <?=$crane_version?></span>
+</div>
+
+<?php endif; ?>
+
+<div id="pullOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
+
+<br>
+
+<table class="tablesorter shift ups">
+<thead><tr><td colspan="3"><b>Kernel Images</b></td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr><th>Engine</th><th>File</th><th>Size</th></tr></thead>
+<tbody>
+<?php
+$kernelDir = "$vmdir/kernels";
+if (is_dir($kernelDir)) {
+    $found = false;
+    foreach (['cloud-hypervisor', 'firecracker'] as $engine) {
+        $kpath = "$kernelDir/$engine/vmlinux";
+        if (is_file($kpath)) {
+            $found = true;
+            $engineLabel = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
+            echo "<tr><td>{$engineLabel}</td><td style='font-family:monospace;'>{$kpath}</td><td>".number_format(filesize($kpath)/1048576,0)." MB</td></tr>";
+        }
+    }
+    if (!$found) echo "<tr><td colspan='3' style='text-align:center;opacity:0.6;'>No kernels found</td></tr>";
+} else {
+    echo "<tr><td colspan='3' style='text-align:center;opacity:0.6;'>Kernel directory not found</td></tr>";
+}
+?>
+</tbody>
+</table>
+
+<style>
+.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; text-transform:uppercase; font-size:0.85em; }
+.vm-btn:hover { background:#555; }
+</style>
+
+<script>
+var plugin = '<?=$plugin?>';
+
+function pullImage() {
+  var image = document.getElementById('pull_image').value;
+  var name = document.getElementById('pull_name').value;
+  var size = document.getElementById('pull_size').value;
+  var el = document.getElementById('pullOutput');
+  el.style.display = 'block';
+  el.innerHTML = 'Pulling ' + image + ' and converting to rootfs (this may take 20-60s)...<br>';
+  
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {
+    cmd: 'pull_rootfs',
+    image: image,
+    name: name,
+    disk_size: size
+  }, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success) {
+      el.innerHTML += '<b style="color:#4CAF50;">✓ RootFS created: ' + data.path + '</b><br>';
+      setTimeout(function(){ location.reload(); }, 2000);
+    } else {
+      el.innerHTML += '<b style="color:#f44336;">✗ Error: ' + (data.error || 'Unknown') + '</b><br>';
+    }
+  }).fail(function(xhr) {
+    el.innerHTML += '<b style="color:#f44336;">✗ Request failed</b><br>';
+  });
+  return false;
+}
+
+function deleteRootfs(name, path) {
+  swal({
+    title: 'Delete rootFS?',
+    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nNote: If the VM is running, it must be stopped first. The VM config (config.json) will be kept.',
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (confirmed) {
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.success) {
+          swal({title: 'Deleted', text: data.message, type: 'success'}, function() { location.reload(); });
+        } else {
+          swal({title: 'Cannot Delete', text: data.error || 'Delete failed', type: 'error'});
+        }
+      });
+    }
+  });
+}
+</script>
