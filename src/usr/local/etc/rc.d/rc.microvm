@@ -34,7 +34,10 @@ DEFAULT_CPUS="${DEFAULT_CPUS:-1}"
 DEFAULT_MEMORY="${DEFAULT_MEMORY:-256}"
 DEFAULT_VMM="${DEFAULT_VMM:-cloud-hypervisor}"
 AUTOSTART="${AUTOSTART:-no}"
-THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE:-50G}"
+THINPOOL_DATA_SIZE_GB="${THINPOOL_DATA_SIZE_GB:-${THINPOOL_DATA_SIZE:-50}}"
+# Strip any 'G' suffix for backward compat
+THINPOOL_DATA_SIZE_GB="${THINPOOL_DATA_SIZE_GB%%[Gg]}"
+THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE_GB}G"
 THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
 FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
@@ -537,6 +540,138 @@ remove_taps() {
 }
 
 # --------------------------------------------------------------------------
+# Thin device management for direct mode
+# Device IDs: 1000000+ (containerd uses 1+ from BoltDB, no conflict)
+# --------------------------------------------------------------------------
+
+THIN_DEVICE_ID_BASE=1000000
+
+# Get next available thin device ID for direct mode VMs
+next_thin_device_id() {
+  local max_id=$THIN_DEVICE_ID_BASE
+  [ -d "$VMDIR" ] || { echo "$max_id"; return; }
+  for vmdir in "$VMDIR"/*/; do
+    [ -f "$vmdir/config.json" ] || continue
+    local tid=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$vmdir/config.json" 2>/dev/null)
+    [ -n "$tid" ] && [ "$tid" -ge "$max_id" ] && max_id=$((tid + 1))
+  done
+  echo "$max_id"
+}
+
+# Create a thin-provisioned block device for a VM
+# Usage: create_thin_rootfs <vm_name> <size_mb> <device_id>
+# Returns: block device path (e.g. /dev/mapper/microvms-vm-name)
+create_thin_rootfs() {
+  local name="$1"
+  local size_mb="$2"
+  local device_id="$3"
+  local device_name="microvms-${name}"
+  local sectors=$((size_mb * 2048))  # 1MB = 2048 sectors of 512 bytes
+
+  # Ensure thin pool exists
+  if [ ! -e "/dev/mapper/${THINPOOL_NAME}" ]; then
+    log "ERROR: Thin pool ${THINPOOL_NAME} not active"
+    return 1
+  fi
+
+  # Create thin device in pool
+  dmsetup message "$THINPOOL_NAME" 0 "create_thin $device_id" 2>/dev/null
+  if [ $? -ne 0 ]; then
+    log "ERROR: Failed to create thin device $device_id in ${THINPOOL_NAME}"
+    return 1
+  fi
+
+  # Activate as block device
+  local table="0 $sectors thin /dev/mapper/${THINPOOL_NAME} $device_id"
+  dmsetup create "$device_name" --table "$table" 2>/dev/null
+  if [ $? -ne 0 ]; then
+    # Cleanup on failure
+    dmsetup message "$THINPOOL_NAME" 0 "delete $device_id" 2>/dev/null
+    log "ERROR: Failed to activate thin device $device_name"
+    return 1
+  fi
+
+  # Format as ext4
+  mkfs.ext4 -q -F "/dev/mapper/${device_name}" 2>/dev/null
+  if [ $? -ne 0 ]; then
+    dmsetup remove "$device_name" 2>/dev/null
+    dmsetup message "$THINPOOL_NAME" 0 "delete $device_id" 2>/dev/null
+    log "ERROR: Failed to format thin device $device_name"
+    return 1
+  fi
+
+  log "Created thin device: /dev/mapper/${device_name} (${size_mb}MB, ID $device_id)" >&2
+  echo "/dev/mapper/${device_name}"
+}
+
+# Populate a thin device with OCI rootfs content
+# Usage: populate_thin_rootfs <device_path> <tar_file>
+populate_thin_rootfs() {
+  local device_path="$1"
+  local tar_file="$2"
+  local mountpoint="/tmp/microvms-mount-$$"
+
+  mkdir -p "$mountpoint"
+  mount "$device_path" "$mountpoint" 2>/dev/null
+  if [ $? -ne 0 ]; then
+    rmdir "$mountpoint"
+    log "ERROR: Failed to mount $device_path"
+    return 1
+  fi
+
+  tar -xf "$tar_file" -C "$mountpoint" 2>/dev/null
+  local ret=$?
+  umount "$mountpoint" 2>/dev/null
+  rmdir "$mountpoint"
+
+  [ $ret -eq 0 ] && return 0
+  log "ERROR: Failed to extract rootfs tar to $device_path"
+  return 1
+}
+
+# Delete a thin device
+# Usage: delete_thin_rootfs <vm_name> <device_id>
+delete_thin_rootfs() {
+  local name="$1"
+  local device_id="$2"
+  local device_name="microvms-${name}"
+
+  # Deactivate block device
+  if [ -e "/dev/mapper/${device_name}" ]; then
+    dmsetup remove "$device_name" 2>/dev/null || dmsetup remove --force "$device_name" 2>/dev/null
+  fi
+
+  # Delete from thin pool
+  if [ -e "/dev/mapper/${THINPOOL_NAME}" ] && [ -n "$device_id" ]; then
+    dmsetup message "$THINPOOL_NAME" 0 "delete $device_id" 2>/dev/null
+  fi
+
+  log "Deleted thin device: $device_name (ID $device_id)"
+}
+
+# Activate an existing thin device (for VM start after reboot)
+# Usage: activate_thin_rootfs <vm_name> <size_mb> <device_id>
+activate_thin_rootfs() {
+  local name="$1"
+  local size_mb="$2"
+  local device_id="$3"
+  local device_name="microvms-${name}"
+  local sectors=$((size_mb * 2048))
+
+  if [ -e "/dev/mapper/${device_name}" ]; then
+    return 0  # Already active
+  fi
+
+  if [ ! -e "/dev/mapper/${THINPOOL_NAME}" ]; then
+    log "ERROR: Thin pool not active"
+    return 1
+  fi
+
+  local table="0 $sectors thin /dev/mapper/${THINPOOL_NAME} $device_id"
+  dmsetup create "$device_name" --table "$table" 2>/dev/null
+}
+
+# --------------------------------------------------------------------------
 # VM lifecycle (direct CH/FC management)
 # --------------------------------------------------------------------------
 
@@ -565,9 +700,17 @@ start_vm() {
   memory=${memory:-$DEFAULT_MEMORY}
   engine=${engine:-$DEFAULT_VMM}
 
+  # If VM uses thin provisioned storage, activate the block device
+  local thin_device_id=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$config")
+  local disk_size_mb=$(grep -oP '"disk_size_mb"\s*:\s*\K[0-9]+' "$config")
+  if [ -n "$thin_device_id" ]; then
+    activate_thin_rootfs "$name" "${disk_size_mb:-500}" "$thin_device_id"
+    disk="/dev/mapper/microvms-${name}"
+  fi
+
   # Resolve FUSE paths to real disk paths
   kernel=$(resolve_path "$kernel")
-  disk=$(resolve_path "$disk")
+  [ -z "$thin_device_id" ] && disk=$(resolve_path "$disk")
 
   # Use engine-specific kernel
   kernel="${SYSTEM_DIR}/${engine}/kernels/vmlinux"
@@ -883,6 +1026,10 @@ case "$1" in
   status)            microvm_status ;;
   start_vm)          start_vm "$2" ;;
   stop_vm)           stop_vm "$2" ;;
+  next_thin_device_id) next_thin_device_id ;;
+  create_thin_rootfs)  create_thin_rootfs "$2" "$3" "$4" ;;
+  delete_thin_rootfs)  delete_thin_rootfs "$2" "$3" ;;
+  activate_thin_rootfs) activate_thin_rootfs "$2" "$3" "$4" ;;
   start_containerd)  start_containerd ;;
   stop_containerd)   stop_containerd ;;
   start_registry)    start_registry ;;
@@ -892,7 +1039,7 @@ case "$1" in
   setup_thinpool)    setup_thinpool ;;
   teardown_thinpool) teardown_thinpool ;;
   *)
-    echo "Usage: $0 {start|stop|restart|status|start_vm NAME|stop_vm NAME|start_containerd|stop_containerd|start_registry|stop_registry|start_flintlockd|stop_flintlockd|setup_thinpool|teardown_thinpool}"
+    echo "Usage: $0 {start|stop|restart|status|start_vm|stop_vm|next_thin_device_id|create_thin_rootfs|delete_thin_rootfs|...}"
     exit 1
     ;;
 esac

@@ -192,6 +192,17 @@ switch ($cmd) {
         $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
         if ($pid) exec("kill -9 $pid 2>/dev/null");
         @unlink("/tmp/microvm-{$name}.sock");
+
+        // Delete thin device if VM uses one
+        $configFile = "$vmPath/config.json";
+        if (file_exists($configFile)) {
+            $vmConfig = json_decode(file_get_contents($configFile), true);
+            $thinId = $vmConfig['thin_device_id'] ?? null;
+            if ($thinId) {
+                exec("/etc/rc.d/rc.microvm delete_thin_rootfs " . escapeshellarg($name) . " $thinId 2>&1");
+            }
+        }
+
         // Remove entire VM folder (config + rootfs)
         if (is_dir($vmPath)) {
             exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);
@@ -224,7 +235,6 @@ switch ($cmd) {
 
         // --- Direct Mode ---
         $vmPath = "$vmdir/$name";
-        $rootfs = "$vmPath/rootfs.raw";
         $systemDir = '/mnt/user/system/microvms';
         $kernel = "$systemDir/$engine/kernels/vmlinux";
 
@@ -236,7 +246,7 @@ switch ($cmd) {
 
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
-            // Pull OCI image and create rootfs
+            // Pull OCI image
             microvm_log("Pulling OCI: $ociImage");
             $tmpTar = "/tmp/microvm-$name.tar";
             exec("crane export " . escapeshellarg($ociImage) . " " . escapeshellarg($tmpTar) . " 2>&1", $pullOutput, $pullRet);
@@ -246,17 +256,30 @@ switch ($cmd) {
                 break;
             }
 
-            // Create ext4 image
-            exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
-            exec("mkfs.ext4 -F $rootfs 2>/dev/null");
-            exec("mkdir -p /tmp/microvm-mount-$name");
-            exec("sync");
-            $mountDev = $rootfs;
-            foreach (["/mnt/cache", "/mnt/mtier", "/mnt/ztier", "/mnt/rtier"] as $base) {
-                $candidate = $base . "/" . ltrim(str_replace("/mnt/user/", "", $rootfs), "/");
-                if (file_exists($candidate)) { $mountDev = $candidate; break; }
+            // Create thin-provisioned block device
+            $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvm next_thin_device_id 2>/dev/null")));
+            $rootfs = trim(shell_exec("/etc/rc.d/rc.microvm create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
+
+            if (empty($rootfs) || !file_exists($rootfs)) {
+                // Fallback to raw file if thin pool not available
+                microvm_log("Thin device failed, falling back to raw file");
+                $rootfs = "$vmPath/rootfs.raw";
+                $thinDeviceId = null;
+                exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
+                exec("mkfs.ext4 -F $rootfs 2>/dev/null");
+                exec("mkdir -p /tmp/microvm-mount-$name");
+                $mountDev = $rootfs;
+                foreach (["/mnt/cache", "/mnt/mtier", "/mnt/ztier", "/mnt/rtier"] as $base) {
+                    $candidate = $base . "/" . ltrim(str_replace("/mnt/user/", "", $rootfs), "/");
+                    if (file_exists($candidate)) { $mountDev = $candidate; break; }
+                }
+                exec("mount $mountDev /tmp/microvm-mount-$name");
+            } else {
+                // Mount thin device to populate
+                exec("mkdir -p /tmp/microvm-mount-$name");
+                exec("mount $rootfs /tmp/microvm-mount-$name");
             }
-            exec("mount $mountDev /tmp/microvm-mount-$name");
+
             exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
 
             // Inject init script
@@ -312,8 +335,12 @@ INIT;
             'ip' => $ip,
             'bridge' => $bridge,
             'tap_id' => microvm_next_tap_id($vmdir),
+            'disk_size_mb' => $diskSize,
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
         ];
+        if (!empty($thinDeviceId)) {
+            $config['thin_device_id'] = $thinDeviceId;
+        }
         file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
 
         microvm_log("VM created: $name at $vmPath");

@@ -130,6 +130,9 @@ _(Autostart VMs on array start)_:
   <?=mk_option($cfg['AUTOSTART'] ?? 'no', 'yes', _('Yes'))?>
   </select>
 
+_(Thin Pool Size)_ (GB):
+: <input type="number" name="THINPOOL_DATA_SIZE_GB" min="10" max="500" step="10" value="<?=htmlspecialchars(intval($cfg['THINPOOL_DATA_SIZE'] ?? '50'))?>">
+
 &nbsp;
 : <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 
