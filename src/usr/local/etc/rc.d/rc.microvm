@@ -406,6 +406,99 @@ stop_flintlockd() {
 
 
 # --------------------------------------------------------------------------
+# Local OCI Registry (crane) management
+# --------------------------------------------------------------------------
+
+REGISTRY_PORT="5050"
+REGISTRY_DIR="${SYSTEM_DIR}/crane/registry"
+REGISTRY_PID="${RUNTIME_DIR}/crane-registry.pid"
+REGISTRY_LOG="/var/log/crane-registry.log"
+CRANE_BIN="/usr/local/bin/crane"
+GRPCURL_BIN="/usr/local/bin/grpcurl"
+
+start_registry() {
+  if [ -f "$REGISTRY_PID" ] && kill -0 $(cat "$REGISTRY_PID") 2>/dev/null; then
+    log "Local registry already running (PID $(cat $REGISTRY_PID))"
+    return 0
+  fi
+
+  if [ ! -x "$CRANE_BIN" ]; then
+    log "ERROR: crane not found at $CRANE_BIN"
+    return 1
+  fi
+
+  mkdir -p "$REGISTRY_DIR"
+
+  "$CRANE_BIN" registry serve --address=":${REGISTRY_PORT}" --disk "$REGISTRY_DIR" \
+    >> "$REGISTRY_LOG" 2>&1 &
+  local pid=$!
+  echo "$pid" > "$REGISTRY_PID"
+
+  sleep 1
+  if ! kill -0 "$pid" 2>/dev/null; then
+    log "ERROR: crane registry exited prematurely"
+    rm -f "$REGISTRY_PID"
+    return 1
+  fi
+
+  log "Local OCI registry started (PID $pid, port $REGISTRY_PORT, disk $REGISTRY_DIR)"
+
+  # Push kernel images on first run (if not already present)
+  push_kernel_images
+  return 0
+}
+
+stop_registry() {
+  if [ ! -f "$REGISTRY_PID" ]; then
+    return 0
+  fi
+
+  local pid=$(cat "$REGISTRY_PID")
+  if kill -0 "$pid" 2>/dev/null; then
+    log "Stopping local registry (PID $pid)..."
+    kill "$pid" 2>/dev/null
+    sleep 1
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+  fi
+  rm -f "$REGISTRY_PID"
+}
+
+push_kernel_images() {
+  local ch_kernel="${SYSTEM_DIR}/cloud-hypervisor/kernels/vmlinux"
+  local fc_kernel="${SYSTEM_DIR}/firecracker/kernels/vmlinux"
+  local registry="localhost:${REGISTRY_PORT}"
+
+  # Push CH kernel if available and not already in registry
+  if [ -f "$ch_kernel" ]; then
+    if ! "$CRANE_BIN" manifest "${registry}/kernel/ch:latest" >/dev/null 2>&1; then
+      log "Pushing CH kernel to local registry..."
+      local tmpdir=$(mktemp -d)
+      mkdir -p "$tmpdir/boot"
+      cp "$ch_kernel" "$tmpdir/boot/vmlinux"
+      cd "$tmpdir" && tar -cf /tmp/_kernel_ch.tar boot/
+      "$CRANE_BIN" append -f /tmp/_kernel_ch.tar -t "${registry}/kernel/ch:latest" >/dev/null 2>&1
+      rm -rf "$tmpdir" /tmp/_kernel_ch.tar
+      log "CH kernel pushed: ${registry}/kernel/ch:latest"
+    fi
+  fi
+
+  # Push FC kernel if available and not already in registry
+  if [ -f "$fc_kernel" ]; then
+    if ! "$CRANE_BIN" manifest "${registry}/kernel/fc:latest" >/dev/null 2>&1; then
+      log "Pushing FC kernel to local registry..."
+      local tmpdir=$(mktemp -d)
+      mkdir -p "$tmpdir/boot"
+      cp "$fc_kernel" "$tmpdir/boot/vmlinux"
+      cd "$tmpdir" && tar -cf /tmp/_kernel_fc.tar boot/
+      "$CRANE_BIN" append -f /tmp/_kernel_fc.tar -t "${registry}/kernel/fc:latest" >/dev/null 2>&1
+      rm -rf "$tmpdir" /tmp/_kernel_fc.tar
+      log "FC kernel pushed: ${registry}/kernel/fc:latest"
+    fi
+  fi
+}
+
+
+# --------------------------------------------------------------------------
 # TAP interface management
 # --------------------------------------------------------------------------
 
@@ -628,7 +721,7 @@ microvm_start() {
   fi
 
   # Step 3: Start flintlock-containerd
-  log "[3/6] Starting flintlock-containerd..."
+  log "[3/7] Starting flintlock-containerd..."
   start_containerd
   if [ $? -ne 0 ]; then
     log "ERROR: Failed to start flintlock-containerd"
@@ -636,22 +729,30 @@ microvm_start() {
     return 1
   fi
 
-  # Step 4: Start flintlockd
-  log "[4/6] Starting flintlockd..."
+  # Step 4: Start local OCI registry (crane)
+  log "[4/7] Starting local OCI registry..."
+  start_registry
+  if [ $? -ne 0 ]; then
+    log "WARNING: Local registry failed to start (gRPC orchestration may not work)"
+  fi
+
+  # Step 5: Start flintlockd
+  log "[5/7] Starting flintlockd..."
   start_flintlockd
   if [ $? -ne 0 ]; then
     log "ERROR: Failed to start flintlockd"
+    stop_registry
     stop_containerd
     teardown_thinpool
     return 1
   fi
 
-  # Step 5: Create TAP interfaces
-  log "[5/6] Creating TAP interfaces..."
+  # Step 6: Create TAP interfaces
+  log "[6/7] Creating TAP interfaces..."
   create_taps
 
-  # Step 6: Autostart VMs
-  log "[6/6] Autostarting VMs..."
+  # Step 7: Autostart VMs
+  log "[7/7] Autostarting VMs..."
   if [ "$AUTOSTART" = "yes" ]; then
     for vmdir in "$VMDIR"/*/; do
       [ -f "$vmdir/config.json" ] || continue
@@ -670,7 +771,7 @@ microvm_stop() {
   log "=== Stopping MicroVM Liquidmetal service ==="
 
   # Step 1: Stop all running VMs
-  log "[1/5] Stopping all VMs..."
+  log "[1/6] Stopping all VMs..."
   for sock in /tmp/microvm-*.sock; do
     [ -S "$sock" ] || continue
     local name=$(basename "$sock" .sock | sed 's/microvm-//')
@@ -678,19 +779,23 @@ microvm_stop() {
   done
 
   # Step 2: Stop flintlockd
-  log "[2/5] Stopping flintlockd..."
+  log "[2/6] Stopping flintlockd..."
   stop_flintlockd
 
-  # Step 3: Stop flintlock-containerd
-  log "[3/5] Stopping flintlock-containerd..."
+  # Step 3: Stop local registry
+  log "[3/6] Stopping local registry..."
+  stop_registry
+
+  # Step 4: Stop flintlock-containerd
+  log "[4/6] Stopping flintlock-containerd..."
   stop_containerd
 
-  # Step 4: Remove thin pool
-  log "[4/5] Tearing down thin pool..."
+  # Step 5: Remove thin pool
+  log "[5/6] Tearing down thin pool..."
   teardown_thinpool
 
-  # Step 5: Remove TAP interfaces
-  log "[5/5] Removing TAP interfaces..."
+  # Step 6: Remove TAP interfaces
+  log "[6/6] Removing TAP interfaces..."
   remove_taps
 
   # Cleanup runtime
