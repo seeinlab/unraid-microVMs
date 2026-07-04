@@ -98,15 +98,97 @@ function microvm_snapshot_vm($name, $tag = null) {
     $sock = "/tmp/microvm-{$name}.sock";
     $tag = $tag ?: date('Y-m-d_His');
     $snapdir = "$vmdir/$name/snapshots/$tag";
-    
+
+    // Detect engine from config.json
+    $configFile = "$vmdir/$name/config.json";
+    $engine = 'cloud-hypervisor';
+    if (file_exists($configFile)) {
+        $vmConfig = json_decode(file_get_contents($configFile), true);
+        $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+    }
+
     mkdir($snapdir, 0755, true);
-    
-    // Pause → snapshot → resume
+
+    if ($engine === 'firecracker') {
+        return microvm_snapshot_vm_fc($name, $sock, $snapdir);
+    }
+
+    // Cloud Hypervisor: Pause → snapshot → resume via ch-remote
     exec("ch-remote --api-socket $sock pause 2>&1");
     exec("ch-remote --api-socket $sock snapshot file://$snapdir 2>&1", $output, $ret);
     exec("ch-remote --api-socket $sock resume 2>&1");
-    
+
     return ['success' => ($ret === 0), 'path' => $snapdir, 'output' => implode("\n", $output)];
+}
+
+/**
+ * Firecracker snapshot: Pause → create snapshot → Resume via API socket
+ */
+function microvm_snapshot_vm_fc($name, $sock, $snapdir) {
+    $snapshotFile = "$snapdir/snapshot";
+    $memFile = "$snapdir/mem";
+
+    // Step 1: Pause VM
+    $result = microvm_fc_api_call($sock, '/vm', 'PATCH', ['state' => 'Paused']);
+    if ($result['http_code'] !== 204) {
+        return ['success' => false, 'error' => "Failed to pause FC VM (HTTP {$result['http_code']}): {$result['body']}"];
+    }
+
+    // Step 2: Create snapshot
+    $result = microvm_fc_api_call($sock, '/snapshot/create', 'PUT', [
+        'snapshot_type' => 'Full',
+        'snapshot_path' => $snapshotFile,
+        'mem_file_path' => $memFile,
+    ]);
+    if ($result['http_code'] !== 204) {
+        // Try to resume even if snapshot failed
+        microvm_fc_api_call($sock, '/vm', 'PATCH', ['state' => 'Resumed']);
+        return ['success' => false, 'error' => "Failed to create FC snapshot (HTTP {$result['http_code']}): {$result['body']}"];
+    }
+
+    // Step 3: Resume VM
+    $result = microvm_fc_api_call($sock, '/vm', 'PATCH', ['state' => 'Resumed']);
+    if ($result['http_code'] !== 204) {
+        return ['success' => false, 'error' => "Snapshot created but failed to resume VM (HTTP {$result['http_code']}): {$result['body']}"];
+    }
+
+    return ['success' => true, 'path' => $snapdir, 'output' => "Firecracker snapshot created: $snapshotFile + $memFile"];
+}
+
+/**
+ * Make an API call to Firecracker via Unix socket using PHP curl.
+ *
+ * @param string $sock   Path to the Unix socket
+ * @param string $path   API endpoint path (e.g. '/vm', '/snapshot/create')
+ * @param string $method HTTP method (GET, PUT, PATCH, etc.)
+ * @param array|null $body Request body (will be JSON-encoded)
+ * @return array ['http_code' => int, 'body' => string]
+ */
+function microvm_fc_api_call($sock, $path, $method = 'GET', $body = null) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $sock);
+    curl_setopt($ch, CURLOPT_URL, "http://localhost{$path}");
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+    if ($body !== null) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
+    } else {
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+    }
+
+    $result = curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($result === false) {
+        return ['http_code' => 0, 'body' => "curl error: $error"];
+    }
+
+    return ['http_code' => $httpCode, 'body' => $result ?: ''];
 }
 
 function microvm_list_snapshots($name) {
@@ -171,24 +253,33 @@ function microvm_restore_snapshot($name, $tag) {
         return ['success' => false, 'error' => "Snapshot '$tag' not found for VM '$name'"];
     }
 
-    // Check engine - only Cloud Hypervisor supports restore
+    // Detect engine
     $configFile = "$vmdir/$name/config.json";
+    $vmConfig = [];
     if (file_exists($configFile)) {
-        $vmConfig = json_decode(file_get_contents($configFile), true);
-        if (($vmConfig['engine'] ?? 'cloud-hypervisor') === 'firecracker') {
-            return ['success' => false, 'error' => 'Snapshot restore not supported for Firecracker engine'];
-        }
+        $vmConfig = json_decode(file_get_contents($configFile), true) ?: [];
+    }
+    $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+
+    if ($engine === 'firecracker') {
+        return microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $cfg);
     }
 
+    // Cloud Hypervisor restore
+    return microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $cfg);
+}
+
+/**
+ * Restore a Cloud Hypervisor snapshot.
+ */
+function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $cfg) {
     // Stop the VM if currently running
     if (file_exists($sock)) {
         exec("ch-remote --api-socket $sock ping 2>/dev/null", $pingOut, $pingRet);
         if ($pingRet === 0) {
-            // VM is running, shut it down
             exec("ch-remote --api-socket $sock shutdown-vmm 2>/dev/null");
             sleep(2);
         }
-        // Force kill if still alive
         $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
         if ($pid) {
             exec("kill -9 $pid 2>/dev/null");
@@ -197,10 +288,7 @@ function microvm_restore_snapshot($name, $tag) {
         @unlink($sock);
     }
 
-    // Read config for restore parameters
-    $vmConfig = json_decode(file_get_contents($configFile), true);
     $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
-    $mac = $vmConfig['mac'] ?? '';
     $tap = "tap-{$name}";
 
     // Ensure TAP device exists
@@ -227,6 +315,89 @@ function microvm_restore_snapshot($name, $tag) {
         'message' => ($verifyRet === 0)
             ? "VM '$name' restored from snapshot '$tag' and is running"
             : "Restore command issued but VM may not be responding yet. Check /var/log/microvm-{$name}.log",
+    ];
+}
+
+/**
+ * Restore a Firecracker snapshot.
+ * 1. Kill existing FC process
+ * 2. Start new firecracker process with fresh socket
+ * 3. Load snapshot via PUT /snapshot/load
+ * 4. Resume via PATCH /vm
+ */
+function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $cfg) {
+    $snapshotFile = "$snapPath/snapshot";
+    $memFile = "$snapPath/mem";
+
+    // Validate snapshot files exist
+    if (!file_exists($snapshotFile) || !file_exists($memFile)) {
+        return ['success' => false, 'error' => "Snapshot files missing: need '$snapPath/snapshot' and '$snapPath/mem'"];
+    }
+
+    // Kill existing FC process
+    $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+    if ($pid) {
+        exec("kill $pid 2>/dev/null");
+        sleep(1);
+        // Force kill if still alive
+        $pidCheck = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        if ($pidCheck) {
+            exec("kill -9 $pidCheck 2>/dev/null");
+            sleep(1);
+        }
+    }
+    @unlink($sock);
+
+    $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
+    $tap = "tap-{$name}";
+
+    // Ensure TAP device exists
+    exec("ip link show $tap 2>/dev/null", $tapOut, $tapRet);
+    if ($tapRet !== 0) {
+        exec("ip tuntap add dev $tap mode tap 2>/dev/null");
+        exec("ip link set $tap master $bridge 2>/dev/null");
+        exec("ip link set $tap up 2>/dev/null");
+    }
+
+    // Start a new firecracker process (no boot config — we'll load from snapshot)
+    $logFile = "/var/log/microvm-{$name}.log";
+    $cmd = "nohup firecracker --api-sock " . escapeshellarg($sock)
+        . " --id " . escapeshellarg($name)
+        . " > " . escapeshellarg($logFile) . " 2>&1 &";
+    exec($cmd);
+
+    // Wait for socket to appear
+    $waited = 0;
+    while (!file_exists($sock) && $waited < 5) {
+        usleep(200000); // 200ms
+        $waited++;
+    }
+    if (!file_exists($sock)) {
+        return ['success' => false, 'error' => "Firecracker process failed to create socket at $sock. Check $logFile"];
+    }
+
+    // Load snapshot
+    $result = microvm_fc_api_call($sock, '/snapshot/load', 'PUT', [
+        'snapshot_path' => $snapshotFile,
+        'mem_backend' => [
+            'backend_path' => $memFile,
+            'backend_type' => 'File',
+        ],
+        'enable_diff_snapshots' => false,
+        'resume_vm' => true,
+    ]);
+
+    if ($result['http_code'] !== 204) {
+        // Cleanup on failure
+        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        if ($pid) exec("kill $pid 2>/dev/null");
+        @unlink($sock);
+        return ['success' => false, 'error' => "Failed to load FC snapshot (HTTP {$result['http_code']}): {$result['body']}"];
+    }
+
+    return [
+        'success' => true,
+        'message' => "VM '$name' restored from Firecracker snapshot '$tag' and is running",
     ];
 }
 
