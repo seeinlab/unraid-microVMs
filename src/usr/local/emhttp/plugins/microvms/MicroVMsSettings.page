@@ -105,7 +105,7 @@ $status_text = $is_ready ? 'Ready' : 'Not Ready';
   <summary><i class="fa fa-gears"></i> General Settings</summary>
   <div class="mvm-section-body">
     <form markdown="1" method="POST" action="/update.php" target="progressFrame">
-    <input type="hidden" name="#file" value="microvms/microvms.cfg">
+    <input type="hidden" name="#file" value="microvms/microvms.controlplane.cfg">
 
 _(Enable microVMs)_:
 : <select name="SERVICE">
@@ -139,6 +139,81 @@ _(Autostart VMs on array start)_:
 : <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 
     </form>
+  </div>
+</details>
+
+<!-- VM Manager (libvirt) -->
+<?php
+// Liquidmetal status
+$lm_enabled = ($cfg['FLINTLOCKD'] ?? 'disable') === 'enable';
+$lm_flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null')));
+$lm_containerd_running = !empty(trim(shell_exec('cat /var/run/microvms/flintlock-containerd.pid 2>/dev/null | xargs -I{} test -d /proc/{} && echo 1')));
+$lm_registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} && echo 1')));
+$lm_crane_storage = $cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry';
+?>
+<details class="mvm-section" open>
+  <summary>
+    <i class="fa fa-cubes"></i> Liquidmetal (Flintlockd)
+    <?php if ($lm_enabled && $lm_flintlockd_running): ?>
+      <span class="mvm-badge mvm-badge-ok">running</span>
+    <?php elseif ($lm_enabled): ?>
+      <span class="mvm-badge mvm-badge-warn">enabled but not running</span>
+    <?php else: ?>
+      <span class="mvm-badge mvm-badge-off">disabled</span>
+    <?php endif; ?>
+  </summary>
+  <div class="mvm-section-body">
+    <form markdown="1" method="POST" action="/update.php" target="progressFrame">
+    <input type="hidden" name="#file" value="microvms/microvms.controlplane.cfg">
+    <input type="hidden" name="#section" value="liquidmetal">
+
+_(Enable Liquidmetal)_:
+: <select name="FLINTLOCKD" onchange="toggleLiquidmetalFields(this.value)">
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', 'disable', _('No'))?>
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', 'enable', _('Yes'))?>
+  </select>
+
+> Enables flintlockd gRPC API (localhost:9090) for programmatic/remote VM automation.
+> Services started: flintlock-containerd, crane registry, flintlockd.
+
+<div id="lm-fields" style="<?=$lm_enabled ? '' : 'display:none'?>">
+
+_(Crane Registry Storage)_:
+: <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($lm_crane_storage)?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
+
+> Local OCI registry storage for kernel and rootfs images. Used by flintlockd only.
+
+_(Flintlockd gRPC Port)_:
+: <input type="number" name="FLINTLOCKD_GRPC_PORT" min="1024" max="65535" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>">
+
+> Listens on localhost only (127.0.0.1). Not exposed externally.
+
+</div>
+
+&nbsp;
+: <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
+
+    </form>
+
+    <?php if ($lm_enabled): ?>
+    <hr style="border-color:rgba(128,128,128,0.2); margin:12px 0;">
+    <div class="mvm-row">
+      <span class="mvm-row-label">flintlockd:</span>
+      <span class="mvm-row-value"><?=$lm_flintlockd_running ? '<span style="color:#4CAF50">running</span> (gRPC localhost:' . ($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090') . ')' : '<span style="color:#f44336">not running</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">flintlock-containerd:</span>
+      <span class="mvm-row-value"><?=$lm_containerd_running ? '<span style="color:#4CAF50">running</span>' : '<span style="color:#f44336">not running</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">crane registry:</span>
+      <span class="mvm-row-value"><?=$lm_registry_running ? '<span style="color:#4CAF50">running</span> (localhost:5050)' : '<span style="color:#f44336">not running</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Storage:</span>
+      <span class="mvm-row-value" style="font-size:0.85em"><?=htmlspecialchars($lm_crane_storage)?></span>
+    </div>
+    <?php endif; ?>
   </div>
 </details>
 
@@ -317,6 +392,10 @@ _(Autostart VMs on array start)_:
 var plugin = '<?=$plugin?>';
 
 function done() { location = '/Settings'; }
+
+function toggleLiquidmetalFields(val) {
+  document.getElementById('lm-fields').style.display = (val === 'enable') ? '' : 'none';
+}
 
 // Initialize switchButton for Advanced mode toggle
 $(function() {

@@ -36,7 +36,9 @@ DEFAULT_VMM="${DEFAULT_VMM:-cloud-hypervisor}"
 AUTOSTART="${AUTOSTART:-no}"
 THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE:-50G}"
 THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
+FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
+CRANE_REGISTRY_DIR="${CRANE_REGISTRY_DIR:-${SYSTEM_DIR}/crane/registry}"
 
 # Thin pool paths
 THINPOOL_DIR="${VMDIR}/thinpool"
@@ -346,7 +348,7 @@ start_flintlockd() {
   mkdir -p "${RUNTIME_DIR}/flintlockd-state"
 
   "$FLINTLOCKD_BIN" run \
-    --grpc-endpoint "0.0.0.0:${FLINTLOCKD_GRPC_PORT}" \
+    --grpc-endpoint "127.0.0.1:${FLINTLOCKD_GRPC_PORT}" \
     --containerd-socket "$CONTAINERD_SOCK" \
     --bridge-name "$BRIDGE" \
     --parent-iface "$BRIDGE" \
@@ -410,7 +412,7 @@ stop_flintlockd() {
 # --------------------------------------------------------------------------
 
 REGISTRY_PORT="5050"
-REGISTRY_DIR="${SYSTEM_DIR}/crane/registry"
+REGISTRY_DIR="${CRANE_REGISTRY_DIR}"
 REGISTRY_PID="${RUNTIME_DIR}/crane-registry.pid"
 REGISTRY_LOG="/var/log/crane-registry.log"
 CRANE_BIN="/usr/local/bin/crane"
@@ -720,31 +722,33 @@ microvm_start() {
     return 1
   fi
 
-  # Step 3: Start flintlock-containerd
-  log "[3/7] Starting flintlock-containerd..."
-  start_containerd
-  if [ $? -ne 0 ]; then
-    log "ERROR: Failed to start flintlock-containerd"
-    teardown_thinpool
-    return 1
-  fi
+  # Step 3-5: Liquidmetal services (only if enabled)
+  if [ "$FLINTLOCKD" = "enable" ]; then
+    log "[3/7] Starting flintlock-containerd..."
+    start_containerd
+    if [ $? -ne 0 ]; then
+      log "ERROR: Failed to start flintlock-containerd"
+      teardown_thinpool
+      return 1
+    fi
 
-  # Step 4: Start local OCI registry (crane)
-  log "[4/7] Starting local OCI registry..."
-  start_registry
-  if [ $? -ne 0 ]; then
-    log "WARNING: Local registry failed to start (gRPC orchestration may not work)"
-  fi
+    log "[4/7] Starting local OCI registry..."
+    start_registry
+    if [ $? -ne 0 ]; then
+      log "WARNING: Local registry failed to start (gRPC orchestration may not work)"
+    fi
 
-  # Step 5: Start flintlockd
-  log "[5/7] Starting flintlockd..."
-  start_flintlockd
-  if [ $? -ne 0 ]; then
-    log "ERROR: Failed to start flintlockd"
-    stop_registry
-    stop_containerd
-    teardown_thinpool
-    return 1
+    log "[5/7] Starting flintlockd..."
+    start_flintlockd
+    if [ $? -ne 0 ]; then
+      log "ERROR: Failed to start flintlockd"
+      stop_registry
+      stop_containerd
+      teardown_thinpool
+      return 1
+    fi
+  else
+    log "[3-5/7] Liquidmetal disabled, skipping flintlockd services"
   fi
 
   # Step 6: Create TAP interfaces
