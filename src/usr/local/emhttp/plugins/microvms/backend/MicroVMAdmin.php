@@ -256,13 +256,22 @@ switch ($cmd) {
                 break;
             }
 
-            // Create thin-provisioned block device
-            $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvm next_thin_device_id 2>/dev/null")));
-            $rootfs = trim(shell_exec("/etc/rc.d/rc.microvm create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
+            // Create thin-provisioned block device or raw file based on user choice
+            $storageType = $_POST['storage_type'] ?? 'thin';
 
-            if (empty($rootfs) || !file_exists($rootfs)) {
-                // Fallback to raw file if thin pool not available
-                microvm_log("Thin device failed, falling back to raw file");
+            if ($storageType === 'thin') {
+                // Thin pool block device
+                $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvm next_thin_device_id 2>/dev/null")));
+                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvm create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
+
+                if (empty($rootfs) || !file_exists($rootfs)) {
+                    echo json_encode(['success' => false, 'error' => "Failed to create thin device. Is thin pool active?"]);
+                    break;
+                }
+                exec("mkdir -p /tmp/microvm-mount-$name");
+                exec("mount $rootfs /tmp/microvm-mount-$name");
+            } else {
+                // Raw file
                 $rootfs = "$vmPath/rootfs.raw";
                 $thinDeviceId = null;
                 exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
@@ -274,10 +283,6 @@ switch ($cmd) {
                     if (file_exists($candidate)) { $mountDev = $candidate; break; }
                 }
                 exec("mount $mountDev /tmp/microvm-mount-$name");
-            } else {
-                // Mount thin device to populate
-                exec("mkdir -p /tmp/microvm-mount-$name");
-                exec("mount $rootfs /tmp/microvm-mount-$name");
             }
 
             exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
@@ -336,6 +341,7 @@ INIT;
             'bridge' => $bridge,
             'tap_id' => microvm_next_tap_id($vmdir),
             'disk_size_mb' => $diskSize,
+            'storage_type' => $storageType,
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
         ];
         if (!empty($thinDeviceId)) {

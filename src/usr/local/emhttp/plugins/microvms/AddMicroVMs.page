@@ -107,6 +107,13 @@ $nproc = trim(shell_exec('nproc'));
     <option value="5120">5.0 GB</option>
   </select></dd>
 </dl>
+<dl>
+  <dt>Storage Type:</dt>
+  <dd><select id="vm_storage_type" style="width:200px;">
+    <option value="thin">Thin Pool (block device)</option>
+    <option value="raw">Raw File (rootfs.raw)</option>
+  </select></dd>
+</dl>
 </div>
 
 <div id="section_existing" style="display:none;">
@@ -239,6 +246,7 @@ function submitForm() {
     source: source,
     oci_image: ociImage,
     disk_size: document.getElementById('vm_disk_size').value,
+    storage_type: document.getElementById('vm_storage_type').value,
     rootfs_path: document.getElementById('vm_rootfs_path').value,
     autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false'
   }, function(data) {
