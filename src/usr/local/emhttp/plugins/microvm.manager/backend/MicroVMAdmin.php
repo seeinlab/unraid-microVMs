@@ -1,5 +1,28 @@
 <?php
-// backend/MicroVMAdmin.php - AJAX command handler
+/*
+ * microVM Manager for Unraid
+ * Copyright (C) 2026
+ * License: GPL-2.0
+ *
+ * File: backend/MicroVMAdmin.php
+ * Description: AJAX command handler for all microVM operations.
+ *              Receives POST requests from WebGUI JavaScript and dispatches
+ *              to appropriate functions in common.php.
+ *
+ * Commands (POST 'cmd' parameter):
+ *   Lifecycle: list, start, stop, force_stop
+ *   Info:      info, logs, logs_terminal
+ *   Resize:    resize (Cloud Hypervisor only)
+ *   Snapshots: snapshot, list_snapshots, delete_snapshot, restore_snapshot
+ *   Console:   console, console_stop
+ *   CRUD:      create, create_json, delete, delete_rootfs, pull_rootfs
+ *   Config:    autostart, service
+ *
+ * References:
+ *   - docs/feature-api-mapping.md (UI → Backend → Engine API)
+ *   - docs/cloud-hypervisor-api.md
+ *   - docs/firecracker-api.md
+ */
 error_reporting(0); // Suppress warnings from mixing with JSON output
 
 $plugin = "microvm.manager";

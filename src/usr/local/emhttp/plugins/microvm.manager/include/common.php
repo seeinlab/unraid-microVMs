@@ -1,6 +1,22 @@
 <?php
-// include/common.php - microVM Manager shared functions
+/*
+ * microVM Manager for Unraid
+ * Copyright (C) 2026
+ * License: GPL-2.0 (consistent with Unraid plugin ecosystem)
+ *
+ * File: include/common.php
+ * Description: Shared PHP functions for microVM lifecycle management.
+ *              Provides helpers for listing, starting, stopping, resizing,
+ *              snapshotting, and managing VMs across both Cloud Hypervisor
+ *              and Firecracker engines.
+ *
+ * References:
+ *   - Cloud Hypervisor API: docs/cloud-hypervisor-api.md
+ *   - Firecracker API: docs/firecracker-api.md
+ *   - Feature mapping: docs/feature-api-mapping.md
+ */
 
+// --- Constants ---
 define('MICROVM_PLUGIN', 'microvm.manager');
 define('MICROVM_CFG_PATH', '/boot/config/plugins/' . MICROVM_PLUGIN . '/' . MICROVM_PLUGIN . '.cfg');
 
@@ -36,7 +52,7 @@ function microvm_list_vms() {
             $engine = $config['engine'] ?? 'cloud-hypervisor';
             if ($engine === 'firecracker') {
                 // FC: check if process with this VM name is alive
-                $running = !empty(trim(shell_exec("pgrep -f 'microvm-{$vm['name']}' 2>/dev/null")));
+                $running = !empty(trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null")));
             } else {
                 // CH: use ch-remote ping
                 exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
