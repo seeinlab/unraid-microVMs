@@ -229,7 +229,7 @@ start_containerd() {
   log "Starting flintlock-containerd..."
 
   # Create runtime directories
-  mkdir -p "${RUNTIME_DIR}/containerd"
+  mkdir -p "${SYSTEM_DIR}/containerd"
   mkdir -p "${RUNTIME_DIR}/containerd-state"
 
   # Generate containerd config with devmapper snapshotter
@@ -237,7 +237,7 @@ start_containerd() {
   cat > "$containerd_config" << EOF
 version = 2
 
-root = "${RUNTIME_DIR}/containerd"
+root = "${SYSTEM_DIR}/containerd"
 state = "${RUNTIME_DIR}/containerd-state"
 
 [grpc]
@@ -246,7 +246,7 @@ state = "${RUNTIME_DIR}/containerd-state"
 [plugins]
   [plugins."io.containerd.snapshotter.v1.devmapper"]
     pool_name = "${THINPOOL_NAME}"
-    root_path = "${RUNTIME_DIR}/containerd/devmapper"
+    root_path = "${SYSTEM_DIR}/containerd/devmapper"
     base_image_size = "10GB"
     discard_blocks = true
 
