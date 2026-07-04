@@ -153,7 +153,7 @@ $lm_crane_storage = $cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/cra
 ?>
 <details class="mvm-section" open>
   <summary>
-    <i class="fa fa-cubes"></i> Liquidmetal (Flintlockd)
+    <i class="fa fa-cubes"></i> Liquidmetal
     <?php if ($lm_enabled && $lm_flintlockd_running): ?>
       <span class="mvm-badge mvm-badge-ok">running</span>
     <?php elseif ($lm_enabled): ?>
@@ -199,19 +199,39 @@ _(Flintlockd gRPC Port)_:
     <hr style="border-color:rgba(128,128,128,0.2); margin:12px 0;">
     <div class="mvm-row">
       <span class="mvm-row-label">flintlockd:</span>
-      <span class="mvm-row-value"><?=$lm_flintlockd_running ? '<span style="color:#4CAF50">running</span> (gRPC localhost:' . ($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090') . ')' : '<span style="color:#f44336">not running</span>'?></span>
+      <span class="mvm-row-value">
+        <?=$lm_flintlockd_running ? '<span style="color:#4CAF50">running</span> (gRPC 0.0.0.0:' . ($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090') . ')' : '<span style="color:#f44336">not running</span>'?>
+        <?=$flintlockd_version ? " — $flintlockd_version" : ''?>
+      </span>
     </div>
     <div class="mvm-row">
-      <span class="mvm-row-label">flintlock-containerd:</span>
-      <span class="mvm-row-value"><?=$lm_containerd_running ? '<span style="color:#4CAF50">running</span>' : '<span style="color:#f44336">not running</span>'?></span>
+      <span class="mvm-row-label">containerd:</span>
+      <span class="mvm-row-value">
+        <?=$lm_containerd_running ? '<span style="color:#4CAF50">running</span>' : '<span style="color:#f44336">not running</span>'?>
+        <?=$containerd_version ? " — $containerd_version" : ''?>
+      </span>
     </div>
     <div class="mvm-row">
       <span class="mvm-row-label">crane registry:</span>
-      <span class="mvm-row-value"><?=$lm_registry_running ? '<span style="color:#4CAF50">running</span> (localhost:5050)' : '<span style="color:#f44336">not running</span>'?></span>
+      <span class="mvm-row-value"><?=$lm_registry_running ? '<span style="color:#4CAF50">running</span> (127.0.0.1:5050)' : '<span style="color:#f44336">not running</span>'?></span>
+    </div>
+    <div class="mvm-row">
+      <span class="mvm-row-label">Thin Pool:</span>
+      <span class="mvm-row-value">
+        <?php if ($thinpool_exists): ?>
+          /dev/mapper/<?=$thinpool_name?> <span style="color:#4CAF50">✓ active</span>
+        <?php else: ?>
+          <span style="color:#f44336">✗ inactive</span>
+        <?php endif; ?>
+      </span>
     </div>
     <div class="mvm-row">
       <span class="mvm-row-label">Storage:</span>
       <span class="mvm-row-value" style="font-size:0.85em"><?=htmlspecialchars($lm_crane_storage)?></span>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <input type="button" value="VIEW FLINTLOCKD LOG" onclick="viewLog('flintlockd')" class="btn">
+      <input type="button" value="VIEW CONTAINERD LOG" onclick="viewLog('flintlock-containerd')" class="btn">
     </div>
     <?php endif; ?>
   </div>
@@ -316,77 +336,7 @@ _(Flintlockd gRPC Port)_:
   </div>
 </details>
 
-<!-- Advanced: Containerd -->
-<details class="mvm-section mvm-advanced">
-  <summary>
-    <i class="fa fa-database"></i> Containerd
-    <?php if ($containerd_running): ?>
-      <span class="mvm-badge mvm-badge-ok">running</span>
-    <?php elseif ($containerd_bin): ?>
-      <span class="mvm-badge mvm-badge-warn">stopped</span>
-    <?php else: ?>
-      <span class="mvm-badge mvm-badge-off">not installed</span>
-    <?php endif; ?>
-  </summary>
-  <div class="mvm-section-body">
-    <div class="mvm-row">
-      <span class="mvm-row-label">Binary:</span>
-      <span class="mvm-row-value"><?=$containerd_bin ? '/usr/local/bin/flintlock-containerd' : '<span style="color:#f44336">not found</span>'?></span>
-    </div>
-    <div class="mvm-row">
-      <span class="mvm-row-label">Version:</span>
-      <span class="mvm-row-value"><?=$containerd_version ?: '—'?></span>
-    </div>
-    <div class="mvm-row">
-      <span class="mvm-row-label">Thin Pool:</span>
-      <span class="mvm-row-value">
-        <?php if ($thinpool_exists): ?>
-          /dev/mapper/<?=$thinpool_name?> <span style="color:#4CAF50">✓ active</span>
-        <?php else: ?>
-          <span style="color:#f44336">✗ inactive</span>
-        <?php endif; ?>
-      </span>
-    </div>
-    <div class="mvm-row">
-      <span class="mvm-row-label">KVM:</span>
-      <span class="mvm-row-value"><?=$kvm_available ? '/dev/kvm <span style="color:#4CAF50">✓</span>' : '<span style="color:#f44336">✗ not available</span>'?></span>
-    </div>
-    <div style="margin-top:10px;">
-      <input type="button" value="VIEW CONTAINERD LOG" onclick="viewLog('flintlock-containerd')" class="btn">
-    </div>
-  </div>
-</details>
-
-<!-- Advanced: Flintlockd -->
-<details class="mvm-section mvm-advanced">
-  <summary>
-    <i class="fa fa-bolt"></i> Flintlockd
-    <?php if ($flintlockd_running): ?>
-      <span class="mvm-badge mvm-badge-ok">running</span>
-    <?php elseif ($flintlockd_bin): ?>
-      <span class="mvm-badge mvm-badge-warn">stopped</span>
-    <?php else: ?>
-      <span class="mvm-badge mvm-badge-off">not installed</span>
-    <?php endif; ?>
-  </summary>
-  <div class="mvm-section-body">
-    <div class="mvm-row">
-      <span class="mvm-row-label">Binary:</span>
-      <span class="mvm-row-value"><?=$flintlockd_bin ? '/usr/local/bin/flintlockd' : '<span style="color:#f44336">not found</span>'?></span>
-    </div>
-    <div class="mvm-row">
-      <span class="mvm-row-label">Version:</span>
-      <span class="mvm-row-value"><?=$flintlockd_version ?: '—'?></span>
-    </div>
-    <div class="mvm-row">
-      <span class="mvm-row-label">gRPC endpoint:</span>
-      <span class="mvm-row-value">0.0.0.0:<?=$cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090'?></span>
-    </div>
-    <div style="margin-top:10px;">
-      <input type="button" value="VIEW FLINTLOCKD LOG" onclick="viewLog('flintlockd')" class="btn">
-    </div>
-  </div>
-</details>
+<!-- Script -->
 
 <script>
 var plugin = '<?=$plugin?>';
