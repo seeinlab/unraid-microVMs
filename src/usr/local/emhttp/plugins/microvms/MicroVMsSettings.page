@@ -173,20 +173,13 @@ _(Enable Liquidmetal)_:
   <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', 'enable', _('Yes'))?>
   </select>
 
-> Enables flintlockd gRPC API (localhost:9090) for programmatic/remote VM automation.
-> Services started: flintlock-containerd, crane registry, flintlockd.
-
 <div id="lm-fields" style="<?=$lm_enabled ? '' : 'display:none'?>">
 
 _(Crane Registry Storage)_:
 : <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($lm_crane_storage)?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
 
-> Local OCI registry storage for kernel and rootfs images. Used by flintlockd only.
-
 _(Flintlockd gRPC Port)_:
 : <input type="number" name="FLINTLOCKD_GRPC_PORT" min="1024" max="65535" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>">
-
-> Listens on localhost only (127.0.0.1). Not exposed externally.
 
 </div>
 
