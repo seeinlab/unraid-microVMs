@@ -168,12 +168,12 @@ $lm_crane_storage = $cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/cra
     <input type="hidden" name="#section" value="liquidmetal">
 
 _(Enable Liquidmetal)_:
-: <select name="FLINTLOCKD" onchange="toggleLiquidmetalFields(this.value)">
+: <select name="FLINTLOCKD">
   <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', 'disable', _('No'))?>
   <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', 'enable', _('Yes'))?>
   </select>
 
-<div id="lm-fields" style="<?=$lm_enabled ? '' : 'display:none'?>">
+<?php if ($lm_enabled): ?>
 
 _(Crane Registry Storage)_:
 : <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($lm_crane_storage)?>" data-pickroot="/mnt" data-pickfolders="true" data-pickcloseonfile="true">
@@ -181,7 +181,7 @@ _(Crane Registry Storage)_:
 _(Flintlockd gRPC Port)_:
 : <input type="number" name="FLINTLOCKD_GRPC_PORT" min="1024" max="65535" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>">
 
-</div>
+<?php endif; ?>
 
 &nbsp;
 : <span class="inline-block"><input type="submit" name="#apply" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
@@ -231,7 +231,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- VM Manager (libvirt) -->
-<details class="mvm-section" open>
+<details class="mvm-section">
   <summary>
     <i class="fa fa-desktop"></i> VM Manager (libvirt)
     <?php if ($vm_manager_enabled && $libvirt_running): ?>
@@ -264,7 +264,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Cloud Hypervisor -->
-<details class="mvm-section" open>
+<details class="mvm-section">
   <summary>
     <i class="fa fa-cloud"></i> Cloud Hypervisor
     <?php if ($ch_bin && $ch_kernel): ?>
@@ -297,7 +297,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Firecracker -->
-<details class="mvm-section" open>
+<details class="mvm-section">
   <summary>
     <i class="fa fa-fire"></i> Firecracker
     <?php if ($fc_bin && $fc_kernel): ?>
@@ -335,10 +335,6 @@ _(Flintlockd gRPC Port)_:
 var plugin = '<?=$plugin?>';
 
 function done() { location = '/Settings'; }
-
-function toggleLiquidmetalFields(val) {
-  document.getElementById('lm-fields').style.display = (val === 'enable') ? '' : 'none';
-}
 
 // Initialize switchButton for Advanced mode toggle
 $(function() {
