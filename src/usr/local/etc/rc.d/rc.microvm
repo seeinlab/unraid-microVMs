@@ -414,17 +414,20 @@ create_taps() {
   for vmdir in "$VMDIR"/*/; do
     [ -f "$vmdir/config.json" ] || continue
     local name=$(basename "$vmdir")
-    if ! ip link show "tap-$name" &>/dev/null; then
-      ip tuntap add "tap-$name" mode tap 2>/dev/null
-      ip link set "tap-$name" master "$BRIDGE" 2>/dev/null
-      ip link set "tap-$name" up 2>/dev/null
-      log "Created TAP: tap-$name on $BRIDGE"
+    local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$vmdir/config.json")
+    [ -z "$tap_id" ] && continue
+    local tap_name="tap${tap_id}"
+    if ! ip link show "$tap_name" &>/dev/null; then
+      ip tuntap add "$tap_name" mode tap 2>/dev/null
+      ip link set "$tap_name" master "$BRIDGE" 2>/dev/null
+      ip link set "$tap_name" up 2>/dev/null
+      log "Created TAP: $tap_name on $BRIDGE"
     fi
   done
 }
 
 remove_taps() {
-  for tap in $(ip -o link show | grep -oP 'tap-\S+(?=:)'); do
+  for tap in $(ip -o link show | grep -oP 'tap[0-9]+(?=:)'); do
     ip link del "$tap" 2>/dev/null
     log "Removed TAP: $tap"
   done
@@ -469,11 +472,19 @@ start_vm() {
 
   log "Starting VM '$name': engine=$engine cpus=$cpus mem=${memory}M"
 
+  # Get TAP ID from config
+  local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config")
+  if [ -z "$tap_id" ]; then
+    log "ERROR: No tap_id in config for VM '$name'"
+    return 1
+  fi
+  local tap_name="tap${tap_id}"
+
   # Create TAP if not exists
-  if ! ip link show "tap-$name" &>/dev/null; then
-    ip tuntap add "tap-$name" mode tap 2>/dev/null
-    ip link set "tap-$name" master "$BRIDGE" 2>/dev/null
-    ip link set "tap-$name" up 2>/dev/null
+  if ! ip link show "$tap_name" &>/dev/null; then
+    ip tuntap add "$tap_name" mode tap 2>/dev/null
+    ip link set "$tap_name" master "$BRIDGE" 2>/dev/null
+    ip link set "$tap_name" up 2>/dev/null
   fi
 
   if [ "$engine" = "firecracker" ]; then
@@ -489,7 +500,7 @@ start_vm() {
     {"drive_id": "rootfs", "path_on_host": "$disk", "is_root_device": true, "is_read_only": false}
   ],
   "network-interfaces": [
-    {"iface_id": "eth0", "guest_mac": "$mac", "host_dev_name": "tap-$name"}
+    {"iface_id": "eth0", "guest_mac": "$mac", "host_dev_name": "$tap_name"}
   ],
   "machine-config": {
     "vcpu_count": $cpus,
@@ -511,7 +522,7 @@ FCEOF
       --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
-      --net "tap=tap-$name,mac=$mac" \
+      --net "tap=$tap_name,mac=$mac" \
       --serial pty --console off \
       -v >> "$vmdir/vm.log" 2>&1 &
   fi

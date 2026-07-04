@@ -307,7 +307,11 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
     }
 
     $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
-    $tap = "tap-{$name}";
+    $tap_id = $vmConfig['tap_id'] ?? null;
+    if ($tap_id === null) {
+        return ['success' => false, 'error' => "No tap_id in config for VM '$name'"];
+    }
+    $tap = "tap{$tap_id}";
 
     // Ensure TAP device exists
     exec("ip link show $tap 2>/dev/null", $tapOut, $tapRet);
@@ -367,7 +371,11 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
     @unlink($sock);
 
     $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
-    $tap = "tap-{$name}";
+    $tap_id = $vmConfig['tap_id'] ?? null;
+    if ($tap_id === null) {
+        return ['success' => false, 'error' => "No tap_id in config for VM '$name'"];
+    }
+    $tap = "tap{$tap_id}";
 
     // Ensure TAP device exists
     exec("ip link show $tap 2>/dev/null", $tapOut, $tapRet);

@@ -89,7 +89,6 @@ $status_text = $is_ready ? 'Ready' : 'Not Ready';
 <div class="title">
   <span class="left"><i class="title fa fa-fire"></i>Status</span>
   <span class="right" style="display:flex;align-items:center;gap:16px;">
-    <span style="font-size:0.85em;">BASIC VIEW</span>
     <input type="checkbox" id="mvm-mode-toggle" class="advmode">
     Status: <b style="<?=$status_class?>"><?=$status_text?></b>
   </span>
