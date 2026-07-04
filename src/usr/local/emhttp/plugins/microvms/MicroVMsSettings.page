@@ -78,18 +78,13 @@ $status_text = $is_ready ? 'Ready' : 'Not Ready';
 .mvm-btn:hover { background: rgba(128,128,128,0.2); }
 .mvm-btn-primary { border-color: #4CAF50; color: #4CAF50; }
 .mvm-btn-primary:hover { background: rgba(76,175,80,0.15); }
-.mvm-advanced { display: none; }
-.mvm-advanced.show { display: block; }
 </style>
 
-<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
-<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
 
 <!-- Status + Mode Toggle -->
 <div class="title">
   <span class="left"><i class="title fa fa-fire"></i>Status</span>
   <span class="right" style="display:flex;align-items:center;gap:16px;">
-    <input type="checkbox" id="mvm-mode-toggle" class="advmode">
     Status: <b style="<?=$status_class?>"><?=$status_text?></b>
   </span>
 </div>
@@ -231,7 +226,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- VM Manager (libvirt) -->
-<details class="mvm-section mvm-advanced">
+<details class="mvm-section">
   <summary>
     <i class="fa fa-desktop"></i> VM Manager (libvirt)
     <?php if ($vm_manager_enabled && $libvirt_running): ?>
@@ -264,7 +259,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Cloud Hypervisor -->
-<details class="mvm-section mvm-advanced">
+<details class="mvm-section">
   <summary>
     <i class="fa fa-cloud"></i> Cloud Hypervisor
     <?php if ($ch_bin && $ch_kernel): ?>
@@ -297,7 +292,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Firecracker -->
-<details class="mvm-section mvm-advanced">
+<details class="mvm-section">
   <summary>
     <i class="fa fa-fire"></i> Firecracker
     <?php if ($fc_bin && $fc_kernel): ?>
@@ -335,27 +330,6 @@ _(Flintlockd gRPC Port)_:
 var plugin = '<?=$plugin?>';
 
 function done() { location = '/Settings'; }
-
-// Initialize switchButton for Advanced mode toggle
-$(function() {
-  var adv = localStorage.getItem('mvm-mode') === 'advanced';
-  $('.advmode').switchButton({labels_placement:'left', on_label:'ADVANCED VIEW', off_label:'BASIC VIEW', checked: adv});
-  if (adv) setMode('advanced');
-  $('.advmode').change(function() {
-    setMode($(this).prop('checked') ? 'advanced' : 'basic');
-  });
-});
-
-function setMode(mode) {
-  var advSections = document.querySelectorAll('.mvm-advanced');
-  if (mode === 'advanced') {
-    advSections.forEach(function(el) { el.classList.add('show'); });
-    localStorage.setItem('mvm-mode', 'advanced');
-  } else {
-    advSections.forEach(function(el) { el.classList.remove('show'); });
-    localStorage.setItem('mvm-mode', 'basic');
-  }
-}
 
 function viewLog(service) {
   var logFile = (service === 'flintlockd') ? '/var/log/flintlockd.log' : '/var/log/flintlock-containerd.log';
