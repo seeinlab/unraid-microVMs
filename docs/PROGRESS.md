@@ -1,6 +1,13 @@
-# Progress Log — MicroVM Liquidmetal Plugin for Unraid
+# Progress Log — microVMs Plugin for Unraid
 
 ## v2026.07.04 — Orchestrated Mode (Current)
+
+### Renames & Restructuring
+- **Plugin renamed**: `microvm.manager` → `microvms`
+- **Settings page**: "microVMs Controlplane" (with Liquidmetal section)
+- **Thin pool**: `microvm-thinpool` removed → `microvms-thinpool` active
+- **Engine label**: Renamed to "VMM" (Virtual Machine Monitor)
+- **Paths restructured**: Consistent `/mnt/user/system/liquidmetal/` hierarchy
 
 ### Commits
 - `2bd7aeb` feat: local OCI registry in boot sequence (crane --disk)
@@ -43,7 +50,7 @@
 - **Autostart**: switchButton toggle, starts VM on create if ON
 - **TAP naming**: `tap{id}@br0` with auto-assigned unique IDs
 - **Kernel detection**: `grep -aoP` for version from vmlinux binary
-- **Settings page**: FV3-style, Basic/Advanced toggle, VIEW LOG buttons
+- **Settings page**: "microVMs Controlplane" — FV3-style, Basic/Advanced toggle, Liquidmetal section, VIEW LOG buttons
 
 #### Binaries Installed
 | Binary | Version | Path |
