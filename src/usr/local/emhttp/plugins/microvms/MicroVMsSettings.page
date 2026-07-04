@@ -231,7 +231,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- VM Manager (libvirt) -->
-<details class="mvm-section">
+<details class="mvm-section mvm-advanced">
   <summary>
     <i class="fa fa-desktop"></i> VM Manager (libvirt)
     <?php if ($vm_manager_enabled && $libvirt_running): ?>
@@ -264,7 +264,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Cloud Hypervisor -->
-<details class="mvm-section">
+<details class="mvm-section mvm-advanced">
   <summary>
     <i class="fa fa-cloud"></i> Cloud Hypervisor
     <?php if ($ch_bin && $ch_kernel): ?>
@@ -297,7 +297,7 @@ _(Flintlockd gRPC Port)_:
 </details>
 
 <!-- Firecracker -->
-<details class="mvm-section">
+<details class="mvm-section mvm-advanced">
   <summary>
     <i class="fa fa-fire"></i> Firecracker
     <?php if ($fc_bin && $fc_kernel): ?>
