@@ -36,6 +36,18 @@ function microvm_load_config() {
     ];
 }
 
+function microvm_next_tap_id($vmdir) {
+    $max_id = -1;
+    if (is_dir($vmdir)) {
+        foreach (glob("$vmdir/*/config.json") as $f) {
+            $cfg = json_decode(file_get_contents($f), true);
+            $id = $cfg['tap_id'] ?? -1;
+            if ($id > $max_id) $max_id = $id;
+        }
+    }
+    return $max_id + 1;
+}
+
 function microvm_list_vms() {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';

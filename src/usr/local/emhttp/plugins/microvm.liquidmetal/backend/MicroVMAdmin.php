@@ -291,7 +291,7 @@ INIT;
             'mac' => $mac,
             'ip' => $ip,
             'bridge' => $bridge,
-            'tap_id' => 0,
+            'tap_id' => microvm_next_tap_id($vmdir),
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
         ];
         file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
