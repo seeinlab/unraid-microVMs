@@ -336,19 +336,27 @@ start_flintlockd() {
     return 1
   fi
 
+  # Check if port is already in use
+  local port_pid=$(ss -tlnp 2>/dev/null | grep ":${FLINTLOCKD_GRPC_PORT} " | grep -oP 'pid=\K[0-9]+' | head -1)
+  if [ -n "$port_pid" ]; then
+    local port_cmd=$(ps -p "$port_pid" -o comm= 2>/dev/null)
+    log "ERROR: Port ${FLINTLOCKD_GRPC_PORT} already in use by PID $port_pid ($port_cmd)"
+    return 1
+  fi
+
   # Ensure containerd is running
   if [ ! -S "$CONTAINERD_SOCK" ]; then
     log "ERROR: containerd socket not found. Start containerd first."
     return 1
   fi
 
-  log "Starting flintlockd (gRPC port $FLINTLOCKD_GRPC_PORT)..."
+  log "Starting flintlockd (gRPC 0.0.0.0:$FLINTLOCKD_GRPC_PORT)..."
 
   # Create state directory
   mkdir -p "${RUNTIME_DIR}/flintlockd-state"
 
   "$FLINTLOCKD_BIN" run \
-    --grpc-endpoint "127.0.0.1:${FLINTLOCKD_GRPC_PORT}" \
+    --grpc-endpoint "0.0.0.0:${FLINTLOCKD_GRPC_PORT}" \
     --containerd-socket "$CONTAINERD_SOCK" \
     --bridge-name "$BRIDGE" \
     --parent-iface "$BRIDGE" \
@@ -431,7 +439,7 @@ start_registry() {
 
   mkdir -p "$REGISTRY_DIR"
 
-  "$CRANE_BIN" registry serve --address=":${REGISTRY_PORT}" --disk "$REGISTRY_DIR" \
+  "$CRANE_BIN" registry serve --address="127.0.0.1:${REGISTRY_PORT}" --disk "$REGISTRY_DIR" \
     >> "$REGISTRY_LOG" 2>&1 &
   local pid=$!
   echo "$pid" > "$REGISTRY_PID"
