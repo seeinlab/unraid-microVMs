@@ -73,14 +73,24 @@
 
 ---
 
-### 🚧 Not Yet Wired (Next Steps)
+### ✅ Testing & Verified (this session)
 
-1. **Test WebGUI → flintlockd**: The PHP backend is fully wired (auto-detects flintlockd). Need to test from browser.
-2. **UI shows gRPC calls**: Progress popup should display actual flintlockd API calls in dark log panel
-3. **PLG installer**: Not tested (manual install so far)
-4. **nchan real-time**: VM status streaming via ListMicroVMsStream
-5. **macvtap support**: Available in flintlockd, not exposed in UI
-6. **Upgrade containerd**: v1.7.27 → v1.7.33 (latest LTS, security patches, exact SDK match)
+- **WebGUI → flintlockd gRPC**: Tested from browser, working flawlessly ✅
+- **Auto-detect mode**: PHP detects flintlockd running, routes through grpcurl automatically ✅
+- **Thin pool**: One shared pool, per-VM snapshots (space-efficient, shared layers) ✅
+  - Direct mode VMs: use raw `rootfs.raw` files on disk
+  - Flintlockd mode VMs: use thin pool snapshots from containerd devmapper
+- **Boot step numbering**: Fixed (all `/7` for start, `/6` for stop) ✅
+
+---
+
+### 🚧 Next Steps
+
+1. **UI shows gRPC calls**: Progress popup should display actual flintlockd API calls in dark log panel
+2. **PLG installer**: Not tested (manual install so far)
+3. **nchan real-time**: VM status streaming via ListMicroVMsStream
+4. **macvtap support**: Available in flintlockd, not exposed in UI
+5. **Upgrade containerd**: v1.7.27 → v1.7.33 (latest LTS, security patches, exact SDK match)
 
 ---
 
