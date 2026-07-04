@@ -44,7 +44,7 @@ CRANE_REGISTRY_DIR="${CRANE_REGISTRY_DIR:-${SYSTEM_DIR}/crane/registry}"
 THINPOOL_DIR="${VMDIR}/thinpool"
 THINPOOL_DATA="${THINPOOL_DIR}/data"
 THINPOOL_META="${THINPOOL_DIR}/meta"
-THINPOOL_NAME="microvm-thinpool"
+THINPOOL_NAME="microvms-thinpool"
 
 # --------------------------------------------------------------------------
 # Utility functions

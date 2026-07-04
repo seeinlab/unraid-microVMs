@@ -34,7 +34,7 @@ $fc_kernel_size = $fc_kernel ? round(filesize("$kernelDir/firecracker/kernels/vm
 $fc_kernel_ver = $fc_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/firecracker/kernels/vmlinux") . " 2>/dev/null | head -1")) : false;
 
 $kvm_available = is_readable('/dev/kvm');
-$thinpool_name = 'microvm-thinpool';
+$thinpool_name = 'microvms-thinpool';
 $thinpool_exists = file_exists("/dev/mapper/{$thinpool_name}");
 
 // VM Manager (libvirt) status
@@ -219,7 +219,7 @@ _(Flintlockd gRPC Port)_:
       </span>
     </div>
     <div class="mvm-row">
-      <span class="mvm-row-label">Storage:</span>
+      <span class="mvm-row-label">Registry Storage:</span>
       <span class="mvm-row-value" style="font-size:0.85em"><?=htmlspecialchars($lm_crane_storage)?></span>
     </div>
     <div style="margin-top:10px; display:flex; gap:8px;">
