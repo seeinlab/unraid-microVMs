@@ -1,6 +1,14 @@
 # Progress Log — microVMs Plugin for Unraid
 
-## v2026.07.05 — Current
+## v2026.07.05 — Current (Verified Working)
+
+### ✅ Full Plugin Lifecycle Verified
+- **Install from UI**: Downloads binaries, extracts, installs — no service start at boot ✓
+- **Array start**: `event/array_started` fires → `rc.microvms start` → containerd starts ✓
+- **Array stop**: `event/stopping_svcs` fires → `rc.microvms stop` → clean shutdown ✓
+- **Uninstall from UI**: Stops services, removes files, preserves user data ✓
+- **Reboot**: Plugin reinstalls from flash, waits for array, then starts ✓
+- **No Unraid corruption**: Does NOT access /mnt/user/ before array is online ✓
 
 ### Architecture
 ```
@@ -13,115 +21,120 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
                               crane registry (127.0.0.1:5050, OCI images)
 ```
 
-### Design Decisions
-- **UI uses Direct Mode only** — no flintlockd in UI path
-- **Flintlockd/Liquidmetal** — for remote/programmatic automation only (gRPC API)
-- **containerd always starts** — manages thin pool device IDs for both modes
-- **KVM independent** — only needs /dev/kvm (kernel module), does NOT require libvirt
-- **VMM, not Engine** — terminology throughout
-- **Sub-page tabs** — Settings split into General, Cloud Hypervisor, Firecracker, Liquidmetal
-- **pidof for detection** — not pgrep (avoids Docker containerd false positive)
-- **$_REQUEST in backend** — not $_POST (sub-page context strips POST body)
-- **Devmapper optional** — can disable (raw file mode only)
-- **Auto-enable VMM** — if set as default but disabled, auto-enables on restart
+### Critical Design Rules
 
-### What's Working ✅
+1. **PLG install (boot) must NEVER access /mnt/user/** — array not online yet
+2. **Services start via event/array_started** — not in PLG install script
+3. **Process detection uses `pidof`** — not `pgrep -f` (Docker containerd false positive)
+4. **AJAX backend uses `$_REQUEST`** — not `$_POST` (empty in sub-page tab context)
+5. **KVM is independent of libvirt** — only needs /dev/kvm kernel device
+6. **Liquidmetal disabled by default** — optional remote automation layer
+7. **Devmapper optional** — can run with raw file storage only
 
-#### Boot Sequence
-
-**CRITICAL:** PLG install runs at boot BEFORE array. Services start AFTER array via start.sh.
+### Boot Sequence
 
 ```
-PLG install (boot, before array):
-  - Install binaries, symlinks, log dirs only
-  - NO /mnt/user/ access, NO service start
+BOOT (PLG install via rc.local):
+  ├── Download/cache binaries to /boot/config/plugins/microvms/
+  ├── Extract tgz to /usr/local/emhttp/plugins/microvms/
+  ├── Install binaries to /usr/local/bin/
+  ├── Create symlink /etc/rc.d/rc.microvms
+  ├── Create log dirs /var/log/microvms/
+  └── DO NOT start services, DO NOT touch /mnt/user/
 
-Array start (start.sh → rc.microvms start):
-  [pre] Check /dev/kvm + /mnt/user exists
-  [1-2] If DEVMAPPER=enable: Load dm_thin_pool + setup thinpool
-  [3/7] Start microvms-containerd ← always
-  [4/7] Start crane registry     ← if FLINTLOCKD=enable
-  [5/7] Start flintlockd         ← if FLINTLOCKD=enable
-  [6/7] Re-create TAP interfaces
-  [7/7] Autostart microVMs
+ARRAY START (event/array_started):
+  ├── Source config from /boot/config/plugins/microvms/
+  ├── Check SERVICE="enable"
+  └── /etc/rc.d/rc.microvms start
+        ├── [pre] Check /dev/kvm
+        ├── Create dirs under /mnt/user/ (safe now)
+        ├── [1-2] If DEVMAPPER=enable: dm_thin_pool + thinpool setup
+        ├── [3/7] Start microvms-containerd
+        ├── [4/7] Start crane registry (if FLINTLOCKD=enable)
+        ├── [5/7] Start flintlockd (if FLINTLOCKD=enable)
+        ├── [6/7] Re-create TAP interfaces
+        └── [7/7] Autostart microVMs
+
+ARRAY STOP (event/stopping_svcs):
+  └── /etc/rc.d/rc.microvms stop
+        ├── Stop all running VMs
+        ├── Stop flintlockd
+        ├── Stop crane registry
+        ├── Stop microvms-containerd
+        ├── Teardown thin pool
+        └── Remove TAP interfaces
 ```
 
-#### Settings Page (Sub-page Tabs)
-- **General**: Status box (tree), containerd control, Enable, Storage, Bridge, VMM, defaults, devmapper
-- **Cloud Hypervisor**: Enable, Kernel URL
-- **Firecracker**: Enable, Kernel URL
-- **Liquidmetal**: flintlockd/registry control, Enable, Crane storage, gRPC port, extra flags
+### Settings Page (Sub-page Tabs)
 
-#### Direct Mode (WebGUI) ✅
-- Create VM: SweetAlert progress popup, OCI pull via crane
-- Start/Stop/Force Stop: CH (ACPI + timeout), FC (signal)
-- Delete: blocked if running/has snapshots, cleans thin device
-- Console: ttyd popup
-- Snapshot: CH only (create/restore/delete)
-- Resize: hot-add CPU/RAM (CH only)
-- Storage: Thin Pool (devmapper) or Raw File (user choice)
-- Infra-as-code config: `cloud-hypervisor.json` / `firecracker.json`
+| Tab | Content |
+|-----|---------|
+| General | Status tree, containerd control, Enable, Storage, Bridge, VMM defaults, devmapper |
+| Cloud Hypervisor | Enable CH, Kernel URL |
+| Firecracker | Enable FC, Kernel URL |
+| Liquidmetal | flintlockd/registry control, Enable, Crane storage, gRPC port, flags |
 
-#### Liquidmetal Mode (Remote Automation) ✅
-- CreateMicroVM → containerd pull → thin pool snapshot → CH/FC boots
-- GetMicroVM, ListMicroVMs, DeleteMicroVM
-- Kernel OCI images auto-pushed to crane registry on boot
-- **NOT used by UI** — gRPC API for external tools only
-
-### Naming & Paths
+### Status Tree Display
 ```
-Plugin:          microvms
-Service:         /etc/rc.d/rc.microvms
-Config:          /boot/config/plugins/microvms/microvms.controlplane.cfg
-System data:     /mnt/user/system/microvms/{containerd,cloud-hypervisor,firecracker,crane}/
-VM data:         /mnt/user/microvms/{vm-name}/{cloud-hypervisor,firecracker}.json
-Runtime:         /var/run/microvms/{containerd.sock,flintlockd.pid,...}
-Logs:            /var/log/microvms/{containerd,flintlockd,registry,backend}.log
-                 /var/log/microvms/{cloud-hypervisor,firecracker}/{vm-name}.log
-VM sockets:      /tmp/microvms-{name}.sock
-Thin pool:       /dev/mapper/microvms-thinpool
-Console:         /usr/local/bin/microvms-console
++--- microvms
+++-- kvm                : /dev/kvm available
+++-- vmm
++++--- cloud-hypervisor : available — cloud-hypervisor v52.0 (Linux 6.2.0)
++++--- firecracker      : available — Firecracker v1.16.0 (Linux 5.10.225)
+++-- runtime
++++--- containerd       : running — containerd v1.7.27
+++-- option
++++--- devmapper        : active/disabled
+++-- liquidmetal        : ready/failed/disabled
++++--- flintlockd       : running/stopped
++++--- registry         : running/stopped
 ```
 
-### Binaries
-| Binary | Version | Path |
-|--------|---------|------|
-| cloud-hypervisor | v52.0 | /usr/local/bin/cloud-hypervisor |
-| ch-remote | v52.0 | /usr/local/bin/ch-remote |
-| firecracker | v1.16.0 | /usr/local/bin/firecracker |
-| microvms-containerd | v1.7.27 | /usr/local/bin/microvms-containerd |
-| flintlockd | v0.9.0 | /usr/local/bin/flintlockd |
-| crane | v0.21.7 | /usr/local/bin/crane |
-| grpcurl | v1.9.1 | /usr/local/bin/grpcurl |
-| ttyd | v1.7.7 | /usr/local/bin/ttyd |
+### Files on Flash (persist reboots)
+```
+/boot/config/plugins/microvms.plg              PLG definition
+/boot/config/plugins/microvms/
+  microvms.controlplane.cfg                    Settings
+  microvms-2026.07.05.1.tgz                   Plugin package
+  cloud-hypervisor                             Cached binary
+  ch-remote                                   Cached binary
+  firecracker                                 Cached binary
+  microvms-containerd                         Cached binary
+  flintlockd                                  Cached binary
+  crane                                       Cached binary
+  ttyd                                        Cached binary
+  grpcurl                                     Cached binary
+```
 
-### Kernels
-| VMM | Version | Path |
-|-----|---------|------|
-| Cloud Hypervisor | Linux 6.2.0 (PVH) | /mnt/user/system/microvms/cloud-hypervisor/kernels/vmlinux |
-| Firecracker | Linux 5.10.225 | /mnt/user/system/microvms/firecracker/kernels/vmlinux |
+### Files on Array (persist, user data)
+```
+/mnt/user/microvms/                            VM configs + rootfs
+/mnt/user/system/microvms/
+  cloud-hypervisor/kernels/vmlinux             CH kernel
+  firecracker/kernels/vmlinux                  FC kernel
+  containerd/                                  Containerd state + snapshots
+  crane/registry/                              OCI image registry
+```
 
----
+### Bugs Fixed This Session
 
-### 🚧 Next Steps
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Unraid shares disappear after reboot | PLG accessed /mnt/user/ before array mount | Use event/array_started |
+| Containerd shows "running" when stopped | `pgrep -f` matches Docker containerd | Use `pidof` |
+| View Log / Stop buttons fail | `$_POST` empty in sub-page tab | Use `$_REQUEST` |
+| Registry Stop fails | PID file empty, pkill pattern wrong | Direct `pidof crane` + kill |
+| Firecracker shows "no binary" | `--version` outputs to stderr | Grep for version line |
+| flintlockd download 404 | Binary named `flintlockd_amd64` not `flintlockd` | Fix URL |
+| grpcurl download 404 | Named `x86_64` not `amd64` | Fix URL |
+| Buttons render as block | Inside `markdown="1"` form | Move outside form |
+
+### Remaining Work
 
 1. **Option C**: Replace dmsetup with `ctr snapshots` (containerd manages all device IDs)
-2. **PLG installer**: Test full install from clean state (remove + reinstall)
-3. **Upgrade containerd**: v1.7.27 → v1.7.33 (security patches, LTS)
-4. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
-
-### 🐛 Known Issues (Fixed This Session)
-- ~~pgrep -f false positives~~ → `pidof` for exact binary match
-- ~~$_POST empty in sub-pages~~ → `$_REQUEST`
-- ~~Registry PID file empty~~ → `pidof crane` + direct kill
-- ~~Buttons inside markdown form~~ → moved outside form as plain HTML
-- ~~Basic/Advanced toggle cosmetic bugs~~ → removed, single flat form per tab
-
-### 🐛 Remaining Issues
-- Containerd start slow on FUSE filesystem (BoltDB lock, timeout 30s)
-- ACPI shutdown fails on VMs without acpid — Force Stop works
-- Thin pool teardown fails if devices busy
-- Stale BoltDB locks after unclean shutdown
+2. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
+3. **Kernel auto-download**: Download on first install if missing
+4. **Update README.md**: Root level readme for GitHub
 
 ---
 
