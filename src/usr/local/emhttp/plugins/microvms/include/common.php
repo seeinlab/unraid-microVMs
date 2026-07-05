@@ -156,7 +156,7 @@ function microvm_list_vms() {
         $config = json_decode(file_get_contents($configFile), true);
         if (!$config) continue;
 
-        $sock = "/tmp/microvm-{$name}.sock";
+        $sock = "/tmp/microvms-{$name}.sock";
         
         // Check if VM is running
         $running = false;
@@ -164,7 +164,7 @@ function microvm_list_vms() {
             $vmm = microvm_get_vmm($config);
             if ($vmm === 'firecracker') {
                 // FC: check if process with this VM name is alive
-                $running = !empty(trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null")));
+                $running = !empty(trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null")));
             } else {
                 // CH: use ch-remote ping
                 exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
@@ -184,7 +184,7 @@ function microvm_list_vms() {
 }
 
 function microvm_get_vm_info($name) {
-    $sock = "/tmp/microvm-{$name}.sock";
+    $sock = "/tmp/microvms-{$name}.sock";
     if (!file_exists($sock)) return null;
     
     $output = shell_exec("ch-remote --api-socket $sock info 2>/dev/null");
@@ -209,7 +209,7 @@ function microvm_stop_vm($name) {
 }
 
 function microvm_resize_vm($name, $cpus = null, $memory = null) {
-    $sock = "/tmp/microvm-{$name}.sock";
+    $sock = "/tmp/microvms-{$name}.sock";
     $results = [];
     
     if ($cpus) {
@@ -227,7 +227,7 @@ function microvm_resize_vm($name, $cpus = null, $memory = null) {
 function microvm_snapshot_vm($name, $tag = null) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $sock = "/tmp/microvm-{$name}.sock";
+    $sock = "/tmp/microvms-{$name}.sock";
     $tag = $tag ?: date('Y-m-d_His');
     $snapdir = "$vmdir/$name/snapshots/$tag";
 
@@ -379,7 +379,7 @@ function microvm_restore_snapshot($name, $tag) {
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
     $tag = basename($tag);
     $snapPath = "$vmdir/$name/snapshots/$tag";
-    $sock = "/tmp/microvm-{$name}.sock";
+    $sock = "/tmp/microvms-{$name}.sock";
 
     if (!is_dir($snapPath)) {
         return ['success' => false, 'error' => "Snapshot '$tag' not found for VM '$name'"];
@@ -412,7 +412,7 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
             exec("ch-remote --api-socket $sock shutdown-vmm 2>/dev/null");
             sleep(2);
         }
-        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
         if ($pid) {
             exec("kill -9 $pid 2>/dev/null");
             sleep(1);
@@ -472,12 +472,12 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
     }
 
     // Kill existing FC process
-    $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+    $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
     if ($pid) {
         exec("kill $pid 2>/dev/null");
         sleep(1);
         // Force kill if still alive
-        $pidCheck = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        $pidCheck = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
         if ($pidCheck) {
             exec("kill -9 $pidCheck 2>/dev/null");
             sleep(1);
@@ -531,7 +531,7 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
 
     if ($result['http_code'] !== 204) {
         // Cleanup on failure
-        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
         if ($pid) exec("kill $pid 2>/dev/null");
         @unlink($sock);
         return ['success' => false, 'error' => "Failed to load FC snapshot (HTTP {$result['http_code']}): {$result['body']}"];

@@ -64,16 +64,16 @@ switch ($cmd) {
         break;
 
     case 'force_stop':
-        $sock = "/tmp/microvm-{$name}.sock";
+        $sock = "/tmp/microvms-{$name}.sock";
         // Kill any ttyd console relay
-        $ttydPid = "/tmp/ttyd-microvm-{$name}.pid";
+        $ttydPid = "/tmp/ttyd-microvms-{$name}.pid";
         if (file_exists($ttydPid)) {
             $tpid = trim(file_get_contents($ttydPid));
             if ($tpid) exec("kill $tpid 2>/dev/null");
             @unlink($ttydPid);
         }
         // Kill the process
-        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
         if ($pid) {
             exec("kill -9 $pid 2>&1");
             sleep(1);
@@ -100,7 +100,7 @@ switch ($cmd) {
         break;
 
     case 'status':
-        $sock = "/tmp/microvm-{$name}.sock";
+        $sock = "/tmp/microvms-{$name}.sock";
         $running = false;
         if (file_exists($sock)) {
             exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
@@ -193,9 +193,9 @@ switch ($cmd) {
         microvm_stop_vm($name);
         sleep(2);
         // Force kill if still running
-        $pid = trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null | head -1"));
+        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
         if ($pid) exec("kill -9 $pid 2>/dev/null");
-        @unlink("/tmp/microvm-{$name}.sock");
+        @unlink("/tmp/microvms-{$name}.sock");
 
         // Delete thin device if VM uses one
         $configFile = microvm_find_config_file($vmPath);
@@ -399,7 +399,7 @@ INIT;
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
         $logFile = "$vmdir/$name/vm.log";
         if (!file_exists($logFile)) $logFile = microvm_get_log_path($name, $vmdir);
-        $sock = "/tmp/microvm-{$name}.sock";
+        $sock = "/tmp/microvms-{$name}.sock";
 
         // Check VM is running
         if (!file_exists($sock)) {
@@ -447,7 +447,7 @@ INIT;
         // Use unix socket proxied by Unraid's nginx at /logterminal/SOCKNAME/
         $sockName = "microvm-{$name}.console";
         $sockPath = "/var/tmp/{$sockName}.sock";
-        $pidFile = "/var/tmp/ttyd-microvm-{$name}.pid";
+        $pidFile = "/var/tmp/ttyd-microvms-{$name}.pid";
 
         // Kill existing ttyd for this VM
         if (file_exists($pidFile)) {
@@ -490,7 +490,7 @@ INIT;
 
     case 'console_stop':
         // Stop ttyd relay for a VM
-        $pidFile = "/tmp/ttyd-microvm-{$name}.pid";
+        $pidFile = "/tmp/ttyd-microvms-{$name}.pid";
         if (file_exists($pidFile)) {
             $pid = trim(file_get_contents($pidFile));
             if ($pid && file_exists("/proc/$pid")) {
@@ -535,7 +535,7 @@ INIT;
 
         $sockName = "microvm-{$name}.log";
         $sockPath = "/var/tmp/{$sockName}.sock";
-        $pidFile = "/var/tmp/ttyd-microvm-{$name}-log.pid";
+        $pidFile = "/var/tmp/ttyd-microvms-{$name}-log.pid";
 
         // Kill existing
         if (file_exists($pidFile)) {
@@ -637,7 +637,7 @@ INIT;
     case 'delete_rootfs':
         $rootfsPath = "$vmdir/$name";
         // Check VM is not running
-        if (file_exists("/tmp/microvm-{$name}.sock")) {
+        if (file_exists("/tmp/microvms-{$name}.sock")) {
             echo json_encode(['success' => false, 'error' => "VM '$name' is running. Stop it first."]);
             break;
         }

@@ -650,7 +650,7 @@ activate_thin_rootfs() {
 start_vm() {
   local name="$1"
   local vmdir="$VMDIR/$name"
-  local sock="/tmp/microvm-${name}.sock"
+  local sock="/tmp/microvms-${name}.sock"
 
   # Find config file (new format: {vmm}.json, legacy: config.json)
   local config=""
@@ -757,7 +757,7 @@ start_vm() {
 
   if [ "$vmm" = "firecracker" ]; then
     # Firecracker config
-    local fc_cfg="/tmp/microvm-${name}-fc.json"
+    local fc_cfg="/tmp/microvms-${name}-fc.json"
     cat > "$fc_cfg" << FCEOF
 {
   "boot-source": {
@@ -800,17 +800,17 @@ FCEOF
 
 stop_vm() {
   local name="$1"
-  local sock="/tmp/microvm-${name}.sock"
+  local sock="/tmp/microvms-${name}.sock"
   local vmdir="$VMDIR/$name"
 
   # Kill any ttyd console relay for this VM
-  local ttyd_pid_file="/var/tmp/ttyd-microvm-${name}.pid"
+  local ttyd_pid_file="/var/tmp/ttyd-microvms-${name}.pid"
   if [ -f "$ttyd_pid_file" ]; then
     kill $(cat "$ttyd_pid_file") 2>/dev/null
     rm -f "$ttyd_pid_file"
     log "Stopped console relay for: $name"
   fi
-  local ttyd_log_pid="/var/tmp/ttyd-microvm-${name}-log.pid"
+  local ttyd_log_pid="/var/tmp/ttyd-microvms-${name}-log.pid"
   if [ -f "$ttyd_log_pid" ]; then
     kill $(cat "$ttyd_log_pid") 2>/dev/null
     rm -f "$ttyd_log_pid"

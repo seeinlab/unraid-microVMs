@@ -64,7 +64,7 @@
   images/{cloud-hypervisor,firecracker}.png
   microvms.{png,svg}                       Plugin icon
 
-/tmp/microvm-{name}.sock                 ← VM API sockets (CH/FC direct mode)
+/tmp/microvms-{name}.sock                 ← VM API sockets (CH/FC direct mode)
 ```
 
 ---
@@ -77,7 +77,7 @@
 | VM config file | `{vmm}.json` | cloud-hypervisor.json, firecracker.json |
 | VMM (not "Engine") | lowercase with hyphen | cloud-hypervisor, firecracker |
 | Thin pool | `microvms-thinpool` | /dev/mapper/microvms-thinpool |
-| VM socket | `microvm-{name}.sock` | /tmp/microvm-my-server.sock |
+| VM socket | `microvms-{name}.sock` | /tmp/microvms-my-server.sock |
 | TAP interface | `tap{id}` | tap3 |
 | Containerd namespaces | per-VMM/manager | flintlock, cloud-hypervisor, firecracker |
 | Log files | service.log or {vmm}/{name}.log | containerd.log, cloud-hypervisor/nginx.log |

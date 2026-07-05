@@ -78,7 +78,7 @@ $vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null
     <td><?=$vm['config']['boot_vcpus'] ?? '-'?></td>
     <td><?=$vm['config']['memory_mb'] ?? '-'?> MB</td>
     <td><?=htmlspecialchars($vm['config']['ip'] ?? '-')?></td>
-    <td style="font-family:monospace;"><?=trim(shell_exec("pgrep -f 'microvm-{$vm['name']}.sock' 2>/dev/null")) ?: '-'?></td>
+    <td style="font-family:monospace;"><?=trim(shell_exec("pgrep -f 'microvms-{$vm['name']}.sock' 2>/dev/null")) ?: '-'?></td>
   </tr>
 <?php endforeach; ?>
 </tbody>
