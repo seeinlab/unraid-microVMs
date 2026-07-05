@@ -224,22 +224,28 @@ Host: br0 (bridge)
 
 ## Settings (microVMs Controlplane)
 
-### General Settings
+### Service Status Grid (top)
+```
+● KVM                        [VM Manager]
+  ● VMM (Ready/Not Ready)
+    └─ Cloud Hypervisor      [Enable/Disable] [Download Kernel]
+    └─ Firecracker           [Enable/Disable] [Download Kernel]
+    └─ containerd            [Start/Stop] [View Log]
+    └─ devmapper             [Enable/Disable]
+  ● Liquidmetal              [Enable/Disable]
+    └─ flintlockd            [Start/Stop] [View Log]
+    └─ registry              [Start/Stop] [View Log]
+```
+
+VMM Ready = KVM available + at least 1 VMM available + containerd running
+
+### Basic View (default)
 - Enable microVMs: Yes/No
-- VM Storage Location: /mnt/user/microvms
-- Network Bridge: br0
-- Default vCPUs: 1
-- Default Memory (MB): 256
-- Autostart VMs on array start: Yes/No
-- Thin Pool Size (GB): 50
+- VM Storage Location
+- Network Bridge
+- Autostart VMs on Array Start
 
-### Liquidmetal
-- Enable Liquidmetal: Yes/No
-- Crane Registry Storage: /mnt/user/system/microvms/crane/registry
-- Flintlockd gRPC Port: 9090
-- Status: running/stopped for each service
-
-### Info Sections (collapsed by default)
-- VM Manager (libvirt) — linked status
-- Cloud Hypervisor — binary + kernel status
-- Firecracker — binary + kernel status
+### Advanced View (toggle)
+- VMM Settings: Default VMM, Default vCPUs, Default Memory, Kernel URLs
+- Devmapper Settings: Thin Pool Size (GB)
+- Liquidmetal Settings: Crane Registry Storage, gRPC Port, Extra Flags
