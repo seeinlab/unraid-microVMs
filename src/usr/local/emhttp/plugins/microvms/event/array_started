@@ -1,0 +1,14 @@
+#!/bin/bash
+# Event: array_started — called by Unraid when array comes online
+# Start microVMs services (containerd, etc.) now that /mnt/user/ is available
+
+plugin="microvms"
+CONFIG="/boot/config/plugins/${plugin}/${plugin}.controlplane.cfg"
+
+# Read config
+[ -f "$CONFIG" ] && source "$CONFIG"
+
+# Start service if enabled
+if [ "$SERVICE" = "enable" ]; then
+  /etc/rc.d/rc.microvms start &>/dev/null &
+fi

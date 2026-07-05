@@ -1,0 +1,5 @@
+#!/bin/bash
+# Event: stopping_svcs — called by Unraid before array stops
+# Stop microVMs services cleanly before /mnt/user/ becomes unavailable
+
+/etc/rc.d/rc.microvms stop &>/dev/null
