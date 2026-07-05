@@ -288,6 +288,11 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
 </div>
 
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+
+&nbsp;
+: <span><input type="checkbox" class="advancedview"></span>
+
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
 <input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
@@ -314,9 +319,7 @@ _(Autostart VMs on Array Start)_:
   <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
   </select>
 
-<input type="button" value="_(Basic View)_" id="btnBasicView" onclick="toggleAdvanced()" style="margin:12px 0;">
-
-<div id="advancedSettings" style="display:none;">
+<div class="advanced" markdown="1">
 
 &nbsp;
 ### VMM Settings
@@ -381,18 +384,6 @@ var plugin = '<?=$plugin?>';
 
 function done() { location = '/Settings'; }
 
-function toggleAdvanced() {
-  var el = document.getElementById('advancedSettings');
-  var btn = document.getElementById('btnBasicView');
-  if (el.style.display === 'none') {
-    el.style.display = '';
-    btn.value = 'Basic View';
-  } else {
-    el.style.display = 'none';
-    btn.value = 'Advanced View';
-  }
-}
-
 function viewLog(service) {
   var logMap = {
     'microvms-containerd': '/var/log/microvms/containerd.log',
@@ -436,4 +427,20 @@ function toggleVMM(key, value) {
     else { swal({title: 'Error', text: (data && data.error) || 'Failed', type: 'error'}); }
   }).fail(function(){ swal({title: 'Error', text: 'Request failed', type: 'error'}); });
 }
+
+$(function() {
+  if ($.cookie('microvms_view_mode') == 'advanced') {
+    $('.advanced').show();
+  }
+  $('.advancedview').switchButton({
+    labels_placement: "left",
+    on_label: "_(Advanced View)_",
+    off_label: "_(Basic View)_",
+    checked: $.cookie('microvms_view_mode') == 'advanced'
+  });
+  $('.advancedview').change(function(){
+    $('.advanced').toggle('slow');
+    $.cookie('microvms_view_mode', $('.advancedview').is(':checked') ? 'advanced' : 'basic', {expires:3650});
+  });
+});
 </script>
