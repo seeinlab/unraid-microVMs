@@ -43,6 +43,21 @@ FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
 FLINTLOCKD_EXTRA_FLAGS="${FLINTLOCKD_EXTRA_FLAGS:---insecure --default-provider cloudhypervisor}"
 DEVMAPPER="${DEVMAPPER:-enable}"
+CH_ENABLED="${CH_ENABLED:-yes}"
+FC_ENABLED="${FC_ENABLED:-no}"
+
+# Auto-enable VMM if it's set as default but disabled
+if [ "$DEFAULT_VMM" = "cloud-hypervisor" ] && [ "$CH_ENABLED" != "yes" ]; then
+  CH_ENABLED="yes"
+  sed -i 's/^CH_ENABLED=.*/CH_ENABLED="yes"/' "$CFGFILE" 2>/dev/null
+  log "Auto-enabled Cloud Hypervisor (set as default VMM)"
+fi
+if [ "$DEFAULT_VMM" = "firecracker" ] && [ "$FC_ENABLED" != "yes" ]; then
+  FC_ENABLED="yes"
+  sed -i 's/^FC_ENABLED=.*/FC_ENABLED="yes"/' "$CFGFILE" 2>/dev/null
+  log "Auto-enabled Firecracker (set as default VMM)"
+fi
+
 CRANE_REGISTRY_DIR="${CRANE_REGISTRY_DIR:-${SYSTEM_DIR}/crane/registry}"
 
 # Thin pool paths

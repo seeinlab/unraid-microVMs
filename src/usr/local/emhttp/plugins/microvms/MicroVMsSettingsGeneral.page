@@ -144,7 +144,7 @@ _(Autostart VMs on Array Start)_:
   </select>
 
 _(Containerd)_:
-: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <?php if ($containerd_running): ?><input type="button" value="Stop" onclick="serviceAction('containerd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('containerd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('microvms-containerd')"><?php endif; ?>
+: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <span class="inline-block"><?php if ($containerd_running): ?><input type="button" value="Stop" onclick="serviceAction('containerd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('containerd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('microvms-containerd')"></span><?php endif; ?>
 
 _(Devmapper)_:
 : <select name="DEVMAPPER" size="1">
@@ -152,8 +152,8 @@ _(Devmapper)_:
   <?=mk_option($cfg['DEVMAPPER'] ?? 'enable', "disable", "Disabled")?>
   </select>
 
-_(Thin Pool Size GB)_:
-: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
+_(Thin Pool Size)_:
+: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow"> GB
 
 &nbsp;
 : <input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">

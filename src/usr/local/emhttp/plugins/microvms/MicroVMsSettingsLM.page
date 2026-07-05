@@ -42,10 +42,10 @@ _(Flintlockd Extra Flags)_:
 > Command-line flags passed to flintlockd on startup.
 
 _(Flintlockd)_:
-: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')">
+: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')"></span>
 
 _(Registry)_:
-: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')">
+: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')"></span>
 
 <?php endif; ?>
 
