@@ -42,10 +42,10 @@ _(Flintlockd Extra Flags)_:
 > Command-line flags passed to flintlockd on startup.
 
 _(Flintlockd)_:
-: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">VIEW LOG</button>
+: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')">
 
 _(Registry)_:
-: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">VIEW LOG</button>
+: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')">
 
 <?php endif; ?>
 

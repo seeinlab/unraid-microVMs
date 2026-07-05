@@ -48,9 +48,9 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
 .mvm-status-line .green { color:#4CAF50; }
 .mvm-status-line .red { color:#f44336; }
 .mvm-status-line .grey { color:#999; }
-.mvm-btn { padding:5px 14px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:6px; margin-top:8px; }
+.mvm-btn { padding:3px 10px; font-size:0.8em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:4px; }
 .mvm-btn:hover { background:rgba(128,128,128,0.1); }
-.mvm-btn-grp { margin-top:12px; }
+.mvm-btn-grp { margin-top:8px; }
 .mvm-help { font-size:0.85em; opacity:0.7; margin-top:12px; }
 </style>
 
@@ -99,8 +99,8 @@ if ($flintlockd_enabled) {
 echo implode("\n", $lines);
 ?></div>
   <div class="mvm-btn-grp">
-    <button type="button" class="mvm-btn" onclick="location.reload()">REFRESH STATUS</button>
-    <a href="/Settings/VMSettings" class="mvm-btn" style="text-decoration:none;display:inline-block;">VM MANAGER</a>
+    <input type="button" value="Refresh Status" onclick="location.reload()">
+    <input type="button" value="VM Manager" onclick="location='/Settings/VMSettings'">
   </div>
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
@@ -144,7 +144,7 @@ _(Autostart VMs on Array Start)_:
   </select>
 
 _(Containerd)_:
-: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button><?php endif; ?>
+: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <?php if ($containerd_running): ?><input type="button" value="Stop" onclick="serviceAction('containerd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('containerd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('microvms-containerd')"><?php endif; ?>
 
 _(Devmapper)_:
 : <select name="DEVMAPPER" size="1">
