@@ -70,10 +70,20 @@ function microvm_load_vm_config($configFile) {
 }
 
 /**
- * Get the VMM type from a config (new or legacy format).
+ * Get the VMM type from config file path (determined by filename).
+ * cloud-hypervisor.json → 'cloud-hypervisor'
+ * firecracker.json → 'firecracker'
+ * Legacy config.json → fallback to 'cloud-hypervisor'
  */
-function microvm_get_vmm($config) {
-    return $config['vmm'] ?? $config['engine'] ?? 'cloud-hypervisor';
+function microvm_get_vmm($configFileOrConfig) {
+    if (is_string($configFileOrConfig)) {
+        $basename = basename($configFileOrConfig);
+        if ($basename === 'firecracker.json') return 'firecracker';
+        if ($basename === 'cloud-hypervisor.json') return 'cloud-hypervisor';
+        return 'cloud-hypervisor'; // legacy config.json
+    }
+    // Legacy: if passed array, check for vmm/engine fields
+    return $configFileOrConfig['vmm'] ?? $configFileOrConfig['engine'] ?? 'cloud-hypervisor';
 }
 
 /**
@@ -157,11 +167,11 @@ function microvm_list_vms() {
         if (!$config) continue;
 
         $sock = "/tmp/microvms-{$name}.sock";
+        $vmm = microvm_get_vmm($configFile);
         
         // Check if VM is running
         $running = false;
         if (file_exists($sock)) {
-            $vmm = microvm_get_vmm($config);
             if ($vmm === 'firecracker') {
                 // FC: check if process with this VM name is alive
                 $running = !empty(trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null")));
@@ -174,6 +184,7 @@ function microvm_list_vms() {
 
         $vms[] = [
             'name' => $name,
+            'vmm' => $vmm,
             'config' => $config,
             'state' => $running ? 'running' : 'stopped',
             'socket' => $sock,

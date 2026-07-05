@@ -119,7 +119,7 @@ img.vm-icon-stopped { opacity:0.4; }
     $mem_display = ($mem_mb !== '-' && $mem_mb >= 1024) ? round($mem_mb / 1024, 1) . ' GB' : $mem_mb . ' MB';
     $network = microvm_get_network($vmConfig);
     $ip = htmlspecialchars($network['ip'] ?? '-');
-    $engine = microvm_get_vmm($vmConfig);
+    $engine = $vm['vmm'] ?? 'cloud-hypervisor';
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvms/images/{$engine}.png";
     $tap_id = $network['tap_id'] ?? null;
