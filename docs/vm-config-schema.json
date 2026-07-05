@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/unraid-microVMs/schemas/vm-config.json",
+  "title": "microVM Configuration",
+  "description": "Infrastructure-as-code definition for a microVM. Same schema for both Cloud Hypervisor and Firecracker VMMs.",
+  "type": "object",
+  "required": ["name", "vmm", "vcpus", "memory_mb", "storage", "network", "image"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9\\-]*$",
+      "description": "VM identifier. Lowercase, numbers, hyphens only.",
+      "examples": ["my-web-server", "nginx-prod"]
+    },
+    "vmm": {
+      "type": "string",
+      "enum": ["cloud-hypervisor", "firecracker"],
+      "description": "Virtual Machine Monitor to use. Determines binary, kernel path, and runtime behavior."
+    },
+    "vcpus": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64,
+      "description": "Number of virtual CPUs."
+    },
+    "memory_mb": {
+      "type": "integer",
+      "minimum": 64,
+      "maximum": 32768,
+      "description": "Memory allocation in megabytes."
+    },
+    "storage": {
+      "type": "object",
+      "required": ["type", "size_mb"],
+      "description": "Root filesystem storage configuration.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["thin", "raw"],
+          "description": "Storage backend. 'thin' = devmapper thin-provisioned block device (space-efficient). 'raw' = raw ext4 file on disk."
+        },
+        "size_mb": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 102400,
+          "description": "Virtual disk size in MB. For 'thin' type, this is the virtual size (actual usage is copy-on-write)."
+        },
+        "thin_device_id": {
+          "type": "integer",
+          "minimum": 1000000,
+          "description": "Device-mapper thin device ID. Auto-assigned on creation. Required for type=thin."
+        }
+      },
+      "if": { "properties": { "type": { "const": "thin" } } },
+      "then": { "required": ["thin_device_id"] }
+    },
+    "network": {
+      "type": "object",
+      "required": ["ip", "gateway", "mac", "bridge", "tap_id"],
+      "description": "Network configuration.",
+      "properties": {
+        "ip": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Static IPv4 address for the VM."
+        },
+        "gateway": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Default gateway."
+        },
+        "mac": {
+          "type": "string",
+          "pattern": "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",
+          "description": "MAC address. Auto-generated if not specified."
+        },
+        "bridge": {
+          "type": "string",
+          "default": "br0",
+          "description": "Host bridge interface to attach TAP to."
+        },
+        "tap_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "TAP interface numeric ID. Creates tap{N} on host."
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["source"],
+      "description": "Root filesystem image source.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["oci", "existing"],
+          "description": "'oci' = pull and extract OCI/Docker image. 'existing' = use pre-existing rootfs."
+        },
+        "ref": {
+          "type": "string",
+          "description": "OCI image reference. Required when source=oci.",
+          "examples": ["docker.io/nginx:stable-trixie", "docker.io/library/alpine:3.18"]
+        }
+      },
+      "if": { "properties": { "source": { "const": "oci" } } },
+      "then": { "required": ["ref"] }
+    },
+    "kernel": {
+      "type": "object",
+      "description": "Kernel configuration. Kernel binary path is derived from vmm field at runtime.",
+      "properties": {
+        "cmdline": {
+          "type": "string",
+          "default": "console=ttyS0 root=/dev/vda rw init=/init",
+          "description": "Kernel command line (without IP, which is appended at runtime from network config)."
+        }
+      }
+    },
+    "autostart": {
+      "type": "boolean",
+      "default": false,
+      "description": "Start VM automatically when array starts."
+    }
+  },
+  "additionalProperties": false
+}
