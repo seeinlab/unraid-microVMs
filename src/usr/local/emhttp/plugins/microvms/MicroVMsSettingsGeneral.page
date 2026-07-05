@@ -132,7 +132,6 @@ echo implode("\n", $lines);
 ?></div>
   <div class="mvm-btn-grp">
     <input type="button" value="Refresh Status" onclick="location.reload()">
-    <input type="button" value="VM Manager" onclick="location='/Settings/VMSettings'">
   </div>
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
