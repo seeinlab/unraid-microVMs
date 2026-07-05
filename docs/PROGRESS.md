@@ -156,10 +156,13 @@ No direct `dmsetup create-thin` / device ID tracking needed — containerd handl
 
 ### Remaining Work
 
-1. ~~**Option C**: Replace dmsetup with `ctr snapshots` (containerd manages all device IDs)~~ ✅ Done
-2. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
-3. **Kernel auto-download**: Download on first install if missing
-4. **Update README.md**: Root level readme for GitHub
+1. ~~**Option C**: Replace dmsetup with `ctr snapshots`~~ ✅ Verified working
+2. ~~**FC binary**~~ ✅ Fixed v1.16.1 (was extracting .debug variant)
+3. ~~**VMM detection**~~ ✅ By filename everywhere (no JSON field)
+4. **CH LAN connectivity**: TAP/macvtap networking for LAN-accessible VMs
+5. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
+6. **Logs button**: Show per-VM log from /var/log/microvms/{vmm}/{name}.log
+7. **Update README.md**: Root level readme for GitHub
 
 ---
 

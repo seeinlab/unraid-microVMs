@@ -91,12 +91,19 @@
 
 ## Storage Patterns
 
-### Thin Pool (devmapper)
+### Thin Pool (devmapper via containerd)
 ```
 One shared pool: microvms-thinpool
-  ├── Containerd managed (IDs 0+, BoltDB)     ← for flintlockd
-  └── Direct mode managed (IDs 1000000+)      ← for rc.microvms
-      Future: direct mode also via containerd API (Option C)
+  └── All managed via containerd ctr API (BoltDB tracks device IDs)
+      Namespaces: cloud-hypervisor, firecracker, flintlock
+
+API:
+  create_thin_rootfs  → ctr snapshots prepare "vm-{name}" ""
+  activate_thin_rootfs → ctr snapshots mounts "vm-{name}" /tmp
+  delete_thin_rootfs  → ctr snapshots remove "vm-{name}"
+
+Device path: /dev/mapper/microvms-thinpool-snap-{id}
+No dmsetup for device management (only for pool creation).
 ```
 
 ### Storage Types (per-VM choice)
@@ -232,7 +239,7 @@ Host: br0 (bridge)
 | microvms-containerd | v1.7.27 | Max compatible: v1.7.33 (LTS until Sept 2026) |
 | flintlockd | v0.9.0 | Supports CH v41+ and FC v1.11+ |
 | cloud-hypervisor | v52.0 | API unchanged from v41 |
-| firecracker | v1.16.0 | Supported by flintlockd |
+| firecracker | v1.16.1 | Supported by flintlockd |
 | crane | v0.21.7 | OCI tool + built-in registry |
 | grpcurl | v1.9.1 | gRPC CLI client |
 | Unraid | 6.12+ | Kernel 6.x with KVM, br0, dm_thin_pool |
