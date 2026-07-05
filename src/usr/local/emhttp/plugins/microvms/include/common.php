@@ -136,7 +136,7 @@ function microvm_get_log_path($name, $vmdir) {
 }
 
 function microvm_next_tap_id($vmdir) {
-    $max_id = -1;
+    $used_ids = [];
     if (is_dir($vmdir)) {
         foreach (glob("$vmdir/*/") as $vmPath) {
             $configFile = microvm_find_config_file(rtrim($vmPath, '/'));
@@ -144,10 +144,15 @@ function microvm_next_tap_id($vmdir) {
             $cfg = json_decode(file_get_contents($configFile), true);
             $network = microvm_get_network($cfg);
             $id = $network['tap_id'] ?? -1;
-            if ($id > $max_id) $max_id = $id;
+            if ($id >= 0) $used_ids[$id] = true;
         }
     }
-    return $max_id + 1;
+    // Find the lowest integer >= 0 not in the used set
+    $next = 0;
+    while (isset($used_ids[$next])) {
+        $next++;
+    }
+    return $next;
 }
 
 function microvm_list_vms() {

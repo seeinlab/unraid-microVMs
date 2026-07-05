@@ -561,23 +561,23 @@ remove_taps() {
 # --------------------------------------------------------------------------
 # Thin device management for direct mode (via containerd devmapper snapshotter)
 # Containerd manages device IDs internally via its BoltDB metadata store.
-# Direct mode VMs use the 'microvms' namespace; flintlockd uses 'flintlock'.
+# Namespace matches the VMM: 'cloud-hypervisor' or 'firecracker'.
 # --------------------------------------------------------------------------
 
 # Create a thin-provisioned block device for a VM via containerd snapshot
-# Usage: create_thin_rootfs <vm_name> <size_mb>
+# Usage: create_thin_rootfs <vm_name> <size_mb> [vmm]
 # Returns: block device path (e.g. /dev/mapper/...)
 create_thin_rootfs() {
   local name="$1"
   local size_mb="$2"
-  # device_id param no longer needed - containerd assigns it
+  local vmm="${3:-$DEFAULT_VMM}"
   local snapshot_key="vm-${name}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n microvms"
+  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
 
   # Prepare snapshot (creates thin device)
   $ctr_cmd snapshots --snapshotter devmapper prepare "$snapshot_key" "" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log "ERROR: Failed to prepare snapshot for $name" >&2
+    log "ERROR: Failed to prepare snapshot for $name (namespace: $vmm)" >&2
     return 1
   fi
 
@@ -594,7 +594,7 @@ create_thin_rootfs() {
   # Format
   mkfs.ext4 -q -F "$device_path" 2>/dev/null
 
-  log "Created thin device via containerd: $device_path (snapshot: $snapshot_key)" >&2
+  log "Created thin device via containerd: $device_path (snapshot: $snapshot_key, ns: $vmm)" >&2
   echo "$device_path"
 }
 
@@ -624,27 +624,26 @@ populate_thin_rootfs() {
 }
 
 # Delete a thin device via containerd snapshot
-# Usage: delete_thin_rootfs <vm_name>
+# Usage: delete_thin_rootfs <vm_name> [vmm]
 delete_thin_rootfs() {
   local name="$1"
-  # device_id no longer needed
+  local vmm="${2:-$DEFAULT_VMM}"
   local snapshot_key="vm-${name}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n microvms"
+  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
 
   $ctr_cmd snapshots --snapshotter devmapper remove "$snapshot_key" 2>/dev/null
-  log "Deleted snapshot: $snapshot_key"
+  log "Deleted snapshot: $snapshot_key (namespace: $vmm)"
 }
 
 # Activate an existing thin device (for VM start after reboot)
 # For containerd snapshots, they're auto-activated when prepared.
-# Usage: activate_thin_rootfs <vm_name>
+# Usage: activate_thin_rootfs <vm_name> [vmm]
 # Returns: device path on stdout
 activate_thin_rootfs() {
   local name="$1"
-  # For containerd snapshots, they're auto-activated when prepared
-  # Just check if the device exists, if not re-mount
+  local vmm="${2:-$DEFAULT_VMM}"
   local snapshot_key="vm-${name}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n microvms"
+  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
   local mounts=$($ctr_cmd snapshots --snapshotter devmapper mounts /tmp "$snapshot_key" 2>/dev/null)
   local device_path=$(echo "$mounts" | grep -oP '/dev/mapper/\S+')
 
@@ -654,7 +653,7 @@ activate_thin_rootfs() {
   fi
 
   # Snapshot exists in DB but device not active - this shouldn't happen normally
-  log "WARNING: Snapshot $snapshot_key exists but device not active"
+  log "WARNING: Snapshot $snapshot_key exists but device not active (namespace: $vmm)"
   return 1
 }
 
@@ -674,7 +673,18 @@ start_vm() {
   done
 
   [ -n "$config" ] || { log "ERROR: No config for VM '$name'"; return 1; }
-  [ -S "$sock" ] && { log "VM '$name' already running"; return 0; }
+
+  # Check if VM is actually running (socket exists AND process alive)
+  if [ -S "$sock" ]; then
+    if pgrep -f "microvms-${name}" &>/dev/null; then
+      log "VM '$name' already running"
+      return 0
+    else
+      # Stale socket from crashed VM
+      log "Removing stale socket for '$name'"
+      rm -f "$sock"
+    fi
+  fi
 
   # Detect config format (new has "vmm" field, legacy has "engine")
   local vmm=$(grep -oP '"vmm"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
@@ -709,7 +719,7 @@ start_vm() {
 
     local disk=""
     if [ "$storage_type" = "thin" ]; then
-      disk=$(activate_thin_rootfs "$name")
+      disk=$(activate_thin_rootfs "$name" "$vmm")
       if [ $? -ne 0 ] || [ -z "$disk" ]; then
         log "ERROR: Failed to activate thin rootfs for VM '$name'"
         return 1
@@ -743,7 +753,7 @@ start_vm() {
     # If VM uses thin provisioned storage, activate the block device
     local storage_type=$(grep -oP '"storage_type"\s*:\s*"\K[^"]+' "$config")
     if [ "$storage_type" = "thin" ]; then
-      disk=$(activate_thin_rootfs "$name")
+      disk=$(activate_thin_rootfs "$name" "$vmm")
       if [ $? -ne 0 ] || [ -z "$disk" ]; then
         log "ERROR: Failed to activate thin rootfs for VM '$name'"
         return 1
@@ -771,6 +781,8 @@ start_vm() {
   fi
 
   if [ "$vmm" = "firecracker" ]; then
+    # Remove stale socket from previous crash
+    rm -f "$sock"
     # Firecracker config
     local fc_cfg="/tmp/microvms-${name}-fc.json"
     cat > "$fc_cfg" << FCEOF
@@ -844,7 +856,7 @@ stop_vm() {
   fi
 
   if [ "$vmm" = "firecracker" ]; then
-    local pid=$(pgrep -f "microvm-${name}" 2>/dev/null | head -1)
+    local pid=$(pgrep -f "microvms-${name}" 2>/dev/null | head -1)
     if [ -n "$pid" ]; then
       kill "$pid" 2>/dev/null
       sleep 2
@@ -995,9 +1007,9 @@ microvm_stop() {
 
   # Step 1: Stop all running VMs
   log "[1/6] Stopping all VMs..."
-  for sock in /tmp/microvm-*.sock; do
+  for sock in /tmp/microvms-*.sock; do
     [ -S "$sock" ] || continue
-    local name=$(basename "$sock" .sock | sed 's/microvm-//')
+    local name=$(basename "$sock" .sock | sed 's/microvms-//')
     stop_vm "$name"
   done
 
@@ -1065,9 +1077,9 @@ microvm_status() {
   # VM status
   echo "--- Virtual Machines ---"
   local count=0
-  for sock in /tmp/microvm-*.sock; do
+  for sock in /tmp/microvms-*.sock; do
     [ -S "$sock" ] || continue
-    local name=$(basename "$sock" .sock | sed 's/microvm-//')
+    local name=$(basename "$sock" .sock | sed 's/microvms-//')
     echo "  VM: $name (running)"
     count=$((count + 1))
   done
@@ -1094,9 +1106,9 @@ case "$1" in
   status)            microvm_status ;;
   start_vm)          start_vm "$2" ;;
   stop_vm)           stop_vm "$2" ;;
-  create_thin_rootfs)  create_thin_rootfs "$2" "$3" ;;
-  delete_thin_rootfs)  delete_thin_rootfs "$2" ;;
-  activate_thin_rootfs) activate_thin_rootfs "$2" ;;
+  create_thin_rootfs)  create_thin_rootfs "$2" "$3" "$4" ;;
+  delete_thin_rootfs)  delete_thin_rootfs "$2" "$3" ;;
+  activate_thin_rootfs) activate_thin_rootfs "$2" "$3" ;;
   start_containerd)  start_containerd ;;
   stop_containerd)   stop_containerd ;;
   start_registry)    start_registry ;;
