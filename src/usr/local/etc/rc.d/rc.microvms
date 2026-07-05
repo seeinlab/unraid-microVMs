@@ -686,15 +686,14 @@ start_vm() {
     fi
   fi
 
-  # Detect config format (new has "vmm" field, legacy has "engine")
-  local vmm=$(grep -oP '"vmm"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
-  local is_new_format="true"
-  if [ -z "$vmm" ]; then
-    # Legacy format
-    vmm=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
-    is_new_format="false"
-  fi
-  vmm=${vmm:-$DEFAULT_VMM}
+  # Determine VMM from config filename (not from JSON content)
+  local vmm=""
+  local basename_cfg=$(basename "$config")
+  case "$basename_cfg" in
+    cloud-hypervisor.json) vmm="cloud-hypervisor" ;;
+    firecracker.json) vmm="firecracker" ;;
+    *) vmm="$DEFAULT_VMM" ;;
+  esac
 
   # Derive kernel path from vmm (never stored in config)
   local kernel="${SYSTEM_DIR}/${vmm}/kernels/vmlinux"
@@ -706,8 +705,8 @@ start_vm() {
   local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$config")
   memory=${memory:-$DEFAULT_MEMORY}
 
-  if [ "$is_new_format" = "true" ]; then
-    # --- New config format ---
+  if true; then
+    # --- Config format (always new) ---
     local cpus=$(grep -oP '"vcpus"\s*:\s*\K[0-9]+' "$config")
     cpus=${cpus:-$DEFAULT_CPUS}
     local max_cpus=$((cpus * 2))
@@ -850,9 +849,12 @@ stop_vm() {
     [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
   done
   if [ -n "$config_file" ]; then
-    local found_vmm=$(grep -oP '"vmm"\s*:\s*"\K[^"]+' "$config_file" 2>/dev/null)
-    [ -z "$found_vmm" ] && found_vmm=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config_file" 2>/dev/null)
-    vmm=${found_vmm:-$DEFAULT_VMM}
+    local basename_cfg=$(basename "$config_file")
+    case "$basename_cfg" in
+      firecracker.json) vmm="firecracker" ;;
+      cloud-hypervisor.json) vmm="cloud-hypervisor" ;;
+      *) vmm="$DEFAULT_VMM" ;;
+    esac
   fi
 
   if [ "$vmm" = "firecracker" ]; then

@@ -236,7 +236,7 @@ switch ($cmd) {
         $ociImage = $_POST['oci_image'] ?? 'nginx:alpine';
         $diskSize = intval($_POST['disk_size'] ?? 500);
         $rootfsPath = $_POST['rootfs_path'] ?? '';
-        $vmm = $_POST['engine'] ?? 'cloud-hypervisor';
+        $vmm = $_REQUEST['engine'] ?? 'cloud-hypervisor';
 
         // --- Direct Mode ---
         $vmPath = "$vmdir/$name";
@@ -333,7 +333,6 @@ INIT;
         // Build new config format
         $config = [
             'name' => $name,
-            'vmm' => $vmm,
             'vcpus' => $cpus,
             'memory_mb' => $memory,
             'storage' => [
