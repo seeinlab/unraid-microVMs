@@ -195,12 +195,12 @@ function microvm_get_vm_info($name) {
 }
 
 function microvm_start_vm($name) {
-    exec("/etc/rc.d/rc.microvm start_vm " . escapeshellarg($name) . " 2>&1", $output, $ret);
+    exec("/etc/rc.d/rc.microvms start_vm " . escapeshellarg($name) . " 2>&1", $output, $ret);
     return ['success' => ($ret === 0), 'output' => implode("\n", $output)];
 }
 
 function microvm_stop_vm($name) {
-    exec("/etc/rc.d/rc.microvm stop_vm " . escapeshellarg($name) . " 2>&1", $output, $ret);
+    exec("/etc/rc.d/rc.microvms stop_vm " . escapeshellarg($name) . " 2>&1", $output, $ret);
     $outputStr = implode("\n", $output);
     if (strpos($outputStr, 'ACPI_TIMEOUT') !== false) {
         return ['success' => false, 'acpi_timeout' => true, 'output' => $outputStr];

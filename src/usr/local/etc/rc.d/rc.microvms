@@ -1,5 +1,5 @@
 #!/bin/bash
-# /etc/rc.d/rc.microvm - microVMs service
+# /etc/rc.d/rc.microvms - microVMs service
 # Manages: thin pool, microvms-containerd, crane registry, flintlockd, and direct VM lifecycle
 
 PLUGIN="microvms"
@@ -54,7 +54,7 @@ THINPOOL_NAME="microvms-thinpool"
 # --------------------------------------------------------------------------
 
 log() {
-  logger -t "rc.microvm" "$1"
+  logger -t "rc.microvms" "$1"
   echo "$1"
 }
 

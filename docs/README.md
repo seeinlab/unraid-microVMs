@@ -1,18 +1,17 @@
-# MicroVM Research & Testing Knowledge Base
+# microVMs Plugin Documentation
 
-## Index
+## Architecture & Design
+- [Design Patterns](./design-patterns.md) — Directory structure, naming, storage, process architecture, config format
+- [VM Config Schema](./vm-config-schema.json) — OpenAPI 3.0.3 schema for cloud-hypervisor.json / firecracker.json
 
-1. [Architecture Overview](./architecture.md) - Stack decisions, comparisons
-2. [Service Diagrams](./diagrams.md) - Mermaid diagrams: flow, structure, processes
-3. [Cloud Hypervisor Reference](./cloud-hypervisor.md) - API, config, usage
-4. [Unraid Integration](./unraid-integration.md) - Plugin system, rc scripts, persistence
-5. [Test Results](./test-results.md) - All tests performed and outcomes
-6. [Networking](./networking.md) - TAP, bridge, Docker networking options
-7. [OCI Image Conversion](./oci-to-rootfs.md) - crane, podman export, rootfs creation
-8. [Flintlock & Containerd](./flintlock-containerd.md) - Orchestration layer
-9. [Plugin Development](./plugin-development.md) - How to build Unraid plugins
+## API Reference
+- [Flintlockd gRPC API](./flintlockd-grpc-api.md) — CreateMicroVM, GetMicroVM, ListMicroVMs, DeleteMicroVM
+- [Cloud Hypervisor API](./cloud-hypervisor-api.md) — CH v52 HTTP API (vm.info, vm.boot, vm.shutdown, etc.)
+- [Firecracker API](./firecracker-api.md) — FC v1.16 REST API
 
-## Reference Plugins Analyzed
-- [`unraid/unraid-tailscale`](https://github.com/unraid/unraid-tailscale) — Official daemon management (rc.d, watcher, OOP PHP)
-- [`IkerSaint/ZFS-Master-Unraid`](https://github.com/IkerSaint/ZFS-Master-Unraid) — Nchan WebSocket, AJAX backend, SweetAlert2
-- [`unraid/webgui` 7.2.7](https://github.com/unraid/webgui) — Core .page system, update.php, emcmd
+## Research
+- [Kata Containers](./kata-containers-research.md) — Evaluation as potential flintlockd replacement
+- [Code Style Guide](./code-style-guide.md) — PHP/Bash coding conventions
+
+## Progress
+- [PROGRESS.md](./PROGRESS.md) — Version history, what's working, next steps

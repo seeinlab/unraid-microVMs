@@ -1,5 +1,5 @@
 #!/bin/bash
-# /usr/local/bin/microvm-console - bidirectional PTY access for ttyd
+# /usr/local/bin/microvms-console - bidirectional PTY access for ttyd
 PTY=$1
 if [ ! -e "$PTY" ]; then
   echo "Error: PTY $PTY does not exist"

@@ -23,7 +23,7 @@
 #### Boot Sequence (7 steps)
 1. `dm_thin_pool` kernel module loaded
 2. Thin pool setup (50GB sparse data + 500MB meta, loop-backed)
-3. `flintlock-containerd` v1.7.27 (devmapper snapshotter, persistent root)
+3. `microvms-containerd` v1.7.27 (devmapper snapshotter, persistent root)
 4. Local OCI registry (crane serve --disk on :5050, auto-pushes kernels)
 5. `flintlockd` v0.9.0 (gRPC on :9090, CH + FC providers)
 6. TAP interfaces (auto-created from VM configs)
@@ -41,7 +41,7 @@
 
 #### WebGUI — Direct Mode (current UI path)
 - **Create VM**: SweetAlert progress popup (Docker-style), shows engine/API info
-- **Start VM**: Direct via rc.microvm → cloud-hypervisor/firecracker
+- **Start VM**: Direct via rc.microvms → cloud-hypervisor/firecracker
 - **Stop VM**: ACPI power-button with 90s timeout, Force Stop popup if no response
 - **Delete VM**: Blocked if running, blocked if has snapshots, handles FUSE artifacts
 - **Console**: Opens in popup via ttyd (silent, no bottom log)
@@ -59,7 +59,7 @@
 | ch-remote | v52.0 | /usr/local/bin/ch-remote |
 | firecracker | v1.16.0 | /usr/local/bin/firecracker |
 | flintlockd | v0.9.0 | /usr/local/bin/flintlockd |
-| flintlock-containerd | v1.7.27 | /usr/local/bin/flintlock-containerd |
+| microvms-containerd | v1.7.27 | /usr/local/bin/microvms-containerd |
 | crane | v0.21.7 | /usr/local/bin/crane |
 | grpcurl | v1.9.1 | /usr/local/bin/grpcurl |
 | ttyd | v1.7.7 | /usr/local/bin/ttyd |
@@ -74,7 +74,7 @@
 | Component | Version | Compatible With |
 |-----------|---------|----------------|
 | flintlockd | v0.9.0 | Firecracker v1.11+ ✅, Cloud Hypervisor v41+ ✅ |
-| flintlock-containerd | v1.7.27 | flintlockd v0.9.0 ✅ |
+| microvms-containerd | v1.7.27 | flintlockd v0.9.0 ✅ |
 | cloud-hypervisor | v52.0 | flintlockd v0.9.0 ✅ (API unchanged at /api/v1/) |
 | firecracker | v1.16.0 | flintlockd v0.9.0 ✅ |
 
@@ -105,7 +105,7 @@
 
 | Question | Answer |
 |----------|--------|
-| Current binary | flintlock-containerd v1.7.27 |
+| Current binary | microvms-containerd v1.7.27 |
 | Flintlock go.mod dependency | containerd v1.7.33 (client SDK) |
 | Highest compatible | **v1.7.33** (any 1.7.x works) |
 | containerd 2.x compatible? | ❌ NO — different Go module path, API changes |
@@ -150,7 +150,7 @@ WebGUI → MicroVMAdmin.php → grpcurl → flintlockd:9090 (gRPC)
                      Cloud Hypervisor v52       Firecracker v1.16
                               │                           │
                               ▼                           ▼
-                     flintlock-containerd v1.7.27
+                     microvms-containerd v1.7.27
                      (devmapper snapshotter → thin pool)
                               │
                               ▼

@@ -18,7 +18,7 @@
  *   CRUD:      create, create_json, delete, delete_rootfs, pull_rootfs
  *   Config:    autostart, service
  *
- * Mode: Direct (CH/FC via rc.microvm). Flintlock services available for remote automation.
+ * Mode: Direct (CH/FC via rc.microvms). Flintlock services available for remote automation.
  *
  * References:
  *   - docs/feature-api-mapping.md (UI ΓåÆ Backend ΓåÆ Engine API)
@@ -204,7 +204,7 @@ switch ($cmd) {
             $storage = microvm_get_storage($vmConfig);
             $thinId = $storage['thin_device_id'] ?? null;
             if ($thinId) {
-                exec("/etc/rc.d/rc.microvm delete_thin_rootfs " . escapeshellarg($name) . " $thinId 2>&1");
+                exec("/etc/rc.d/rc.microvmss delete_thin_rootfs " . escapeshellarg($name) . " $thinId 2>&1");
             }
         }
 
@@ -266,8 +266,8 @@ switch ($cmd) {
 
             if ($storageType === 'thin') {
                 // Thin pool block device
-                $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvm next_thin_device_id 2>/dev/null")));
-                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvm create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
+                $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvmss next_thin_device_id 2>/dev/null")));
+                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvmss create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
 
                 if (empty($rootfs) || !file_exists($rootfs)) {
                     echo json_encode(['success' => false, 'error' => "Failed to create thin device. Is thin pool active?"]);
@@ -464,7 +464,7 @@ INIT;
         $cmd = sprintf(
             'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
             "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
-            '-i %s /usr/local/bin/microvm-console %s > /dev/null 2>&1 & echo $!',
+            '-i %s /usr/local/bin/microvms-console %s > /dev/null 2>&1 & echo $!',
             $ttydBin,
             escapeshellarg($sockPath),
             escapeshellarg($ptyPath)
@@ -586,7 +586,7 @@ INIT;
     case 'service':
         $action = $_POST['action'] ?? '';
         if (in_array($action, ['start', 'stop', 'restart'])) {
-            exec("/etc/rc.d/rc.microvm $action 2>&1", $output, $ret);
+            exec("/etc/rc.d/rc.microvmss $action 2>&1", $output, $ret);
             echo json_encode(['success' => ($ret === 0), 'message' => implode("\n", $output)]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
@@ -612,9 +612,9 @@ INIT;
             ]);
         } elseif ($action === 'start') {
             // Start containerd, registry, flintlockd
-            exec("/etc/rc.d/rc.microvm start_containerd 2>&1", $o1, $r1);
-            exec("/etc/rc.d/rc.microvm start_registry 2>&1", $o2, $r2);
-            exec("/etc/rc.d/rc.microvm start_flintlockd 2>&1", $o3, $r3);
+            exec("/etc/rc.d/rc.microvmss start_containerd 2>&1", $o1, $r1);
+            exec("/etc/rc.d/rc.microvmss start_registry 2>&1", $o2, $r2);
+            exec("/etc/rc.d/rc.microvmss start_flintlockd 2>&1", $o3, $r3);
             $allOk = ($r1 === 0 && $r3 === 0);
             echo json_encode([
                 'success' => $allOk,
@@ -622,9 +622,9 @@ INIT;
             ]);
         } elseif ($action === 'stop') {
             // Stop flintlockd, registry, containerd
-            exec("/etc/rc.d/rc.microvm stop_flintlockd 2>&1", $o1, $r1);
-            exec("/etc/rc.d/rc.microvm stop_registry 2>&1", $o2, $r2);
-            exec("/etc/rc.d/rc.microvm stop_containerd 2>&1", $o3, $r3);
+            exec("/etc/rc.d/rc.microvmss stop_flintlockd 2>&1", $o1, $r1);
+            exec("/etc/rc.d/rc.microvmss stop_registry 2>&1", $o2, $r2);
+            exec("/etc/rc.d/rc.microvmss stop_containerd 2>&1", $o3, $r3);
             echo json_encode([
                 'success' => true,
                 'message' => implode("\n", array_merge($o1, $o2, $o3)),

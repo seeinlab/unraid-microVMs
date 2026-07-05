@@ -91,7 +91,7 @@
 ```
 One shared pool: microvms-thinpool
   ├── Containerd managed (IDs 0+, BoltDB)     ← for flintlockd
-  └── Direct mode managed (IDs 1000000+)      ← for rc.microvm
+  └── Direct mode managed (IDs 1000000+)      ← for rc.microvms
       Future: direct mode also via containerd API (Option C)
 ```
 
@@ -105,7 +105,7 @@ One shared pool: microvms-thinpool
 
 ## Process Architecture
 
-### Boot Sequence (rc.microvm start)
+### Boot Sequence (rc.microvms start)
 ```
 [1/7] Load dm_thin_pool kernel module
 [2/7] Setup thin pool (microvms-thinpool)
@@ -123,9 +123,9 @@ One shared pool: microvms-thinpool
 
 #### Direct Mode (WebGUI)
 ```
-WebGUI → MicroVMAdmin.php → rc.microvm → cloud-hypervisor/firecracker
+WebGUI → MicroVMAdmin.php → rc.microvms → cloud-hypervisor/firecracker
   - User creates/starts/stops VMs from browser
-  - rc.microvm manages CH/FC processes directly
+  - rc.microvms manages CH/FC processes directly
   - Thin pool OR raw file for rootfs
   - Logs: /var/log/microvms/{vmm}/{name}.log
 ```
