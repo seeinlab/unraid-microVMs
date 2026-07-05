@@ -2,78 +2,62 @@ Menu="OtherSettings"
 Icon="microvms.png"
 Title="microVMs Controlplane"
 Tag="microchip"
-Markdown="false"
 ---
 <?php
 /* ─── Configuration ─────────────────────────────────────────────────────── */
 $plugin = 'microvms';
-$cfg_file = "/boot/config/plugins/{$plugin}/{$plugin}.cfg";
-$defaults = [
-  'ENABLE'                => 'disable',
-  'VMDIR'                 => '/mnt/user/appdata/microvm',
-  'BRIDGE'                => 'br0',
-  'DEFAULT_VCPUS'         => '2',
-  'DEFAULT_MEMORY'        => '512',
-  'DEFAULT_VMM'           => 'cloud-hypervisor',
-  'AUTOSTART'             => 'no',
-  'THINPOOL_DATA_SIZE_GB' => '20',
-  'FLINTLOCKD'            => 'disable',
-  'FLINTLOCKD_GRPC_PORT'  => '9090',
-  'FLINTLOCKD_EXTRA_FLAGS'=> '',
-  'CRANE_REGISTRY_DIR'    => '/mnt/user/appdata/microvm/registry',
-  'CH_ENABLED'            => 'yes',
-  'FC_ENABLED'            => 'no',
-  'CH_KERNEL_URL'         => '',
-  'FC_KERNEL_URL'         => '',
-];
-$cfg = file_exists($cfg_file) ? parse_ini_file($cfg_file) : [];
-$cfg = array_merge($defaults, $cfg);
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+$kernelDir = '/mnt/user/system/microvms';
 
 /* ─── Service Status Checks ─────────────────────────────────────────────── */
 // libvirtd
-$libvirtd_running = trim(shell_exec("pgrep -x libvirtd >/dev/null 2>&1 && echo 1 || echo 0")) === '1';
+$libvirtd_running = !empty(trim(shell_exec('pgrep -x libvirtd 2>/dev/null')));
+$domain_cfg = @parse_ini_file('/boot/config/domain.cfg') ?: [];
+$vm_manager_enabled = ($domain_cfg['SERVICE'] ?? '') === 'enable';
 
 // KVM module
-$kvm_loaded = file_exists('/dev/kvm');
+$kvm_loaded = is_readable('/dev/kvm');
 
 // microvms-thinpool
-$thinpool_active = trim(shell_exec("dmsetup status microvms-thinpool 2>/dev/null | grep -q 'thin-pool' && echo 1 || echo 0")) === '1';
+$thinpool_active = !empty(trim(shell_exec("dmsetup status microvms-thinpool 2>/dev/null")));
 
 // microvms-containerd
-$containerd_running = trim(shell_exec("pgrep -f 'containerd.*microvms' >/dev/null 2>&1 && echo 1 || echo 0")) === '1';
-$containerd_version = trim(shell_exec("/usr/local/bin/microvms-containerd --version 2>/dev/null | awk '{print \$3}'"));
-if (empty($containerd_version)) $containerd_version = 'unknown';
+$containerd_running = !empty(trim(shell_exec('pgrep -f microvms-containerd 2>/dev/null')));
+$containerd_version = trim(shell_exec('/usr/local/bin/microvms-containerd --version 2>/dev/null | head -1'));
 
 // crane registry
-$registry_running = trim(shell_exec("pgrep -f 'crane.*registry' >/dev/null 2>&1 && echo 1 || echo 0")) === '1';
+$registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} 2>/dev/null && echo 1')));
 
 // flintlockd
-$flintlockd_running = trim(shell_exec("pgrep -x flintlockd >/dev/null 2>&1 && echo 1 || echo 0")) === '1';
-$flintlockd_version = trim(shell_exec("flintlockd --version 2>/dev/null | awk '{print \$2}'"));
-if (empty($flintlockd_version)) $flintlockd_version = 'unknown';
+$flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null')));
+$flintlockd_version = trim(shell_exec('flintlockd version 2>/dev/null'));
 
 // Cloud Hypervisor VMM
-$ch_binary = file_exists('/usr/local/bin/cloud-hypervisor');
-$ch_kernel = file_exists($cfg['VMDIR'] . '/kernels/vmlinux-ch');
-$ch_version = $ch_binary ? trim(shell_exec("cloud-hypervisor --version 2>/dev/null | awk '{print \$2}'")) : '';
-if (empty($ch_version)) $ch_version = 'not installed';
+$ch_binary = is_file('/usr/local/bin/cloud-hypervisor');
+$ch_kernel = is_file("$kernelDir/cloud-hypervisor/kernels/vmlinux");
+$ch_version = $ch_binary ? trim(shell_exec('cloud-hypervisor --version 2>/dev/null')) : '';
+$ch_kernel_ver = $ch_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/cloud-hypervisor/kernels/vmlinux") . " 2>/dev/null | head -1")) : '';
 
 // Firecracker VMM
-$fc_binary = file_exists('/usr/local/bin/firecracker');
-$fc_kernel = file_exists($cfg['VMDIR'] . '/kernels/vmlinux-fc');
-$fc_version = $fc_binary ? trim(shell_exec("firecracker --version 2>/dev/null | head -1 | awk '{print \$2}'")) : '';
-if (empty($fc_version)) $fc_version = 'not installed';
+$fc_binary = is_file('/usr/local/bin/firecracker');
+$fc_kernel = is_file("$kernelDir/firecracker/kernels/vmlinux");
+$fc_version = $fc_binary ? trim(shell_exec('firecracker --version 2>&1 | head -1')) : '';
+$fc_kernel_ver = $fc_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/firecracker/kernels/vmlinux") . " 2>/dev/null | head -1")) : '';
 
 // Available bridges
 $bridges = glob('/sys/class/net/br*');
 $bridge_names = array_map(function($b){ return basename($b); }, $bridges ?: []);
 if (empty($bridge_names)) $bridge_names = ['br0'];
 
-// Enabled state
-$enabled = ($cfg['ENABLE'] === 'enable');
-$flintlockd_enabled = ($cfg['FLINTLOCKD'] === 'enable');
-$ch_enabled = ($cfg['CH_ENABLED'] === 'yes');
-$fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
+// Enabled states
+$enabled = ($cfg['SERVICE'] ?? 'disable') === 'enable';
+$flintlockd_enabled = ($cfg['FLINTLOCKD'] ?? 'disable') === 'enable';
+$ch_enabled = ($cfg['CH_ENABLED'] ?? 'yes') === 'yes';
+$fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 ?>
 
 <!-- ─── CSS ─────────────────────────────────────────────────────────────── -->
@@ -134,7 +118,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
       <span class="svc-dot <?=$ch_binary ? 'svc-dot-green' : 'svc-dot-red'?>"></span>
       <?=$ch_binary ? 'Installed' : 'Not installed'?>
     </td>
-    <td>v<?=htmlspecialchars($ch_version)?> | Kernel: <span class="kernel-status <?=$ch_kernel ? 'kernel-ok' : 'kernel-missing'?>"><?=$ch_kernel ? '✓ present' : '✗ missing'?></span></td>
+    <td><?=htmlspecialchars($ch_version ?: 'not installed')?> | Kernel: <span class="kernel-status <?=$ch_kernel ? 'kernel-ok' : 'kernel-missing'?>"><?=$ch_kernel ? "✓ Linux $ch_kernel_ver" : '✗ missing'?></span></td>
     <td><?php if (!$ch_kernel): ?><button type="button" class="svc-action-btn" onclick="downloadKernel('cloud-hypervisor')">Download Kernel</button><?php endif; ?></td>
   </tr>
   <?php endif; ?>
@@ -146,7 +130,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
       <span class="svc-dot <?=$fc_binary ? 'svc-dot-green' : 'svc-dot-red'?>"></span>
       <?=$fc_binary ? 'Installed' : 'Not installed'?>
     </td>
-    <td>v<?=htmlspecialchars($fc_version)?> | Kernel: <span class="kernel-status <?=$fc_kernel ? 'kernel-ok' : 'kernel-missing'?>"><?=$fc_kernel ? '✓ present' : '✗ missing'?></span></td>
+    <td><?=htmlspecialchars($fc_version ?: 'not installed')?> | Kernel: <span class="kernel-status <?=$fc_kernel ? 'kernel-ok' : 'kernel-missing'?>"><?=$fc_kernel ? "✓ Linux $fc_kernel_ver" : '✗ missing'?></span></td>
     <td><?php if (!$fc_kernel): ?><button type="button" class="svc-action-btn" onclick="downloadKernel('firecracker')">Download Kernel</button><?php endif; ?></td>
   </tr>
   <?php endif; ?>
@@ -175,7 +159,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
       <?=$containerd_running ? 'Running' : 'Stopped'?>
       <?php endif; ?>
     </td>
-    <td>v<?=htmlspecialchars($containerd_version)?></td>
+    <td><?=htmlspecialchars($containerd_version ?: 'unknown')?></td>
     <td>
       <?php if ($enabled): ?>
       <button type="button" class="svc-action-btn" onclick="viewLog('microvms-containerd')">View Log</button>
@@ -212,7 +196,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
       <?=$flintlockd_running ? 'Running' : 'Stopped'?>
       <?php endif; ?>
     </td>
-    <td>v<?=htmlspecialchars($flintlockd_version)?> | gRPC :<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'])?></td>
+    <td><?=htmlspecialchars($flintlockd_version ?: 'unknown')?> | gRPC :<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?></td>
     <td>
       <?php if ($enabled): ?>
         <?php if ($flintlockd_running): ?>
@@ -230,53 +214,53 @@ $fc_enabled = ($cfg['FC_ENABLED'] === 'yes');
 
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
-<input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.cfg">
-<input type="hidden" name="#command" value="/etc/rc.d/rc.microvms apply">
+<input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
+<input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
 
 <!-- ═══ General Settings ═══════════════════════════════════════════════════ -->
 
 _(Enable microVMs)_:
-: <select name="ENABLE" size="1">
-  <?=mk_option($cfg['ENABLE'], "enable", "Yes")?>
-  <?=mk_option($cfg['ENABLE'], "disable", "No")?>
+: <select name="SERVICE" size="1">
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', "enable", "Yes")?>
+  <?=mk_option($cfg['SERVICE'] ?? 'disable', "disable", "No")?>
   </select>
 
 > Enable or disable the microVM subsystem. When enabled, containerd and thinpool services will be started.
 
 _(VM Storage Location)_:
-: <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'])?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/appdata/microvm">
+: <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/microvms">
 
 > Root directory for VM configs, rootfs images, kernels, and snapshots.
 
 _(Network Bridge)_:
 : <select name="BRIDGE" size="1">
   <?php foreach ($bridge_names as $br): ?>
-  <?=mk_option($cfg['BRIDGE'], $br, $br)?>
+  <?=mk_option($cfg['BRIDGE'] ?? 'br0', $br, $br)?>
   <?php endforeach; ?>
   </select>
 
 > Network bridge for microVM TAP interfaces. VMs will get IPs on this bridge's subnet.
 
 _(Default vCPUs)_:
-: <input type="number" name="DEFAULT_VCPUS" value="<?=htmlspecialchars($cfg['DEFAULT_VCPUS'])?>" min="1" max="64" class="narrow">
+: <input type="number" name="DEFAULT_CPUS" value="<?=htmlspecialchars($cfg['DEFAULT_CPUS'] ?? '1')?>" min="1" max="64" class="narrow">
 
 > Default number of virtual CPUs assigned to new VMs.
 
 _(Default Memory MB)_:
-: <input type="number" name="DEFAULT_MEMORY" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'])?>" min="128" max="65536" step="128" class="narrow">
+: <input type="number" name="DEFAULT_MEMORY" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>" min="128" max="65536" step="128" class="narrow">
 
 > Default memory allocation in megabytes for new VMs.
 
 _(Autostart VMs on Array Start)_:
 : <select name="AUTOSTART" size="1">
-  <?=mk_option($cfg['AUTOSTART'], "yes", "Yes")?>
-  <?=mk_option($cfg['AUTOSTART'], "no", "No")?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Yes")?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
   </select>
 
 > Automatically start VMs marked with autostart when the array comes online.
 
 _(Thin Pool Size GB)_:
-: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'])?>" min="5" max="500" class="narrow">
+: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
 
 > Size in GB for the device-mapper thin pool used by containerd for rootfs snapshots.
 
@@ -287,16 +271,16 @@ _(Thin Pool Size GB)_:
 
 _(Enable Cloud Hypervisor)_:
 : <select name="CH_ENABLED" size="1" onchange="updateDefaultVMM()">
-  <?=mk_option($cfg['CH_ENABLED'], "yes", "Yes")?>
-  <?=mk_option($cfg['CH_ENABLED'], "no", "No")?>
+  <?=mk_option($cfg['CH_ENABLED'] ?? 'yes', "yes", "Yes")?>
+  <?=mk_option($cfg['CH_ENABLED'] ?? 'yes', "no", "No")?>
   </select>
 
 > Cloud Hypervisor — modern Rust-based VMM with live resize, ACPI shutdown, and snapshot support.
 
 _(Enable Firecracker)_:
 : <select name="FC_ENABLED" size="1" onchange="updateDefaultVMM()">
-  <?=mk_option($cfg['FC_ENABLED'], "yes", "Yes")?>
-  <?=mk_option($cfg['FC_ENABLED'], "no", "No")?>
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "yes", "Yes")?>
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "no", "No")?>
   </select>
 
 > Firecracker — lightweight VMM by AWS, optimized for fast boot and high density.
@@ -304,31 +288,31 @@ _(Enable Firecracker)_:
 _(Default VMM)_:
 : <select name="DEFAULT_VMM" id="selectDefaultVMM" size="1">
   <?php if ($ch_enabled): ?>
-  <?=mk_option($cfg['DEFAULT_VMM'], "cloud-hypervisor", "Cloud Hypervisor")?>
+  <?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "cloud-hypervisor", "Cloud Hypervisor")?>
   <?php endif; ?>
   <?php if ($fc_enabled): ?>
-  <?=mk_option($cfg['DEFAULT_VMM'], "firecracker", "Firecracker")?>
+  <?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "firecracker", "Firecracker")?>
   <?php endif; ?>
   </select>
 
 > Which VMM to use by default when creating new microVMs.
 
 _(Cloud Hypervisor Kernel URL)_:
-: <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'])?>" placeholder="Leave blank for default kernel URL" style="width:70%;">
+: <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default kernel URL" style="width:70%;">
   <?php if (!$ch_kernel): ?>
   <button type="button" class="svc-action-btn" onclick="downloadKernel('cloud-hypervisor')" style="margin-left:8px;">Download</button>
   <?php else: ?>
-  <span class="kernel-status kernel-ok" style="margin-left:8px;">✓ Kernel installed</span>
+  <span class="kernel-status kernel-ok" style="margin-left:8px;">✓ Linux <?=$ch_kernel_ver?></span>
   <?php endif; ?>
 
 > Custom URL for the Cloud Hypervisor compatible kernel. Leave blank to use the built-in default.
 
 _(Firecracker Kernel URL)_:
-: <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'])?>" placeholder="Leave blank for default kernel URL" style="width:70%;">
+: <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default kernel URL" style="width:70%;">
   <?php if (!$fc_kernel): ?>
   <button type="button" class="svc-action-btn" onclick="downloadKernel('firecracker')" style="margin-left:8px;">Download</button>
   <?php else: ?>
-  <span class="kernel-status kernel-ok" style="margin-left:8px;">✓ Kernel installed</span>
+  <span class="kernel-status kernel-ok" style="margin-left:8px;">✓ Linux <?=$fc_kernel_ver?></span>
   <?php endif; ?>
 
 > Custom URL for the Firecracker compatible kernel. Leave blank to use the built-in default.
@@ -340,8 +324,8 @@ _(Firecracker Kernel URL)_:
 
 _(Enable Liquidmetal)_:
 : <select name="FLINTLOCKD" size="1">
-  <?=mk_option($cfg['FLINTLOCKD'], "enable", "Yes")?>
-  <?=mk_option($cfg['FLINTLOCKD'], "disable", "No")?>
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "enable", "Yes")?>
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "disable", "No")?>
   </select>
 
 > Enable the Liquidmetal stack (flintlockd + crane registry) for remote microVM orchestration via CAPI/Kubernetes.
@@ -349,17 +333,17 @@ _(Enable Liquidmetal)_:
 <div id="liquidmetal-options" style="<?=$flintlockd_enabled ? '' : 'display:none;'?>">
 
 _(Crane Registry Storage)_:
-: <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'])?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/appdata/microvm/registry">
+: <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/system/microvms/crane/registry">
 
 > Local directory for the OCI registry used by crane to serve VM kernel and rootfs images.
 
 _(Flintlockd gRPC Port)_:
-: <input type="number" name="FLINTLOCKD_GRPC_PORT" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'])?>" min="1024" max="65535" class="narrow">
+: <input type="number" name="FLINTLOCKD_GRPC_PORT" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>" min="1024" max="65535" class="narrow">
 
 > TCP port for the flintlockd gRPC API. Remote CAPI providers connect to this port.
 
 _(Flintlockd Extra Flags)_:
-: <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--log-level=debug&#10;--bridge=br0"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'])?></textarea>
+: <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
 
 > Additional command-line flags passed to flintlockd on startup. One flag per line.
 
@@ -371,48 +355,72 @@ _(Flintlockd Extra Flags)_:
 
 <!-- ─── JavaScript ──────────────────────────────────────────────────────── -->
 <script>
+var plugin = '<?=$plugin?>';
+
 function done() {
   location = '/Settings';
 }
 
 function viewLog(service) {
-  $.post('/plugins/microvms/include/exec.php', {action: 'viewlog', service: service}, function(data) {
-    swal({
-      title: service + ' log',
-      html: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:12px;white-space:pre-wrap;">' + $('<div/>').text(data).html() + '</pre>',
-      width: '70%'
-    });
+  var logMap = {
+    'microvms-containerd': '/var/log/microvms/containerd.log',
+    'crane-registry': '/var/log/microvms/registry.log',
+    'flintlockd': '/var/log/microvms/flintlockd.log'
+  };
+  var logFile = logMap[service] || '';
+  var title = service + ' log';
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', logfile: logFile}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data.success) {
+      swal({
+        title: title,
+        text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>',
+        html: true,
+        confirmButtonText: 'Close'
+      });
+    } else {
+      swal({title: 'Error', text: data.error || 'Failed to read log', type: 'error'});
+    }
   });
 }
 
 function downloadKernel(engine) {
   swal({
-    title: 'Downloading ' + engine + ' kernel...',
-    text: 'Please wait, this may take a minute.',
-    allowOutsideClick: false,
-    onOpen: function() { swal.showLoading(); }
-  });
-  $.post('/plugins/microvms/include/exec.php', {action: 'download_kernel', engine: engine}, function(data) {
-    if (data && data.success) {
-      swal({title: 'Success', text: engine + ' kernel downloaded successfully.', type: 'success'}).then(function() {
-        location.reload();
-      });
-    } else {
-      swal({title: 'Error', text: (data && data.error) || 'Download failed. Check system log.', type: 'error'});
-    }
-  }, 'json').fail(function() {
-    swal({title: 'Error', text: 'Request failed. Check network and try again.', type: 'error'});
+    title: 'Download ' + engine + ' kernel?',
+    text: 'This will download the default kernel for ' + engine + '.',
+    showCancelButton: true,
+    confirmButtonText: 'Download',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    swal({title: 'Downloading...', text: 'Please wait, this may take 1-2 minutes.', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {
+      cmd: 'download_kernel',
+      engine: engine
+    }, function(data) {
+      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+      if (data && data.success) {
+        swal({title: 'Success', text: engine + ' kernel downloaded.', type: 'success'}, function() {
+          location.reload();
+        });
+      } else {
+        swal({title: 'Error', text: (data && data.error) || 'Download failed.', type: 'error'});
+      }
+    }).fail(function() {
+      swal({title: 'Error', text: 'Request failed. Check network.', type: 'error'});
+    });
   });
 }
 
 function serviceAction(service, action) {
-  $.post('/plugins/microvms/include/exec.php', {action: 'service', service: service, command: action}, function(data) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'service_action', service: service, action: action}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
     if (data && data.success) {
       location.reload();
     } else {
       swal({title: 'Error', text: (data && data.error) || 'Action failed.', type: 'error'});
     }
-  }, 'json').fail(function() {
+  }).fail(function() {
     swal({title: 'Error', text: 'Request failed.', type: 'error'});
   });
 }
@@ -429,7 +437,6 @@ function updateDefaultVMM() {
 }
 
 $(function() {
-  // Toggle Liquidmetal options visibility
   $('select[name="FLINTLOCKD"]').on('change', function() {
     if ($(this).val() === 'enable') {
       $('#liquidmetal-options').slideDown();
@@ -437,7 +444,6 @@ $(function() {
       $('#liquidmetal-options').slideUp();
     }
   });
-  // Initial VMM dropdown state
   updateDefaultVMM();
 });
 </script>

@@ -746,6 +746,69 @@ INIT;
         microvm_log("DOWNLOAD_KERNELS: " . implode(", ", $results) . " " . implode(", ", $errors));
         break;
 
+    case 'download_kernel':
+        // Single kernel download (from Settings page per-VMM button)
+        $engine = $_POST['engine'] ?? '';
+        $kernelDir = '/mnt/user/system/microvms';
+        $customUrl = '';
+
+        if ($engine === 'cloud-hypervisor') {
+            $cfg = microvm_load_config();
+            $customUrl = $cfg['CH_KERNEL_URL'] ?? '';
+            $dir = "$kernelDir/cloud-hypervisor/kernels";
+            $url = $customUrl ?: 'https://github.com/cloud-hypervisor/rust-hypervisor-firmware/releases/download/0.4.2/hypervisor-fw';
+            exec("mkdir -p " . escapeshellarg($dir));
+            exec("curl -fsSL -o " . escapeshellarg("$dir/vmlinux") . " " . escapeshellarg($url) . " 2>&1", $out, $ret);
+            if ($ret === 0 && filesize("$dir/vmlinux") > 100000) {
+                echo json_encode(['success' => true, 'message' => "Cloud Hypervisor kernel downloaded: " . round(filesize("$dir/vmlinux") / 1048576) . " MB"]);
+            } else {
+                @unlink("$dir/vmlinux");
+                echo json_encode(['success' => false, 'error' => "Download failed (exit=$ret)"]);
+            }
+        } elseif ($engine === 'firecracker') {
+            $cfg = microvm_load_config();
+            $customUrl = $cfg['FC_KERNEL_URL'] ?? '';
+            $dir = "$kernelDir/firecracker/kernels";
+            $url = $customUrl ?: 'https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.11/x86_64/vmlinux-5.10.225';
+            exec("mkdir -p " . escapeshellarg($dir));
+            exec("curl -fsSL -o " . escapeshellarg("$dir/vmlinux") . " " . escapeshellarg($url) . " 2>&1", $out, $ret);
+            if ($ret === 0 && filesize("$dir/vmlinux") > 1000000) {
+                echo json_encode(['success' => true, 'message' => "Firecracker kernel downloaded: " . round(filesize("$dir/vmlinux") / 1048576) . " MB"]);
+            } else {
+                @unlink("$dir/vmlinux");
+                echo json_encode(['success' => false, 'error' => "Download failed (exit=$ret)"]);
+            }
+        } else {
+            echo json_encode(['success' => false, 'error' => "Unknown engine: $engine"]);
+        }
+        break;
+
+    case 'service_action':
+        // Start/stop individual services (flintlockd only from UI)
+        $service = $_POST['service'] ?? '';
+        $action = $_POST['action'] ?? '';
+
+        $allowed = ['flintlockd'];
+        if (!in_array($service, $allowed)) {
+            echo json_encode(['success' => false, 'error' => "Service not controllable: $service"]);
+            break;
+        }
+        if (!in_array($action, ['start', 'stop'])) {
+            echo json_encode(['success' => false, 'error' => "Invalid action: $action"]);
+            break;
+        }
+
+        if ($service === 'flintlockd') {
+            if ($action === 'start') {
+                exec("/etc/rc.d/rc.microvms start_flintlockd 2>&1", $out, $ret);
+            } else {
+                exec("/etc/rc.d/rc.microvms stop_flintlockd 2>&1", $out, $ret);
+            }
+            echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
+            microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
+        }
+        break;
+
     default:
         echo json_encode(['error' => "Unknown command: $cmd"]);
 }
