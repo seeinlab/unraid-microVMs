@@ -1,7 +1,7 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN>
 <PLUGIN name="microvms" author="seein" version="2026.07.05.1"
-  pluginURL="https://raw.githubusercontent.com/seein/unraid-microVMs/main/plugin/microVMs.plg"
+  pluginURL="https://raw.githubusercontent.com/seein/unraid-microVMs/main/plugin/microvms.plg"
   launch="Settings/MicroVMsSettings"
   min="6.12.0">
 

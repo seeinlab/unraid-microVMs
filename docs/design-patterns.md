@@ -111,7 +111,7 @@ One shared pool: microvms-thinpool
 
 ### Boot Sequence (rc.microvms start)
 ```
-[pre] Check /dev/kvm available + wait for libvirtd (KVM dependency)
+[pre] Check /dev/kvm available
 [1-2] If DEVMAPPER=enable:
         [1/7] Load dm_thin_pool kernel module
         [2/7] Setup thin pool (microvms-thinpool)

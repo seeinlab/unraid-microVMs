@@ -17,7 +17,7 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
 - **UI uses Direct Mode only** — no flintlockd in UI path
 - **Flintlockd/Liquidmetal** — for remote/programmatic automation only (gRPC API)
 - **containerd always starts** — manages thin pool device IDs for both modes
-- **KVM dependency** — waits for libvirtd before starting (shares /dev/kvm)
+- **KVM independent** — only needs /dev/kvm (kernel module), does NOT require libvirt
 - **VMM, not Engine** — terminology throughout
 - **Sub-page tabs** — Settings split into General, Cloud Hypervisor, Firecracker, Liquidmetal
 - **pidof for detection** — not pgrep (avoids Docker containerd false positive)
@@ -29,7 +29,7 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
 
 #### Boot Sequence
 ```
-[pre] Check /dev/kvm + wait for libvirtd
+[pre] Check /dev/kvm available
 [1-2] If DEVMAPPER=enable: Load dm_thin_pool + setup thinpool
 [3/7] Start microvms-containerd ← always
 [4/7] Start crane registry     ← if FLINTLOCKD=enable

@@ -2,24 +2,17 @@
 
 ## ✅ COMPLETED (this session)
 
-### Settings Page Redesign — DONE
-- Sub-page tabs: General | Cloud Hypervisor | Firecracker | Liquidmetal
-- Status box with tree display (+--- microvms hierarchy)
-- Service buttons outside form (no markdown interference)
-- `pidof` for reliable process detection (not `pgrep -f`)
-- `$_REQUEST` for AJAX params (not `$_POST` which was empty in sub-pages)
-- `view_log` uses service name mapping (not file paths in AJAX)
-- Buttons: Stop/Start/Restart/View Log per service
-- Enable/Disable per VMM with Apply button
-- Devmapper disable guard (blocks if VMs use thin pool)
+- Settings page: sub-page tabs (General, Cloud Hypervisor, Firecracker, Liquidmetal)
+- Status box with tree display
+- Service buttons (Stop/Start/Restart/View Log) working via AJAX
+- Process detection: `pidof` (not pgrep)
+- Backend: `$_REQUEST` (not `$_POST`)
+- Devmapper optional (enable/disable)
 - Auto-enable VMM when set as default
-- KVM/libvirt dependency check on boot
-
-### Key Bug Fixes
-- `pgrep -f microvms-containerd` matched Docker's containerd or self → `pidof`
-- `$_POST` params empty in sub-page context → `$_REQUEST`
-- Registry PID file empty → `pidof crane` for detection, `pgrep + kill` for stop
-- Buttons inside `markdown="1"` form render as block → moved outside form
+- PLG installer: clean install from UI verified ✓
+- All download URLs fixed (flintlockd_amd64, grpcurl x86_64)
+- Removed libvirtd dependency (only /dev/kvm needed)
+- PLG file: `microvms.plg`, folder: `microvms/`
 
 ## Remaining
 
@@ -31,6 +24,6 @@ Replace `dmsetup` calls with `ctr snapshots` commands.
 - Basic auth token
 
 ### Priority 6: Clean Up
-- Remove old `microvm.liquidmetal-*.tgz`
-- Test full PLG install from clean state
-- Update README.md
+- Update README.md (root level)
+- Rebuild tgz for release
+- Test uninstall + reinstall cycle
