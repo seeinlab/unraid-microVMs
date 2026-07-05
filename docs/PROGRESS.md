@@ -19,20 +19,30 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
 - **containerd always starts** — manages thin pool device IDs for both modes
 - **KVM dependency** — waits for libvirtd before starting (shares /dev/kvm)
 - **VMM, not Engine** — terminology throughout
+- **Sub-page tabs** — Settings split into General, Cloud Hypervisor, Firecracker, Liquidmetal
+- **pidof for detection** — not pgrep (avoids Docker containerd false positive)
+- **$_REQUEST in backend** — not $_POST (sub-page context strips POST body)
+- **Devmapper optional** — can disable (raw file mode only)
+- **Auto-enable VMM** — if set as default but disabled, auto-enables on restart
 
 ### What's Working ✅
 
 #### Boot Sequence
 ```
 [pre] Check /dev/kvm + wait for libvirtd
-[1/7] Load dm_thin_pool kernel module
-[2/7] Setup microvms-thinpool (loop-backed sparse files)
-[3/7] Start microvms-containerd (devmapper snapshotter) ← always
-[4/7] Start crane registry (127.0.0.1:5050)            ← if FLINTLOCKD=enable
-[5/7] Start flintlockd (0.0.0.0:9090 gRPC)            ← if FLINTLOCKD=enable
-[6/7] Create TAP interfaces
-[7/7] Autostart VMs
+[1-2] If DEVMAPPER=enable: Load dm_thin_pool + setup thinpool
+[3/7] Start microvms-containerd ← always
+[4/7] Start crane registry     ← if FLINTLOCKD=enable
+[5/7] Start flintlockd         ← if FLINTLOCKD=enable
+[6/7] Re-create TAP interfaces
+[7/7] Autostart microVMs
 ```
+
+#### Settings Page (Sub-page Tabs)
+- **General**: Status box (tree), containerd control, Enable, Storage, Bridge, VMM, defaults, devmapper
+- **Cloud Hypervisor**: Enable, Kernel URL
+- **Firecracker**: Enable, Kernel URL
+- **Liquidmetal**: flintlockd/registry control, Enable, Crane storage, gRPC port, extra flags
 
 #### Direct Mode (WebGUI) ✅
 - Create VM: SweetAlert progress popup, OCI pull via crane
@@ -48,13 +58,7 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
 - CreateMicroVM → containerd pull → thin pool snapshot → CH/FC boots
 - GetMicroVM, ListMicroVMs, DeleteMicroVM
 - Kernel OCI images auto-pushed to crane registry on boot
-- Enabled/disabled independently from direct mode (Settings toggle)
 - **NOT used by UI** — gRPC API for external tools only
-
-#### Settings (microVMs Controlplane)
-- General: enable/disable, VM storage, bridge, defaults, thin pool size
-- Liquidmetal: enable/disable, crane storage, gRPC port, service status
-- Info sections: VM Manager (libvirt), Cloud Hypervisor, Firecracker
 
 ### Naming & Paths
 ```
@@ -93,17 +97,23 @@ Console:         /usr/local/bin/microvms-console
 
 ### 🚧 Next Steps
 
-1. **Option C**: Replace dmsetup calls with `ctr snapshots` commands (containerd manages all device IDs)
-2. **Upgrade containerd**: v1.7.27 → v1.7.33 (security patches, LTS)
-3. **PLG installer**: Test full install from clean state
-4. **Per-VMM enable/disable**: Settings toggle for CH and FC independently
-5. **Kernel download**: Auto-download on first install if missing
+1. **Option C**: Replace dmsetup with `ctr snapshots` (containerd manages all device IDs)
+2. **PLG installer**: Test full install from clean state (remove + reinstall)
+3. **Upgrade containerd**: v1.7.27 → v1.7.33 (security patches, LTS)
+4. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
 
-### 🐛 Known Issues
-- Containerd start slow on FUSE filesystem (BoltDB lock, timeout increased to 30s)
-- ACPI shutdown fails on VMs without acpid (busybox/nginx images) — Force Stop works
-- Thin pool teardown fails if devices still in use (need kill VMs first)
-- Stale BoltDB locks after unclean shutdown (need manual cleanup)
+### 🐛 Known Issues (Fixed This Session)
+- ~~pgrep -f false positives~~ → `pidof` for exact binary match
+- ~~$_POST empty in sub-pages~~ → `$_REQUEST`
+- ~~Registry PID file empty~~ → `pidof crane` + direct kill
+- ~~Buttons inside markdown form~~ → moved outside form as plain HTML
+- ~~Basic/Advanced toggle cosmetic bugs~~ → removed, single flat form per tab
+
+### 🐛 Remaining Issues
+- Containerd start slow on FUSE filesystem (BoltDB lock, timeout 30s)
+- ACPI shutdown fails on VMs without acpid — Force Stop works
+- Thin pool teardown fails if devices busy
+- Stale BoltDB locks after unclean shutdown
 
 ---
 

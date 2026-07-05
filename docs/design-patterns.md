@@ -54,7 +54,11 @@
 /usr/local/emhttp/plugins/microvms/      ← WebGUI plugin files
   MicroVMs.page                            Tab container
   MicroVMsMachines.page                    VM list + actions
-  MicroVMsSettings.page                    microVMs Controlplane
+  MicroVMsSettings.page                    Settings container (xmenu)
+  MicroVMsSettingsGeneral.page             Settings: General tab
+  MicroVMsSettingsCH.page                  Settings: Cloud Hypervisor tab
+  MicroVMsSettingsFC.page                  Settings: Firecracker tab
+  MicroVMsSettingsLM.page                  Settings: Liquidmetal tab
   MicroVMsRootFS.page                      RootFS management
   MicroVMsStats.page                       Statistics
   AddMicroVMs.page                         Create VM form
@@ -108,13 +112,15 @@ One shared pool: microvms-thinpool
 ### Boot Sequence (rc.microvms start)
 ```
 [pre] Check /dev/kvm available + wait for libvirtd (KVM dependency)
-[1/7] Load dm_thin_pool kernel module
-[2/7] Setup thin pool (microvms-thinpool)
+[1-2] If DEVMAPPER=enable:
+        [1/7] Load dm_thin_pool kernel module
+        [2/7] Setup thin pool (microvms-thinpool)
+      Else: skipped
 [3/7] Start microvms-containerd (devmapper snapshotter) ← always when enabled
 [4/7] Start crane registry (127.0.0.1:5050)            ← only if FLINTLOCKD=enable
 [5/7] Start flintlockd (0.0.0.0:9090 gRPC)            ← only if FLINTLOCKD=enable
-[6/7] Create TAP interfaces (from VM configs)
-[7/7] Autostart VMs
+[6/7] Re-create TAP interfaces (from VM configs)
+[7/7] Autostart microVMs
 ```
 
 ### Two Operating Modes
@@ -224,28 +230,52 @@ Host: br0 (bridge)
 
 ## Settings (microVMs Controlplane)
 
-### Service Status Grid (top)
+Sub-page tabs (like UnassignedDevices pattern):
+
+### Tab: General
+- Status box with tree display (service health)
+- Containerd: [Stop/Start/Restart] [View Log]
+- Enable microVMs, VM Storage, Network Bridge, Default VMM
+- Default vCPUs, Default Memory, Autostart
+- Devmapper: Enabled/Disabled, Thin Pool Size (GB)
+
+### Tab: Cloud Hypervisor
+- Enable Cloud Hypervisor: Yes/No
+- Kernel URL (custom or default)
+
+### Tab: Firecracker
+- Enable Firecracker: Yes/No
+- Kernel URL (custom or default)
+
+### Tab: Liquidmetal
+- Flintlockd: [Stop/Start/Restart] [View Log]
+- Registry: [Stop/Start/Restart] [View Log]
+- Enable Liquidmetal, Crane Registry Storage
+- Flintlockd gRPC Port, Extra Flags
+
+### Status Box Tree
 ```
-● KVM                        [VM Manager]
-  ● VMM (Ready/Not Ready)
-    └─ Cloud Hypervisor      [Enable/Disable] [Download Kernel]
-    └─ Firecracker           [Enable/Disable] [Download Kernel]
-    └─ containerd            [Start/Stop] [View Log]
-    └─ devmapper             [Enable/Disable]
-  ● Liquidmetal              [Enable/Disable]
-    └─ flintlockd            [Start/Stop] [View Log]
-    └─ registry              [Start/Stop] [View Log]
++--- microvms
+++-- kvm                : /dev/kvm available
+++-- vmm
++++--- cloud-hypervisor : available — cloud-hypervisor v52.0 (Linux 6.2.0)
++++--- firecracker      : available — Firecracker v1.16.0 (Linux 5.10.225)
+++-- runtime
++++--- containerd       : running — containerd github.com/containerd/containerd v1.7.27
+++-- option
++++--- devmapper        : active — thin provisioned pool
+++-- liquidmetal        : ready/failed
++++--- flintlockd       : running — flintlock v0.9.1 gRPC :9090
++++--- registry         : running — crane 127.0.0.1:5050
 ```
 
-VMM Ready = KVM available + at least 1 VMM available + containerd running
+### Process Detection
+- `pidof microvms-containerd` (not pgrep — avoids Docker containerd false positive)
+- `pidof crane` (registry)
+- `pidof flintlockd`
 
-### Basic View (default)
-- Enable microVMs: Yes/No
-- VM Storage Location
-- Network Bridge
-- Autostart VMs on Array Start
-
-### Advanced View (toggle)
-- VMM Settings: Default VMM, Default vCPUs, Default Memory, Kernel URLs
-- Devmapper Settings: Thin Pool Size (GB)
-- Liquidmetal Settings: Crane Registry Storage, gRPC Port, Extra Flags
+### AJAX Backend
+- Uses `$_REQUEST` (not `$_POST` — sub-page tab context strips POST body)
+- `view_log` accepts service name, maps to path server-side
+- `service_action` for start/stop/restart
+- `toggle_setting` for enable/disable with devmapper guard
