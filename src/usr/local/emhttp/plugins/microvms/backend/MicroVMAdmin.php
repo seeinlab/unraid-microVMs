@@ -249,6 +249,19 @@ switch ($cmd) {
         $mac = sprintf("52:54:00:%02x:%02x:%02x", rand(0,255), rand(0,255), rand(0,255));
 
         // Storage type
+        // ────────────────────────────────────────────────────────────────────────
+        // Storage modes:
+        //   Raw:  dd creates sparse file → mkfs.ext4 → mount file → extract tar
+        //         → umount → VM uses file directly (disk = $vmdir/rootfs.raw)
+        //         Resolved via resolve_path() to avoid FUSE overhead.
+        //
+        //   Thin: containerd devmapper snapshotter creates thin-provisioned block
+        //         device → mkfs.ext4 on /dev/mapper/... → mount device → extract
+        //         tar → umount → VM uses block device path directly.
+        //         At VM start: disk = activate_thin_rootfs($name, $vmm) → /dev/mapper/...
+        //
+        // Config JSON stores: storage.type = 'thin' | 'raw', storage.size_mb = N
+        // ────────────────────────────────────────────────────────────────────────
         $storageType = $_POST['storage_type'] ?? 'thin';
         $thinDeviceId = null; // containerd manages device IDs
 
@@ -265,7 +278,8 @@ switch ($cmd) {
             }
 
             if ($storageType === 'thin') {
-                // Thin pool block device via containerd snapshotter
+                // Thin: ctr snapshots prepare → creates thin device → mkfs.ext4 on /dev/mapper/...
+                // → mount device → extract tar → inject init → umount → VM uses block device path
                 $rootfs = trim(shell_exec("/etc/rc.d/rc.microvms create_thin_rootfs " . escapeshellarg($name) . " " . escapeshellarg($diskSize) . " " . escapeshellarg($vmm) . " 2>&1 | tail -1"));
 
                 if (empty($rootfs) || !file_exists($rootfs)) {
@@ -275,7 +289,8 @@ switch ($cmd) {
                 exec("mkdir -p /tmp/microvm-mount-$name");
                 exec("mount $rootfs /tmp/microvm-mount-$name");
             } else {
-                // Raw file
+                // Raw: dd creates sparse file → mkfs.ext4 → mount file → extract tar
+                // → inject init → umount → VM uses file directly (resolved via resolve_path)
                 $rootfs = "$vmPath/rootfs.raw";
                 exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
                 exec("mkfs.ext4 -F $rootfs 2>/dev/null");
@@ -290,31 +305,67 @@ switch ($cmd) {
 
             exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
 
-            // Inject init script
+            // Inject init script that:
+            // 1. Mounts virtual filesystems (proc, sys, dev)
+            // 2. Parses kernel cmdline ip=A::G:M:::off to configure eth0
+            // 3. Launches the appropriate service (nginx, httpd, or netcat fallback)
             $initScript = <<<'INIT'
 #!/bin/sh
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev 2>/dev/null
 mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+
+# Find first non-loopback network interface
 for d in /sys/class/net/*; do n=$(basename $d); [ "$n" != "lo" ] && IFACE=$n && break; done
-# Network configured via kernel cmdline ip= parameter
-if command -v ip >/dev/null 2&1; then ip link set lo up; elif command -v ifconfig >/dev/null 2&1; then ifconfig lo up; fi
-mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp
+IFACE=${IFACE:-eth0}
+
+# Parse kernel cmdline ip= parameter (format: ip=A::G:M:::off)
+CMDLINE=$(cat /proc/cmdline)
+IP=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
+GW=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
+MASK=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f4)
+
+# Configure network interface with parsed IP
+if [ -n "$IP" ]; then
+  if command -v ip >/dev/null 2>&1; then
+    ip link set lo up
+    ip link set $IFACE up
+    ip addr add ${IP}/24 dev $IFACE
+    [ -n "$GW" ] && ip route add default via $GW dev $IFACE
+  elif command -v ifconfig >/dev/null 2>&1; then
+    ifconfig lo up
+    ifconfig $IFACE ${IP} netmask ${MASK:-255.255.255.0} up
+    [ -n "$GW" ] && route add default gw $GW
+  fi
+  echo "Network: $IFACE -> $IP gw $GW"
+fi
+
+# DNS
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+
+# Prepare directories
+mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp /tmp
+
+# Launch service
 if [ -f /usr/sbin/nginx ]; then
   nginx -g 'daemon off;' &
-elif [ -f /usr/bin/httpd ] || command -v httpd > /dev/null; then
+elif [ -f /usr/bin/httpd ] || command -v httpd > /dev/null 2>&1; then
   mkdir -p /var/www/html
   echo "<h1>MicroVM: HOSTNAME</h1>" > /var/www/html/index.html
   httpd -p 80 -h /var/www/html
+elif [ -x /docker-entrypoint.sh ]; then
+  exec /docker-entrypoint.sh nginx -g 'daemon off;'
+elif [ -x /sbin/init ]; then
+  exec /sbin/init
 else
   mkdir -p /var/www/html
   echo "<h1>MicroVM: HOSTNAME</h1>" > /var/www/html/index.html
   while true; do echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n$(cat /var/www/html/index.html)" | nc -l -p 80 -q1; done &
 fi
 trap 'kill $(jobs -p) 2>/dev/null; poweroff -f' TERM INT
-echo "=== MicroVM Ready ==="
+echo "=== MicroVM Ready ($IFACE: $IP) ==="
 while true; do sleep 3600 & wait; done
 INIT;
             $initScript = str_replace('HOSTNAME', $name, $initScript);
@@ -672,12 +723,50 @@ INIT;
             break;
         }
 
-        // Create ext4 image
+        // Create ext4 image (raw storage: dd sparse file → mkfs.ext4 → mount → extract → umount)
         exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
         exec("mkfs.ext4 -F $rootfs 2>/dev/null");
         exec("mkdir -p /tmp/microvm-mount-$pullName");
         exec("mount $rootfs /tmp/microvm-mount-$pullName");
         exec("tar -xf $tmpTar -C /tmp/microvm-mount-$pullName 2>&1");
+
+        // Inject init script with network configuration (parses kernel ip= param)
+        $pullInitScript = <<<'INIT'
+#!/bin/sh
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+for d in /sys/class/net/*; do n=$(basename $d); [ "$n" != "lo" ] && IFACE=$n && break; done
+IFACE=${IFACE:-eth0}
+CMDLINE=$(cat /proc/cmdline)
+IP=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
+GW=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
+MASK=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f4)
+if [ -n "$IP" ]; then
+  if command -v ip >/dev/null 2>&1; then
+    ip link set lo up; ip link set $IFACE up
+    ip addr add ${IP}/24 dev $IFACE
+    [ -n "$GW" ] && ip route add default via $GW dev $IFACE
+  elif command -v ifconfig >/dev/null 2>&1; then
+    ifconfig lo up; ifconfig $IFACE ${IP} netmask ${MASK:-255.255.255.0} up
+    [ -n "$GW" ] && route add default gw $GW
+  fi
+fi
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp /tmp
+if [ -f /usr/sbin/nginx ]; then nginx -g 'daemon off;' &
+elif [ -x /docker-entrypoint.sh ]; then exec /docker-entrypoint.sh nginx -g 'daemon off;'
+elif [ -x /sbin/init ]; then exec /sbin/init
+else exec /bin/sh; fi
+trap 'kill $(jobs -p) 2>/dev/null; poweroff -f' TERM INT
+echo "=== MicroVM Ready ($IFACE: $IP) ==="
+while true; do sleep 3600 & wait; done
+INIT;
+        $pullInitScript = str_replace('HOSTNAME', $pullName, $pullInitScript);
+        file_put_contents("/tmp/microvm-mount-$pullName/init", $pullInitScript);
+        chmod("/tmp/microvm-mount-$pullName/init", 0755);
+
         exec("umount /tmp/microvm-mount-$pullName");
         exec("rmdir /tmp/microvm-mount-$pullName 2>/dev/null");
         // Cleanup temp tar
