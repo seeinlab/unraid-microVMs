@@ -109,8 +109,38 @@ No dmsetup for device management (only for pool creation).
 ### Storage Types (per-VM choice)
 | Type | Backend | Device | Use case |
 |------|---------|--------|----------|
-| `thin` | devmapper thin pool | /dev/mapper/microvms-{name} | Space-efficient, fast clone |
+| `thin` | devmapper thin pool | /dev/mapper/microvms-thinpool-snap-{id} | Space-efficient, fast clone |
 | `raw` | ext4 file on disk | /mnt/user/microvms/{name}/rootfs.raw | Simple, no devmapper dependency |
+
+### Storage Logic (create flow)
+```
+Create VM:
+  ├── Pull OCI image → crane export → /tmp/microvm-{name}.tar
+  │
+  ├── If storage_type = "thin":
+  │     ├── ctr snapshots prepare "vm-{name}" "" → /dev/mapper/microvms-thinpool-snap-{id}
+  │     ├── mkfs.ext4 on device
+  │     ├── mount device → extract tar → inject /init → umount
+  │     └── Config stores: storage.type = "thin"
+  │
+  └── If storage_type = "raw":
+        ├── dd → rootfs.raw sparse file
+        ├── mkfs.ext4 on file
+        ├── mount file (via resolve_path to real disk) → extract tar → inject /init → umount
+        └── Config stores: storage.type = "raw"
+
+Start VM:
+  ├── If storage.type = "thin":
+  │     └── disk = activate_thin_rootfs(name, vmm) → ctr snapshots mounts → /dev/mapper/...
+  └── If storage.type = "raw":
+        └── disk = resolve_path("$vmdir/rootfs.raw") → /mnt/ztier/microvms/{name}/rootfs.raw
+
+Delete VM:
+  ├── If storage.type = "thin":
+  │     └── ctr snapshots remove "vm-{name}" (frees thin device)
+  └── If storage.type = "raw":
+        └── rm rootfs.raw
+```
 
 ---
 
