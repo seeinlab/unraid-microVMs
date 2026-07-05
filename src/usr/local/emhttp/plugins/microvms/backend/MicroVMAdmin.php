@@ -692,7 +692,7 @@ INIT;
     case 'view_log':
         $logfile = $_POST['logfile'] ?? '';
         // Only allow reading specific known log files
-        $allowed = ['/var/log/microvms/flintlockd.log', '/var/log/microvms/containerd.log'];
+        $allowed = ['/var/log/microvms/flintlockd.log', '/var/log/microvms/containerd.log', '/var/log/microvms/registry.log'];
         if (!in_array($logfile, $allowed)) {
             echo json_encode(['success' => false, 'error' => 'Invalid log file']);
             break;
@@ -788,7 +788,7 @@ INIT;
         $service = $_POST['service'] ?? '';
         $action = $_POST['action'] ?? '';
 
-        $allowed = ['flintlockd'];
+        $allowed = ['flintlockd', 'containerd', 'registry'];
         if (!in_array($service, $allowed)) {
             echo json_encode(['success' => false, 'error' => "Service not controllable: $service"]);
             break;
@@ -806,7 +806,47 @@ INIT;
             }
             echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
             microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
+        } elseif ($service === 'containerd') {
+            if ($action === 'start') {
+                exec("/etc/rc.d/rc.microvms start_containerd 2>&1", $out, $ret);
+            } else {
+                exec("/etc/rc.d/rc.microvms stop_containerd 2>&1", $out, $ret);
+            }
+            echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
+            microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
+        } elseif ($service === 'registry') {
+            if ($action === 'start') {
+                exec("/etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
+            } else {
+                exec("/etc/rc.d/rc.microvms stop_registry 2>&1", $out, $ret);
+            }
+            echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
+            microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
         }
+        break;
+
+    case 'toggle_setting':
+        // Toggle a single config key (for Enable/Disable buttons in service grid)
+        $key = $_POST['key'] ?? '';
+        $value = $_POST['value'] ?? '';
+        $allowed_keys = ['CH_ENABLED', 'FC_ENABLED', 'FLINTLOCKD', 'DEVMAPPER'];
+        if (!in_array($key, $allowed_keys)) {
+            echo json_encode(['success' => false, 'error' => "Not allowed: $key"]);
+            break;
+        }
+        $cfgFile = "/boot/config/plugins/microvms/microvms.controlplane.cfg";
+        $cfg = microvm_load_config();
+        $cfg[$key] = $value;
+        // Write back
+        $lines = [];
+        foreach ($cfg as $k => $v) {
+            $lines[] = "$k=\"$v\"";
+        }
+        file_put_contents($cfgFile, implode("\n", $lines) . "\n");
+        // Restart service to apply
+        exec("/etc/rc.d/rc.microvms restart 2>&1", $out, $ret);
+        echo json_encode(['success' => true, 'message' => "$key set to $value"]);
+        microvm_log("TOGGLE_SETTING: $key=$value (restart exit=$ret)");
         break;
 
     default:

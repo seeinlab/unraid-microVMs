@@ -42,6 +42,7 @@ THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
 FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
 FLINTLOCKD_EXTRA_FLAGS="${FLINTLOCKD_EXTRA_FLAGS:---insecure --default-provider cloudhypervisor}"
+DEVMAPPER="${DEVMAPPER:-enable}"
 CRANE_REGISTRY_DIR="${CRANE_REGISTRY_DIR:-${SYSTEM_DIR}/crane/registry}"
 
 # Thin pool paths
@@ -905,20 +906,23 @@ microvm_start() {
     fi
   fi
 
-  # Step 1: Load kernel module
-  log "[1/7] Loading dm_thin_pool module..."
-  modprobe dm_thin_pool
-  if [ $? -ne 0 ]; then
-    log "ERROR: Failed to load dm_thin_pool kernel module"
-    return 1
-  fi
+  # Step 1-2: Devmapper thin pool (if enabled)
+  if [ "$DEVMAPPER" = "enable" ]; then
+    log "[1/7] Loading dm_thin_pool module..."
+    modprobe dm_thin_pool
+    if [ $? -ne 0 ]; then
+      log "ERROR: Failed to load dm_thin_pool kernel module"
+      return 1
+    fi
 
-  # Step 2: Setup thin pool
-  log "[2/7] Setting up thin pool..."
-  setup_thinpool
-  if [ $? -ne 0 ]; then
-    log "ERROR: Thin pool setup failed"
-    return 1
+    log "[2/7] Setting up thin pool..."
+    setup_thinpool
+    if [ $? -ne 0 ]; then
+      log "ERROR: Thin pool setup failed"
+      return 1
+    fi
+  else
+    log "[1-2/7] Devmapper disabled, skipping thin pool"
   fi
 
   # Step 3: Start microvms-containerd (always needed for thin device management)
