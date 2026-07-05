@@ -72,55 +72,57 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
 
 <!-- ─── Service Status Box ──────────────────────────────────────────────── -->
 <div class="mvm-status-box">
-  <div class="mvm-status-title">microVMs Service Status</div>
+  <div class="mvm-status-title">microVMs Status</div>
   <div>Status: <?=$vmm_ready ? '<span style="color:#4CAF50;font-weight:bold;">Ready</span>' : '<span style="color:#f44336;font-weight:bold;">Not Ready</span>'?></div>
 
   <div class="mvm-status-line"><?php
-// Build status output
 $lines = [];
-$lines[] = "+--- microvms-controlplane";
-$lines[] = "kvm          : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
+$lines[] = "+--- microvms";
+$lines[] = "++-- kvm              : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
+$lines[] = "++-- vmm";
 
 // Cloud Hypervisor
 if ($ch_enabled) {
     $ch_st = ($ch_binary && $ch_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
     $ch_info = $ch_version ?: 'no binary';
     if ($ch_kernel) $ch_info .= " (Linux $ch_kernel_ver)";
-    $lines[] = "ch           : $ch_st — $ch_info";
+    $lines[] = "+++--- cloud-hypervisor : $ch_st — $ch_info";
 } else {
-    $lines[] = "ch           : " . '<span class="grey">disabled</span>';
+    $lines[] = '+++--- cloud-hypervisor : <span class="grey">disabled</span>';
 }
-
-// Firecracker
 if ($fc_enabled) {
     $fc_st = ($fc_binary && $fc_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
     $fc_info = $fc_version ?: 'no binary';
     if ($fc_kernel) $fc_info .= " (Linux $fc_kernel_ver)";
-    $lines[] = "fc           : $fc_st — $fc_info";
+    $lines[] = "+++--- firecracker      : $fc_st — $fc_info";
 } else {
-    $lines[] = "fc           : " . '<span class="grey">disabled</span>';
+    $lines[] = '+++--- firecracker      : <span class="grey">disabled</span>';
 }
 
-// containerd
+// Runtime
+$lines[] = "++-- runtime";
 if ($enabled) {
-    $lines[] = "containerd   : " . ($containerd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($containerd_version ?: 'unknown');
+    $lines[] = "+++--- containerd       : " . ($containerd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($containerd_version ?: 'unknown');
 } else {
-    $lines[] = "containerd   : " . '<span class="grey">disabled</span>';
+    $lines[] = '+++--- containerd       : <span class="grey">disabled</span>';
 }
 
-// devmapper
+// Option
+$lines[] = "++-- option";
 if ($devmapper_enabled) {
-    $lines[] = "devmapper    : " . ($thinpool_active ? '<span class="green">active</span>' : '<span class="red">inactive</span>') . " — thin provisioned pool";
+    $lines[] = "+++--- devmapper        : " . ($thinpool_active ? '<span class="green">active</span>' : '<span class="red">inactive</span>') . " — thin provisioned pool";
 } else {
-    $lines[] = "devmapper    : " . '<span class="grey">disabled</span>' . " — raw file mode only";
+    $lines[] = '+++--- devmapper        : <span class="grey">disabled</span> — raw file mode only';
 }
 
 // Liquidmetal
+$lines[] = "++-- liquidmetal";
 if ($flintlockd_enabled) {
-    $lines[] = "flintlockd   : " . ($flintlockd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($flintlockd_version ?: '') . " gRPC :" . htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090');
-    $lines[] = "registry     : " . ($registry_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — OCI 127.0.0.1:5050";
+    $lines[] = "+++--- flintlockd       : " . ($flintlockd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($flintlockd_version ?: '') . " gRPC :" . htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090');
+    $lines[] = "+++--- registry         : " . ($registry_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — crane 127.0.0.1:5050";
 } else {
-    $lines[] = "flintlockd   : " . '<span class="grey">disabled</span>';
+    $lines[] = '+++--- flintlockd       : <span class="grey">disabled</span>';
+    $lines[] = '+++--- registry         : <span class="grey">disabled</span>';
 }
 
 echo implode("\n", $lines);
@@ -128,30 +130,46 @@ echo implode("\n", $lines);
 
   <div class="mvm-btn-grp">
     <button type="button" class="mvm-btn" onclick="location.reload()">REFRESH STATUS</button>
-    <?php if ($enabled): ?>
-      <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP CONTAINERD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START CONTAINERD</button><?php endif; ?>
-      <button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button>
-    <?php endif; ?>
-    <?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('cloud-hypervisor')">DOWNLOAD CH KERNEL</button><?php endif; ?>
-    <?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD FC KERNEL</button><?php endif; ?>
-    <?php if ($flintlockd_enabled): ?>
-      <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP FLINTLOCKD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START FLINTLOCKD</button><?php endif; ?>
-      <button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">FLINTLOCKD LOG</button>
-      <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP REGISTRY</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START REGISTRY</button><?php endif; ?>
-      <button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">REGISTRY LOG</button>
-    <?php endif; ?>
+    <a href="/Settings/VMSettings" class="mvm-btn" style="text-decoration:none;display:inline-block;">VM MANAGER</a>
   </div>
 
-  <div class="mvm-help">View the current status of microVMs services and manage individual components.</div>
+  <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
 
-<!-- ─── Toggles (Enable/Disable) ────────────────────────────────────────── -->
-<div style="margin-bottom:20px;">
+<!-- ─── VMM ─────────────────────────────────────────────────────────────── -->
+<div class="mvm-btn-grp" style="margin-bottom:12px;">
+  <strong style="display:inline-block;min-width:100px;">VMM:</strong>
   <?php if (!$ch_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('CH_ENABLED','<?=$ch_enabled?'no':'yes'?>')"><?=$ch_enabled?'DISABLE':'ENABLE'?> CLOUD HYPERVISOR</button><?php endif; ?>
   <?php if (!$fc_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('FC_ENABLED','<?=$fc_enabled?'no':'yes'?>')"><?=$fc_enabled?'DISABLE':'ENABLE'?> FIRECRACKER</button><?php endif; ?>
+  <?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('cloud-hypervisor')">DOWNLOAD CH KERNEL</button><?php endif; ?>
+  <?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD FC KERNEL</button><?php endif; ?>
+</div>
+
+<!-- ─── Runtime ─────────────────────────────────────────────────────────── -->
+<div class="mvm-btn-grp" style="margin-bottom:12px;">
+  <strong style="display:inline-block;min-width:100px;">Runtime:</strong>
+  <?php if ($enabled): ?>
+    <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP CONTAINERD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START CONTAINERD</button><?php endif; ?>
+    <button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button>
+  <?php endif; ?>
+</div>
+
+<!-- ─── Option ──────────────────────────────────────────────────────────── -->
+<div class="mvm-btn-grp" style="margin-bottom:12px;">
+  <strong style="display:inline-block;min-width:100px;">Option:</strong>
   <button type="button" class="mvm-btn" onclick="toggleVMM('DEVMAPPER','<?=$devmapper_enabled?'disable':'enable'?>')"><?=$devmapper_enabled?'DISABLE':'ENABLE'?> DEVMAPPER</button>
+</div>
+
+<!-- ─── Liquidmetal ─────────────────────────────────────────────────────── -->
+<div class="mvm-btn-grp" style="margin-bottom:20px;">
+  <strong style="display:inline-block;min-width:100px;">Liquidmetal:</strong>
   <button type="button" class="mvm-btn" onclick="toggleVMM('FLINTLOCKD','<?=$flintlockd_enabled?'disable':'enable'?>')"><?=$flintlockd_enabled?'DISABLE':'ENABLE'?> LIQUIDMETAL</button>
-  <a href="/Settings/VMSettings" class="mvm-btn" style="text-decoration:none;display:inline-block;">VM MANAGER</a>
+  <?php if ($flintlockd_enabled): ?>
+    <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP FLINTLOCKD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START FLINTLOCKD</button><?php endif; ?>
+    <button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">FLINTLOCKD LOG</button>
+    <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP REGISTRY</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START REGISTRY</button><?php endif; ?>
+    <button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">REGISTRY LOG</button>
+  <?php endif; ?>
 </div>
 
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
