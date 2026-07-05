@@ -208,11 +208,6 @@ function addMicroVMContext(name, state, engine) {
       e.preventDefault();
       vmLogs(name);
     }});
-    opts.push({divider:true});
-    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
-      e.preventDefault();
-      vmDelete(name, state);
-    }});
   } else {
     opts.push({text:'Start', icon:'fa-play', action:function(e){
       e.preventDefault();
@@ -232,7 +227,7 @@ function addMicroVMContext(name, state, engine) {
       vmLogs(name);
     }});
     opts.push({divider:true});
-    opts.push({text:'Remove', icon:'fa-trash', action:function(e){
+    opts.push({text:'Remove microVM & Disks', icon:'fa-trash', action:function(e){
       e.preventDefault();
       vmDelete(name, state);
     }});
