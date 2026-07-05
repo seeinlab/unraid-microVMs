@@ -136,42 +136,6 @@ echo implode("\n", $lines);
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
 
-<!-- ─── VMM ─────────────────────────────────────────────────────────────── -->
-<div class="mvm-btn-grp" style="margin-bottom:12px;">
-  <strong style="display:inline-block;min-width:100px;">VMM:</strong>
-  <?php if (!$ch_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('CH_ENABLED','<?=$ch_enabled?'no':'yes'?>')"><?=$ch_enabled?'DISABLE':'ENABLE'?> CLOUD HYPERVISOR</button><?php endif; ?>
-  <?php if (!$fc_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('FC_ENABLED','<?=$fc_enabled?'no':'yes'?>')"><?=$fc_enabled?'DISABLE':'ENABLE'?> FIRECRACKER</button><?php endif; ?>
-  <?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('cloud-hypervisor')">DOWNLOAD CH KERNEL</button><?php endif; ?>
-  <?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD FC KERNEL</button><?php endif; ?>
-</div>
-
-<!-- ─── Runtime ─────────────────────────────────────────────────────────── -->
-<div class="mvm-btn-grp" style="margin-bottom:12px;">
-  <strong style="display:inline-block;min-width:100px;">Runtime:</strong>
-  <?php if ($enabled): ?>
-    <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP CONTAINERD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START CONTAINERD</button><?php endif; ?>
-    <button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button>
-  <?php endif; ?>
-</div>
-
-<!-- ─── Option ──────────────────────────────────────────────────────────── -->
-<div class="mvm-btn-grp" style="margin-bottom:12px;">
-  <strong style="display:inline-block;min-width:100px;">Option:</strong>
-  <button type="button" class="mvm-btn" onclick="toggleVMM('DEVMAPPER','<?=$devmapper_enabled?'disable':'enable'?>')"><?=$devmapper_enabled?'DISABLE':'ENABLE'?> DEVMAPPER</button>
-</div>
-
-<!-- ─── Liquidmetal ─────────────────────────────────────────────────────── -->
-<div class="mvm-btn-grp" style="margin-bottom:20px;">
-  <strong style="display:inline-block;min-width:100px;">Liquidmetal:</strong>
-  <button type="button" class="mvm-btn" onclick="toggleVMM('FLINTLOCKD','<?=$flintlockd_enabled?'disable':'enable'?>')"><?=$flintlockd_enabled?'DISABLE':'ENABLE'?> LIQUIDMETAL</button>
-  <?php if ($flintlockd_enabled): ?>
-    <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP FLINTLOCKD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START FLINTLOCKD</button><?php endif; ?>
-    <button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">FLINTLOCKD LOG</button>
-    <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP REGISTRY</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START REGISTRY</button><?php endif; ?>
-    <button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">REGISTRY LOG</button>
-  <?php endif; ?>
-</div>
-
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
@@ -183,6 +147,36 @@ _(Enable microVMs)_:
   <?=mk_option($cfg['SERVICE'] ?? 'disable', "disable", "No")?>
   </select>
 
+&nbsp;
+### Virtual Machine Monitor
+
+_(Cloud Hypervisor)_:
+: <select name="CH_ENABLED" size="1">
+  <?=mk_option($cfg['CH_ENABLED'] ?? 'yes', "yes", "Enabled")?>
+  <?=mk_option($cfg['CH_ENABLED'] ?? 'yes', "no", "Disabled")?>
+  </select><?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?> <button type="button" class="mvm-btn" onclick="downloadKernel('cloud-hypervisor')">DOWNLOAD KERNEL</button><?php endif; ?>
+
+_(Firecracker)_:
+: <select name="FC_ENABLED" size="1">
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "yes", "Enabled")?>
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "no", "Disabled")?>
+  </select><?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?> <button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD KERNEL</button><?php endif; ?>
+
+_(Default VMM)_:
+: <select name="DEFAULT_VMM" size="1">
+  <?php if ($ch_enabled): ?><?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "cloud-hypervisor", "Cloud Hypervisor")?><?php endif; ?>
+  <?php if ($fc_enabled): ?><?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "firecracker", "Firecracker")?><?php endif; ?>
+  </select>
+
+_(Cloud Hypervisor Kernel URL)_:
+: <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
+
+_(Firecracker Kernel URL)_:
+: <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
+
+&nbsp;
+### Runtime
+
 _(VM Storage Location)_:
 : <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/microvms">
 
@@ -191,12 +185,6 @@ _(Network Bridge)_:
   <?php foreach ($bridge_names as $br): ?>
   <?=mk_option($cfg['BRIDGE'] ?? 'br0', $br, $br)?>
   <?php endforeach; ?>
-  </select>
-
-_(Default VMM)_:
-: <select name="DEFAULT_VMM" size="1">
-  <?php if ($ch_enabled): ?><?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "cloud-hypervisor", "Cloud Hypervisor")?><?php endif; ?>
-  <?php if ($fc_enabled): ?><?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "firecracker", "Firecracker")?><?php endif; ?>
   </select>
 
 _(Default vCPUs)_:
@@ -211,14 +199,29 @@ _(Autostart VMs on Array Start)_:
   <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
   </select>
 
+_(Containerd)_:
+: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button><?php endif; ?>
+
+&nbsp;
+### Option
+
+_(Devmapper)_:
+: <select name="DEVMAPPER" size="1">
+  <?=mk_option($cfg['DEVMAPPER'] ?? 'enable', "enable", "Enabled")?>
+  <?=mk_option($cfg['DEVMAPPER'] ?? 'enable', "disable", "Disabled")?>
+  </select>
+
 _(Thin Pool Size GB)_:
 : <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
 
-_(Cloud Hypervisor Kernel URL)_:
-: <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
+&nbsp;
+### Liquidmetal
 
-_(Firecracker Kernel URL)_:
-: <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
+_(Enable Liquidmetal)_:
+: <select name="FLINTLOCKD" size="1">
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "enable", "Yes")?>
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "disable", "No")?>
+  </select>
 
 <?php if ($flintlockd_enabled): ?>
 
@@ -230,6 +233,12 @@ _(Flintlockd gRPC Port)_:
 
 _(Flintlockd Extra Flags)_:
 : <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
+
+_(Flintlockd)_:
+: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">VIEW LOG</button>
+
+_(Registry)_:
+: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">VIEW LOG</button>
 
 <?php endif; ?>
 
@@ -275,6 +284,9 @@ function toggleVMM(key,value) {
     else swal({title:'Error',text:(data&&data.error)||'Failed',type:'error'});
   }).fail(function(){swal({title:'Error',text:'Request failed',type:'error'});});
 }
+
+$(function(){
+});
 
 $(function(){
 });
