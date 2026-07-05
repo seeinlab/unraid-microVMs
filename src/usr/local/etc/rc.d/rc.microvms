@@ -904,21 +904,8 @@ microvm_start() {
 
   # Pre-check: KVM device must be available
   if [ ! -r /dev/kvm ]; then
-    log "ERROR: /dev/kvm not available. Ensure libvirt/VM Manager is started first."
+    log "ERROR: /dev/kvm not available. Check BIOS VT-x/AMD-V settings."
     return 1
-  fi
-
-  # Pre-check: Wait for libvirtd (microVMs depends on KVM being initialized)
-  if ! pgrep -x libvirtd >/dev/null 2>&1; then
-    log "Waiting for libvirtd to start (KVM dependency)..."
-    local kvm_wait=0
-    while ! pgrep -x libvirtd >/dev/null 2>&1 && [ $kvm_wait -lt 30 ]; do
-      sleep 1
-      kvm_wait=$((kvm_wait + 1))
-    done
-    if ! pgrep -x libvirtd >/dev/null 2>&1; then
-      log "WARNING: libvirtd not running. microVMs may still work if /dev/kvm is available."
-    fi
   fi
 
   # Step 1-2: Devmapper thin pool (if enabled)
