@@ -13,14 +13,20 @@ $flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null'))
 $flintlockd_version = trim(shell_exec('flintlockd version 2>/dev/null'));
 $registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} 2>/dev/null && echo 1')));
 ?>
-<style>
-.mvm-btn { padding:5px 14px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:6px; margin-top:8px; }
-.mvm-btn:hover { background:rgba(128,128,128,0.1); }
-</style>
 
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
 <input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
+
+<?php if ($flintlockd_enabled): ?>
+
+_(Flintlockd)_:
+: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')"></span>
+
+_(Registry)_:
+: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')"></span>
+
+<?php endif; ?>
 
 _(Enable Liquidmetal)_:
 : <select name="FLINTLOCKD" size="1">
@@ -40,12 +46,6 @@ _(Flintlockd Extra Flags)_:
 : <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
 
 > Command-line flags passed to flintlockd on startup.
-
-_(Flintlockd)_:
-: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')"></span>
-
-_(Registry)_:
-: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')"></span>
 
 <?php endif; ?>
 
