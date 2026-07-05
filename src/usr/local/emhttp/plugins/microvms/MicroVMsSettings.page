@@ -78,13 +78,13 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
   <div class="mvm-status-line"><?php
 $lines = [];
 $lines[] = "+--- microvms";
-$lines[] = "++-- kvm              : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
+$lines[] = "++-- kvm                : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
 $lines[] = "++-- vmm";
 
 // Cloud Hypervisor
 if ($ch_enabled) {
     $ch_st = ($ch_binary && $ch_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
-    $ch_info = $ch_version ?: 'no binary';
+    $ch_info = htmlspecialchars($ch_version ?: 'no binary');
     if ($ch_kernel) $ch_info .= " (Linux $ch_kernel_ver)";
     $lines[] = "+++--- cloud-hypervisor : $ch_st — $ch_info";
 } else {
@@ -92,7 +92,7 @@ if ($ch_enabled) {
 }
 if ($fc_enabled) {
     $fc_st = ($fc_binary && $fc_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
-    $fc_info = $fc_version ?: 'no binary';
+    $fc_info = htmlspecialchars($fc_version ?: 'no binary');
     if ($fc_kernel) $fc_info .= " (Linux $fc_kernel_ver)";
     $lines[] = "+++--- firecracker      : $fc_st — $fc_info";
 } else {
