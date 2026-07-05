@@ -179,6 +179,9 @@ _(Crane Registry Storage)_:
 _(Flintlockd gRPC Port)_:
 : <input type="number" name="FLINTLOCKD_GRPC_PORT" min="1024" max="65535" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>">
 
+_(Flintlockd extra flags)_:
+: <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="e.g. --insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
+
 <?php endif; ?>
 
 &nbsp;

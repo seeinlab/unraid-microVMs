@@ -41,6 +41,7 @@ THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE_GB}G"
 THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
 FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
+FLINTLOCKD_EXTRA_FLAGS="${FLINTLOCKD_EXTRA_FLAGS:---insecure --default-provider cloudhypervisor}"
 CRANE_REGISTRY_DIR="${CRANE_REGISTRY_DIR:-${SYSTEM_DIR}/crane/registry}"
 
 # Thin pool paths
@@ -363,12 +364,10 @@ start_flintlockd() {
     --containerd-socket "$CONTAINERD_SOCK" \
     --bridge-name "$BRIDGE" \
     --parent-iface "$BRIDGE" \
-    --insecure \
-    --default-provider "cloudhypervisor" \
     --cloudhypervisor-bin "$CH_BIN" \
     --firecracker-bin "$FC_BIN" \
     --state-dir "${RUNTIME_DIR}/flintlockd-state" \
-    -v 1 \
+    $FLINTLOCKD_EXTRA_FLAGS \
     >> "$FLINTLOCKD_LOG" 2>&1 &
   local pid=$!
 
