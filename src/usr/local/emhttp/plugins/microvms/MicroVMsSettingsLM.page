@@ -9,9 +9,9 @@ require_once "$docroot/plugins/$plugin/include/common.php";
 
 $cfg = microvm_load_config();
 $flintlockd_enabled = ($cfg['FLINTLOCKD'] ?? 'disable') === 'enable';
-$flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null')));
+$flintlockd_running = !empty(trim(shell_exec('pidof flintlockd 2>/dev/null')));
 $flintlockd_version = trim(shell_exec('flintlockd version 2>/dev/null'));
-$registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} 2>/dev/null && echo 1')));
+$registry_running = !empty(trim(shell_exec('pidof crane 2>/dev/null')));
 ?>
 
 <script>
