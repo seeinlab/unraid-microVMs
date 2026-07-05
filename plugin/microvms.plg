@@ -191,21 +191,19 @@ CRANE_REGISTRY_DIR="/mnt/user/system/microvms/crane/registry"
 CFGEOF
 fi
 
-# Create directories
-mkdir -p /mnt/user/microvms 2>/dev/null
-mkdir -p /mnt/user/system/microvms/cloud-hypervisor/kernels 2>/dev/null
-mkdir -p /mnt/user/system/microvms/firecracker/kernels 2>/dev/null
-mkdir -p /mnt/user/system/microvms/containerd 2>/dev/null
+# Create log directories (tmpfs, safe at boot)
 mkdir -p /var/log/microvms/cloud-hypervisor 2>/dev/null
 mkdir -p /var/log/microvms/firecracker 2>/dev/null
 
-# Start service
-/etc/rc.d/rc.microvms start 2>/dev/null
+# NOTE: Do NOT start service here. PLG runs at boot BEFORE array is online.
+# Service starts via start.sh which Unraid calls AFTER array start.
+# Directories under /mnt/user/ are created by rc.microvms start.
 
 echo ""
 echo "-----------------------------------------------------------"
 echo " microVMs plugin installed (v${VERSION})"
 echo ""
+echo " Service will start when array comes online."
 echo " Settings → microVMs Controlplane"
 echo "-----------------------------------------------------------"
 ]]>

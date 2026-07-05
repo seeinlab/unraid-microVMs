@@ -28,14 +28,22 @@ Remote API → grpcurl → flintlockd:9090 → containerd → thin pool → CH/F
 ### What's Working ✅
 
 #### Boot Sequence
+
+**CRITICAL:** PLG install runs at boot BEFORE array. Services start AFTER array via start.sh.
+
 ```
-[pre] Check /dev/kvm available
-[1-2] If DEVMAPPER=enable: Load dm_thin_pool + setup thinpool
-[3/7] Start microvms-containerd ← always
-[4/7] Start crane registry     ← if FLINTLOCKD=enable
-[5/7] Start flintlockd         ← if FLINTLOCKD=enable
-[6/7] Re-create TAP interfaces
-[7/7] Autostart microVMs
+PLG install (boot, before array):
+  - Install binaries, symlinks, log dirs only
+  - NO /mnt/user/ access, NO service start
+
+Array start (start.sh → rc.microvms start):
+  [pre] Check /dev/kvm + /mnt/user exists
+  [1-2] If DEVMAPPER=enable: Load dm_thin_pool + setup thinpool
+  [3/7] Start microvms-containerd ← always
+  [4/7] Start crane registry     ← if FLINTLOCKD=enable
+  [5/7] Start flintlockd         ← if FLINTLOCKD=enable
+  [6/7] Re-create TAP interfaces
+  [7/7] Autostart microVMs
 ```
 
 #### Settings Page (Sub-page Tabs)

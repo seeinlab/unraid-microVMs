@@ -26,7 +26,7 @@ $ch_version = $ch_binary ? trim(shell_exec('cloud-hypervisor --version 2>/dev/nu
 $ch_kernel_ver = $ch_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/cloud-hypervisor/kernels/vmlinux") . " 2>/dev/null | head -1")) : '';
 $fc_binary = is_file('/usr/local/bin/firecracker');
 $fc_kernel = is_file("$kernelDir/firecracker/kernels/vmlinux");
-$fc_version = $fc_binary ? trim(shell_exec('firecracker --version 2>&1 | head -1')) : '';
+$fc_version = $fc_binary ? trim(shell_exec('firecracker --version 2>&1 | grep -i firecracker | head -1')) : '';
 $fc_kernel_ver = $fc_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/firecracker/kernels/vmlinux") . " 2>/dev/null | head -1")) : '';
 
 $enabled = ($cfg['SERVICE'] ?? 'disable') === 'enable';
@@ -94,14 +94,16 @@ $lines[] = "+--- microvms";
 $lines[] = "++-- kvm                : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
 $lines[] = "++-- vmm";
 if ($ch_enabled) {
-    $ch_info = htmlspecialchars($ch_version ?: 'no binary');
+    $ch_info = $ch_binary ? htmlspecialchars($ch_version ?: 'installed') : 'binary missing';
+    if ($ch_binary && !$ch_kernel) $ch_info .= ' (kernel missing)';
     if ($ch_kernel) $ch_info .= " (Linux $ch_kernel_ver)";
     $lines[] = "+++--- cloud-hypervisor : " . (($ch_binary && $ch_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>') . " — $ch_info";
 } else {
     $lines[] = '+++--- cloud-hypervisor : <span class="grey">disabled</span>';
 }
 if ($fc_enabled) {
-    $fc_info = htmlspecialchars($fc_version ?: 'no binary');
+    $fc_info = $fc_binary ? htmlspecialchars($fc_version ?: 'installed') : 'binary missing';
+    if ($fc_binary && !$fc_kernel) $fc_info .= ' (kernel missing)';
     if ($fc_kernel) $fc_info .= " (Linux $fc_kernel_ver)";
     $lines[] = "+++--- firecracker      : " . (($fc_binary && $fc_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>') . " — $fc_info";
 } else {

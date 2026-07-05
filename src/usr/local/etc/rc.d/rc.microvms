@@ -896,11 +896,15 @@ microvm_start() {
 
   # Create runtime directory
   mkdir -p "$RUNTIME_DIR"
-  mkdir -p "$VMDIR/kernels"
-  mkdir -p "$SYSTEM_DIR"
   mkdir -p /var/log/microvms
   mkdir -p /var/log/microvms/cloud-hypervisor
   mkdir -p /var/log/microvms/firecracker
+
+  # Create persistent directories (only after array is online)
+  mkdir -p "$VMDIR" 2>/dev/null
+  mkdir -p "$SYSTEM_DIR/cloud-hypervisor/kernels" 2>/dev/null
+  mkdir -p "$SYSTEM_DIR/firecracker/kernels" 2>/dev/null
+  mkdir -p "$SYSTEM_DIR/containerd" 2>/dev/null
 
   # Log rotation: truncate if over 10MB (tmpfs, cleared on reboot anyway)
   for logfile in "$CONTAINERD_LOG" "$FLINTLOCKD_LOG" /var/log/microvms/registry.log /var/log/microvms/backend.log; do

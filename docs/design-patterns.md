@@ -110,8 +110,19 @@ One shared pool: microvms-thinpool
 ## Process Architecture
 
 ### Boot Sequence (rc.microvms start)
+
+**CRITICAL: Services must NOT start before array is online.**
+
+PLG install (at boot, before array):
+- Installs binaries to /usr/local/bin/
+- Creates symlink /etc/rc.d/rc.microvms
+- Creates log dirs (/var/log/microvms/)
+- Does NOT touch /mnt/user/ or start services
+
+Array start (triggers start.sh):
 ```
 [pre] Check /dev/kvm available
+[pre] Check /mnt/user exists (array online)
 [1-2] If DEVMAPPER=enable:
         [1/7] Load dm_thin_pool kernel module
         [2/7] Setup thin pool (microvms-thinpool)
