@@ -35,7 +35,8 @@ $ch_enabled = ($cfg['CH_ENABLED'] ?? 'yes') === 'yes';
 $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 $ch_available = $ch_binary && $ch_kernel && $ch_enabled;
 $fc_available = $fc_binary && $fc_kernel && $fc_enabled;
-$vmm_ready = $kvm_loaded && ($ch_available || $fc_available) && $containerd_running;
+$lm_healthy = !$flintlockd_enabled || ($flintlockd_running && $registry_running);
+$vmm_ready = $kvm_loaded && ($ch_available || $fc_available) && $containerd_running && $lm_healthy;
 
 $bridges = glob('/sys/class/net/br*');
 $bridge_names = array_map(function($b){ return basename($b); }, $bridges ?: []);
@@ -88,10 +89,10 @@ if ($devmapper_enabled) {
 } else {
     $lines[] = '+++--- devmapper        : <span class="grey">disabled</span> — raw file mode only';
 }
-$lines[] = "++-- liquidmetal";
+$lm_ok = !$flintlockd_enabled || ($flintlockd_running && $registry_running);
+$lm_status = $flintlockd_running && $registry_running;
+$lines[] = "++-- liquidmetal" . ($flintlockd_enabled ? ($lm_status ? '        : <span class="green">ready</span>' : '        : <span class="red">failed</span>') : '');
 if ($flintlockd_enabled) {
-    $lm_ok = $flintlockd_running && $registry_running;
-    $lines[] = "+++--- status           : " . ($lm_ok ? '<span class="green">ready</span>' : '<span class="red">not ready</span>');
     $lines[] = "+++--- flintlockd       : " . ($flintlockd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($flintlockd_version ?: '') . " gRPC :" . htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090');
     $lines[] = "+++--- registry         : " . ($registry_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — crane 127.0.0.1:5050";
 } else {

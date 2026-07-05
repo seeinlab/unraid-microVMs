@@ -823,14 +823,19 @@ INIT;
             echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
             microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
         } elseif ($service === 'registry') {
+            $out = [];
             if ($action === 'start') {
                 exec("/etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
             } elseif ($action === 'restart') {
-                exec("pkill -f 'crane.*registry' 2>/dev/null; sleep 1; /etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
+                $pid = trim(shell_exec("pgrep -f 'crane.registry' 2>/dev/null"));
+                if ($pid) exec("kill $pid 2>/dev/null");
+                sleep(1);
+                exec("/etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
             } else {
-                // stop_registry may fail if PID file is empty, use pkill as fallback
-                exec("/etc/rc.d/rc.microvms stop_registry 2>&1; pkill -f 'crane.*registry' 2>/dev/null", $out, $ret);
-                $ret = 0; // always succeed
+                $pid = trim(shell_exec("pgrep -f 'crane.registry' 2>/dev/null"));
+                if ($pid) exec("kill $pid 2>/dev/null");
+                @unlink('/var/run/microvms/crane-registry.pid');
+                $ret = 0;
             }
             echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
             microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");
