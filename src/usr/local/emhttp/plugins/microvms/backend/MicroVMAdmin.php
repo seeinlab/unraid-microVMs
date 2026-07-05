@@ -834,8 +834,28 @@ INIT;
             echo json_encode(['success' => false, 'error' => "Not allowed: $key"]);
             break;
         }
+
         $cfgFile = "/boot/config/plugins/microvms/microvms.controlplane.cfg";
         $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+
+        // Guard: cannot disable devmapper if any VM uses thin pool storage
+        if ($key === 'DEVMAPPER' && $value === 'disable') {
+            $thin_vms = [];
+            if (is_dir($vmdir)) {
+                foreach (glob("$vmdir/*/*.json") as $f) {
+                    $vm = json_decode(file_get_contents($f), true);
+                    if ($vm && ($vm['storage']['type'] ?? '') === 'thin') {
+                        $thin_vms[] = $vm['name'] ?? basename(dirname($f));
+                    }
+                }
+            }
+            if (!empty($thin_vms)) {
+                echo json_encode(['success' => false, 'error' => "Cannot disable devmapper: " . count($thin_vms) . " VM(s) use thin pool storage: " . implode(', ', $thin_vms)]);
+                break;
+            }
+        }
+
         $cfg[$key] = $value;
         // Write back
         $lines = [];

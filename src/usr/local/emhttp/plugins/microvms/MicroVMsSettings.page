@@ -225,7 +225,7 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
       <span class="svc-dot svc-dot-red"></span>Inactive
       <?php endif; ?>
     </td>
-    <td><?=$devmapper_enabled ? ($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50') . 'GB thin provisioned pool' : 'Thin pool disabled (raw file mode only)'?></td>
+    <td><?=$devmapper_enabled ? 'Thin provisioned pool' : 'Thin pool disabled (raw file mode only)'?></td>
     <td>
       <button type="button" class="svc-action-btn" onclick="toggleVMM('DEVMAPPER','<?=$devmapper_enabled ? 'disable' : 'enable'?>')"><?=$devmapper_enabled ? 'Disable' : 'Enable'?></button>
     </td>
@@ -298,8 +298,6 @@ _(Enable microVMs)_:
   <?=mk_option($cfg['SERVICE'] ?? 'disable', "disable", "No")?>
   </select>
 
-> Enable or disable the microVM subsystem.
-
 _(VM Storage Location)_:
 : <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/microvms">
 
@@ -309,6 +307,19 @@ _(Network Bridge)_:
   <?=mk_option($cfg['BRIDGE'] ?? 'br0', $br, $br)?>
   <?php endforeach; ?>
   </select>
+
+_(Autostart VMs on Array Start)_:
+: <select name="AUTOSTART" size="1">
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Yes")?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
+  </select>
+
+<input type="button" value="_(Basic View)_" id="btnBasicView" onclick="toggleAdvanced()" style="margin:12px 0;">
+
+<div id="advancedSettings" style="display:none;">
+
+&nbsp;
+### VMM Settings
 
 _(Default VMM)_:
 : <select name="DEFAULT_VMM" id="selectDefaultVMM" size="1">
@@ -326,27 +337,24 @@ _(Default vCPUs)_:
 _(Default Memory MB)_:
 : <input type="number" name="DEFAULT_MEMORY" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>" min="128" max="65536" step="128" class="narrow">
 
-_(Autostart VMs on Array Start)_:
-: <select name="AUTOSTART" size="1">
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Yes")?>
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
-  </select>
-
-_(Thin Pool Size GB)_:
-: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
-
-> Size of devmapper thin pool. Only used when devmapper is enabled.
-
 _(Cloud Hypervisor Kernel URL)_:
 : <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
 
 _(Firecracker Kernel URL)_:
 : <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
 
+&nbsp;
+### Devmapper Settings
+
+_(Thin Pool Size GB)_:
+: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
+
+> Size of devmapper thin pool. Only used when devmapper is enabled.
+
 <?php if ($flintlockd_enabled): ?>
 
 &nbsp;
-### Liquidmetal
+### Liquidmetal Settings
 
 _(Crane Registry Storage)_:
 : <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/system/microvms/crane/registry">
@@ -361,6 +369,8 @@ _(Flintlockd Extra Flags)_:
 
 <?php endif; ?>
 
+</div>
+
 &nbsp;
 : <input type="submit" value="_(Apply)_" id="btnApply"><input type="button" value="_(Done)_" onclick="done()">
 </form>
@@ -370,6 +380,18 @@ _(Flintlockd Extra Flags)_:
 var plugin = '<?=$plugin?>';
 
 function done() { location = '/Settings'; }
+
+function toggleAdvanced() {
+  var el = document.getElementById('advancedSettings');
+  var btn = document.getElementById('btnBasicView');
+  if (el.style.display === 'none') {
+    el.style.display = '';
+    btn.value = 'Basic View';
+  } else {
+    el.style.display = 'none';
+    btn.value = 'Advanced View';
+  }
+}
 
 function viewLog(service) {
   var logMap = {
