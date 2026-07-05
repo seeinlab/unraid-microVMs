@@ -735,7 +735,7 @@ start_vm() {
     gateway=${gateway:-192.168.50.1}
 
     # Kernel cmdline: read base from config, append network at runtime
-    local base_cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config")
+    local base_cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config" | sed 's|\\\/|/|g; s|\\\\|\\|g')
     base_cmdline=${base_cmdline:-"console=ttyS0 root=/dev/vda rw init=/init"}
     local cmdline="${base_cmdline} ip=${ip}::${gateway}:255.255.255.0:::off"
   else
