@@ -14,19 +14,31 @@ $flintlockd_version = trim(shell_exec('flintlockd version 2>/dev/null'));
 $registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} 2>/dev/null && echo 1')));
 ?>
 
+<?php if ($flintlockd_enabled): ?>
+<div style="margin-bottom:16px;">
+<b>Flintlockd:</b>
+<?php if ($flintlockd_running): ?>
+<input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')">
+<input type="button" value="Restart" onclick="serviceAction('flintlockd','restart')">
+<?php else: ?>
+<input type="button" value="Start" onclick="serviceAction('flintlockd','start')">
+<?php endif; ?>
+<input type="button" value="View Log" onclick="viewLog('flintlockd')">
+&nbsp;&nbsp;
+<b>Registry:</b>
+<?php if ($registry_running): ?>
+<input type="button" value="Stop" onclick="serviceAction('registry','stop')">
+<input type="button" value="Restart" onclick="serviceAction('registry','restart')">
+<?php else: ?>
+<input type="button" value="Start" onclick="serviceAction('registry','start')">
+<?php endif; ?>
+<input type="button" value="View Log" onclick="viewLog('crane-registry')">
+</div>
+<?php endif; ?>
+
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
 <input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
-
-<?php if ($flintlockd_enabled): ?>
-
-_(Flintlockd)_:
-: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($flintlockd_running): ?><input type="button" value="Stop" onclick="serviceAction('flintlockd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('flintlockd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('flintlockd')"></span>
-
-_(Registry)_:
-: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <span class="inline-block"><?php if ($registry_running): ?><input type="button" value="Stop" onclick="serviceAction('registry','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('registry','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('crane-registry')"></span>
-
-<?php endif; ?>
 
 _(Enable Liquidmetal)_:
 : <select name="FLINTLOCKD" size="1">

@@ -30,12 +30,6 @@ _(Enable Firecracker)_:
   <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "no", "No")?>
   </select>
 
-_(Binary)_:
-: <?=$fc_binary ? htmlspecialchars($fc_version) : '<span style="color:#f44336;">not installed</span>'?>
-
-_(Kernel)_:
-: <?php if ($fc_kernel): ?>Linux <?=$fc_kernel_ver?> — <span style="color:#4CAF50;">installed</span><?php else: ?><span style="color:#f44336;">not installed</span> <input type="button" value="Download Kernel" onclick="downloadKernel('firecracker')"><?php endif; ?>
-
 _(Kernel URL)_:
 : <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
 

@@ -793,13 +793,17 @@ INIT;
             echo json_encode(['success' => false, 'error' => "Service not controllable: $service"]);
             break;
         }
-        if (!in_array($action, ['start', 'stop'])) {
+        if (!in_array($action, ['start', 'stop', 'restart'])) {
             echo json_encode(['success' => false, 'error' => "Invalid action: $action"]);
             break;
         }
 
         if ($service === 'flintlockd') {
             if ($action === 'start') {
+                exec("/etc/rc.d/rc.microvms start_flintlockd 2>&1", $out, $ret);
+            } elseif ($action === 'restart') {
+                exec("/etc/rc.d/rc.microvms stop_flintlockd 2>&1", $out, $ret);
+                sleep(1);
                 exec("/etc/rc.d/rc.microvms start_flintlockd 2>&1", $out, $ret);
             } else {
                 exec("/etc/rc.d/rc.microvms stop_flintlockd 2>&1", $out, $ret);
@@ -809,6 +813,10 @@ INIT;
         } elseif ($service === 'containerd') {
             if ($action === 'start') {
                 exec("/etc/rc.d/rc.microvms start_containerd 2>&1", $out, $ret);
+            } elseif ($action === 'restart') {
+                exec("/etc/rc.d/rc.microvms stop_containerd 2>&1", $out, $ret);
+                sleep(1);
+                exec("/etc/rc.d/rc.microvms start_containerd 2>&1", $out, $ret);
             } else {
                 exec("/etc/rc.d/rc.microvms stop_containerd 2>&1", $out, $ret);
             }
@@ -817,8 +825,12 @@ INIT;
         } elseif ($service === 'registry') {
             if ($action === 'start') {
                 exec("/etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
+            } elseif ($action === 'restart') {
+                exec("pkill -f 'crane.*registry' 2>/dev/null; sleep 1; /etc/rc.d/rc.microvms start_registry 2>&1", $out, $ret);
             } else {
-                exec("/etc/rc.d/rc.microvms stop_registry 2>&1", $out, $ret);
+                // stop_registry may fail if PID file is empty, use pkill as fallback
+                exec("/etc/rc.d/rc.microvms stop_registry 2>&1; pkill -f 'crane.*registry' 2>/dev/null", $out, $ret);
+                $ret = 0; // always succeed
             }
             echo json_encode(['success' => ($ret === 0), 'output' => implode("\n", $out)]);
             microvm_log("SERVICE_ACTION: $service $action (exit=$ret)");

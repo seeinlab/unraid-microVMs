@@ -30,12 +30,6 @@ _(Enable Cloud Hypervisor)_:
   <?=mk_option($cfg['CH_ENABLED'] ?? 'yes', "no", "No")?>
   </select>
 
-_(Binary)_:
-: <?=$ch_binary ? htmlspecialchars($ch_version) : '<span style="color:#f44336;">not installed</span>'?>
-
-_(Kernel)_:
-: <?php if ($ch_kernel): ?>Linux <?=$ch_kernel_ver?> — <span style="color:#4CAF50;">installed</span><?php else: ?><span style="color:#f44336;">not installed</span> <input type="button" value="Download Kernel" onclick="downloadKernel('cloud-hypervisor')"><?php endif; ?>
-
 _(Kernel URL)_:
 : <input type="text" name="CH_KERNEL_URL" value="<?=htmlspecialchars($cfg['CH_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
 

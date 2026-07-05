@@ -90,11 +90,12 @@ if ($devmapper_enabled) {
 }
 $lines[] = "++-- liquidmetal";
 if ($flintlockd_enabled) {
+    $lm_ok = $flintlockd_running && $registry_running;
+    $lines[] = "+++--- status           : " . ($lm_ok ? '<span class="green">ready</span>' : '<span class="red">not ready</span>');
     $lines[] = "+++--- flintlockd       : " . ($flintlockd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($flintlockd_version ?: '') . " gRPC :" . htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090');
     $lines[] = "+++--- registry         : " . ($registry_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — crane 127.0.0.1:5050";
 } else {
-    $lines[] = '+++--- flintlockd       : <span class="grey">disabled</span>';
-    $lines[] = '+++--- registry         : <span class="grey">disabled</span>';
+    $lines[] = '+++--- status           : <span class="grey">disabled</span>';
 }
 echo implode("\n", $lines);
 ?></div>
@@ -105,12 +106,22 @@ echo implode("\n", $lines);
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
 
+<div style="margin-bottom:16px;">
+<b>Containerd:</b>
+<?php if ($enabled): ?>
+  <?php if ($containerd_running): ?>
+  <input type="button" value="Stop" onclick="serviceAction('containerd','stop')">
+  <input type="button" value="Restart" onclick="serviceAction('containerd','restart')">
+  <?php else: ?>
+  <input type="button" value="Start" onclick="serviceAction('containerd','start')">
+  <?php endif; ?>
+  <input type="button" value="View Log" onclick="viewLog('microvms-containerd')">
+<?php endif; ?>
+</div>
+
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
 <input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
-
-_(Containerd)_:
-: <?=$containerd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?><?php if ($enabled): ?> <span class="inline-block"><?php if ($containerd_running): ?><input type="button" value="Stop" onclick="serviceAction('containerd','stop')"><?php else: ?><input type="button" value="Start" onclick="serviceAction('containerd','start')"><?php endif; ?><input type="button" value="View Log" onclick="viewLog('microvms-containerd')"></span><?php endif; ?>
 
 _(Enable microVMs)_:
 : <select name="SERVICE" size="1">
@@ -140,10 +151,10 @@ _(Default vCPUs)_:
 _(Default Memory MB)_:
 : <input type="number" name="DEFAULT_MEMORY" value="<?=htmlspecialchars($cfg['DEFAULT_MEMORY'] ?? '256')?>" min="128" max="65536" step="128" class="narrow">
 
-_(Autostart VMs on Array Start)_:
+_(Autostart)_:
 : <select name="AUTOSTART" size="1">
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Yes")?>
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Array Start")?>
+  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "Off")?>
   </select>
 
 _(Devmapper)_:
@@ -152,8 +163,8 @@ _(Devmapper)_:
   <?=mk_option($cfg['DEVMAPPER'] ?? 'enable', "disable", "Disabled")?>
   </select>
 
-_(Thin Pool Size)_:
-: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow"> GB
+_(Thin Pool Size)_ (GB):
+: <input type="number" name="THINPOOL_DATA_SIZE_GB" value="<?=htmlspecialchars($cfg['THINPOOL_DATA_SIZE_GB'] ?? '50')?>" min="5" max="500" class="narrow">
 
 &nbsp;
 : <span class="inline-block"><input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
