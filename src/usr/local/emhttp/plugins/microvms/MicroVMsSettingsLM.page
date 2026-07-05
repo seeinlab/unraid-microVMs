@@ -69,18 +69,18 @@ _(Flintlockd Extra Flags)_:
 var plugin = '<?=$plugin?>';
 function done() { location = '/Settings/MicroVMsSettings'; }
 function viewLog(service) {
-  var logMap = {'crane-registry':'/var/log/microvms/registry.log','flintlockd':'/var/log/microvms/flintlockd.log'};
+  var logMap = {'microvms-containerd':'/var/log/microvms/containerd.log','crane-registry':'/var/log/microvms/registry.log','flintlockd':'/var/log/microvms/flintlockd.log'};
   $.post('/plugins/'+plugin+'/backend/MicroVMAdmin.php',{cmd:'view_log',logfile:logMap[service]||''},function(data){
     if (typeof data==='string') try{data=JSON.parse(data);}catch(e){}
-    if (data.success) swal({title:service,text:'<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">'+(data.log||'(empty)')+'</pre>',html:true,confirmButtonText:'Close'});
-    else swal({title:'Error',text:data.error||'Failed',type:'error'});
-  });
+    if (data && data.success) swal({title:service,text:'<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">'+(data.log||'(empty)')+'</pre>',html:true,confirmButtonText:'Close'});
+    else swal({title:'Error',text:(data&&data.error)||'Failed to load log',type:'error'});
+  }).fail(function(jqXHR,textStatus,errorThrown){swal({title:'Error',text:'Request failed: '+textStatus+(errorThrown?' ('+errorThrown+')':''),type:'error'});});
 }
 function serviceAction(service,action) {
   $.post('/plugins/'+plugin+'/backend/MicroVMAdmin.php',{cmd:'service_action',service:service,action:action},function(data){
     if(typeof data==='string')try{data=JSON.parse(data);}catch(e){}
     if(data&&data.success)location.reload();
-    else swal({title:'Error',text:(data&&data.error)||'Failed',type:'error'});
-  }).fail(function(){swal({title:'Error',text:'Request failed',type:'error'});});
+    else swal({title:'Error',text:(data&&data.error)||'Action failed',type:'error'});
+  }).fail(function(jqXHR,textStatus,errorThrown){swal({title:'Error',text:'Request failed: '+textStatus+(errorThrown?' ('+errorThrown+')':''),type:'error'});});
 }
 </script>

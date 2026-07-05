@@ -50,7 +50,7 @@ function downloadKernel(engine) {
       if(typeof data==='string')try{data=JSON.parse(data);}catch(e){}
       if(data&&data.success)swal({title:'Done',text:data.message,type:'success'},function(){location.reload();});
       else swal({title:'Error',text:(data&&data.error)||'Failed',type:'error'});
-    }).fail(function(){swal({title:'Error',text:'Request failed',type:'error'});});
+    }).fail(function(jqXHR,textStatus,errorThrown){swal({title:'Error',text:'Request failed: '+textStatus+(errorThrown?' ('+errorThrown+')':''),type:'error'});});
   });
 }
 </script>
