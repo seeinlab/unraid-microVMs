@@ -17,9 +17,9 @@ $flintlockd_bin = is_file('/usr/local/bin/flintlockd');
 $flintlockd_running = !empty(trim(shell_exec('pgrep -f flintlockd 2>/dev/null')));
 $flintlockd_version = $flintlockd_bin ? trim(shell_exec('flintlockd version 2>/dev/null')) : false;
 
-$containerd_bin = is_file('/usr/local/bin/flintlock-containerd');
-$containerd_running = !empty(trim(shell_exec('pgrep -f flintlock-containerd 2>/dev/null')));
-$containerd_version = $containerd_bin ? trim(shell_exec('flintlock-containerd --version 2>/dev/null | head -1')) : false;
+$containerd_bin = is_file('/usr/local/bin/microvms-containerd');
+$containerd_running = !empty(trim(shell_exec('pgrep -f microvms-containerd 2>/dev/null')));
+$containerd_version = $containerd_bin ? trim(shell_exec('microvms-containerd --version 2>/dev/null | head -1')) : false;
 
 $ch_bin = is_file('/usr/local/bin/cloud-hypervisor');
 $ch_version = $ch_bin ? trim(shell_exec('cloud-hypervisor --version 2>/dev/null')) : false;
@@ -48,8 +48,8 @@ $vm_manager_enabled = ($domain_cfg['SERVICE'] ?? '') === 'enable';
 $issues = [];
 if (!$flintlockd_bin) $issues[] = "flintlockd not installed";
 if ($flintlockd_bin && !$flintlockd_running) $issues[] = "flintlockd not running";
-if (!$containerd_bin) $issues[] = "flintlock-containerd not installed";
-if ($containerd_bin && !$containerd_running) $issues[] = "flintlock-containerd not running";
+if (!$containerd_bin) $issues[] = "microvms-containerd not installed";
+if ($containerd_bin && !$containerd_running) $issues[] = "microvms-containerd not running";
 if (!$kvm_available) $issues[] = "/dev/kvm not available";
 if (!$ch_kernel && !$fc_kernel) $issues[] = "No kernel images downloaded";
 
@@ -145,7 +145,7 @@ _(Thin Pool Size)_ (GB):
 // Liquidmetal status
 $lm_enabled = ($cfg['FLINTLOCKD'] ?? 'disable') === 'enable';
 $lm_flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null')));
-$lm_containerd_running = !empty(trim(shell_exec('cat /var/run/microvms/flintlock-containerd.pid 2>/dev/null | xargs -I{} test -d /proc/{} && echo 1')));
+$lm_containerd_running = !empty(trim(shell_exec('cat /var/run/microvms/containerd.pid 2>/dev/null | xargs -I{} test -d /proc/{} && echo 1')));
 $lm_registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} && echo 1')));
 $lm_crane_storage = $cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry';
 ?>
@@ -222,7 +222,7 @@ _(Flintlockd gRPC Port)_:
     </div>
     <div style="margin-top:10px; display:flex; gap:8px;">
       <input type="button" value="VIEW FLINTLOCKD LOG" onclick="viewLog('flintlockd')" class="btn">
-      <input type="button" value="VIEW CONTAINERD LOG" onclick="viewLog('flintlock-containerd')" class="btn">
+      <input type="button" value="VIEW CONTAINERD LOG" onclick="viewLog('microvms-containerd')" class="btn">
     </div>
     <?php endif; ?>
   </div>
@@ -335,7 +335,7 @@ var plugin = '<?=$plugin?>';
 function done() { location = '/Settings'; }
 
 function viewLog(service) {
-  var logFile = (service === 'flintlockd') ? '/var/log/flintlockd.log' : '/var/log/flintlock-containerd.log';
+  var logFile = (service === 'flintlockd') ? '/var/log/flintlockd.log' : '/var/log/microvms-containerd.log';
   var title = service === 'flintlockd' ? 'Flintlockd Log' : 'Containerd Log';
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', logfile: logFile}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}

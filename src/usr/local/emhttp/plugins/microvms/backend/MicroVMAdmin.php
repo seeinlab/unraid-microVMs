@@ -598,7 +598,7 @@ INIT;
         $action = $_POST['action'] ?? '';
         if ($action === 'status') {
             $running = microvm_is_flintlock_running();
-            $containerdPid = trim(shell_exec("cat /var/run/microvms/flintlock-containerd.pid 2>/dev/null"));
+            $containerdPid = trim(shell_exec("cat /var/run/microvms/containerd.pid 2>/dev/null"));
             $registryPid = trim(shell_exec("cat /var/run/microvms/crane-registry.pid 2>/dev/null"));
             echo json_encode([
                 'success' => true,
@@ -692,7 +692,7 @@ INIT;
     case 'view_log':
         $logfile = $_POST['logfile'] ?? '';
         // Only allow reading specific known log files
-        $allowed = ['/var/log/flintlockd.log', '/var/log/flintlock-containerd.log'];
+        $allowed = ['/var/log/flintlockd.log', '/var/log/microvms-containerd.log'];
         if (!in_array($logfile, $allowed)) {
             echo json_encode(['success' => false, 'error' => 'Invalid log file']);
             break;

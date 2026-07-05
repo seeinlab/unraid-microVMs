@@ -1,126 +1,152 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/unraid-microVMs/schemas/vm-config.json",
-  "title": "microVM Configuration",
-  "description": "Infrastructure-as-code definition for a microVM. Same schema for both Cloud Hypervisor and Firecracker VMMs.",
-  "type": "object",
-  "required": ["name", "vmm", "vcpus", "memory_mb", "storage", "network", "image"],
-  "properties": {
-    "name": {
-      "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9\\-]*$",
-      "description": "VM identifier. Lowercase, numbers, hyphens only.",
-      "examples": ["my-web-server", "nginx-prod"]
-    },
-    "vmm": {
-      "type": "string",
-      "enum": ["cloud-hypervisor", "firecracker"],
-      "description": "Virtual Machine Monitor to use. Determines binary, kernel path, and runtime behavior."
-    },
-    "vcpus": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 64,
-      "description": "Number of virtual CPUs."
-    },
-    "memory_mb": {
-      "type": "integer",
-      "minimum": 64,
-      "maximum": 32768,
-      "description": "Memory allocation in megabytes."
-    },
-    "storage": {
-      "type": "object",
-      "required": ["type", "size_mb"],
-      "description": "Root filesystem storage configuration.",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["thin", "raw"],
-          "description": "Storage backend. 'thin' = devmapper thin-provisioned block device (space-efficient). 'raw' = raw ext4 file on disk."
-        },
-        "size_mb": {
-          "type": "integer",
-          "minimum": 100,
-          "maximum": 102400,
-          "description": "Virtual disk size in MB. For 'thin' type, this is the virtual size (actual usage is copy-on-write)."
-        },
-        "thin_device_id": {
-          "type": "integer",
-          "minimum": 1000000,
-          "description": "Device-mapper thin device ID. Auto-assigned on creation. Required for type=thin."
-        }
-      },
-      "if": { "properties": { "type": { "const": "thin" } } },
-      "then": { "required": ["thin_device_id"] }
-    },
-    "network": {
-      "type": "object",
-      "required": ["ip", "gateway", "mac", "bridge", "tap_id"],
-      "description": "Network configuration.",
-      "properties": {
-        "ip": {
-          "type": "string",
-          "format": "ipv4",
-          "description": "Static IPv4 address for the VM."
-        },
-        "gateway": {
-          "type": "string",
-          "format": "ipv4",
-          "description": "Default gateway."
-        },
-        "mac": {
-          "type": "string",
-          "pattern": "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",
-          "description": "MAC address. Auto-generated if not specified."
-        },
-        "bridge": {
-          "type": "string",
-          "default": "br0",
-          "description": "Host bridge interface to attach TAP to."
-        },
-        "tap_id": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "TAP interface numeric ID. Creates tap{N} on host."
-        }
-      }
-    },
-    "image": {
-      "type": "object",
-      "required": ["source"],
-      "description": "Root filesystem image source.",
-      "properties": {
-        "source": {
-          "type": "string",
-          "enum": ["oci", "existing"],
-          "description": "'oci' = pull and extract OCI/Docker image. 'existing' = use pre-existing rootfs."
-        },
-        "ref": {
-          "type": "string",
-          "description": "OCI image reference. Required when source=oci.",
-          "examples": ["docker.io/nginx:stable-trixie", "docker.io/library/alpine:3.18"]
-        }
-      },
-      "if": { "properties": { "source": { "const": "oci" } } },
-      "then": { "required": ["ref"] }
-    },
-    "kernel": {
-      "type": "object",
-      "description": "Kernel configuration. Kernel binary path is derived from vmm field at runtime.",
-      "properties": {
-        "cmdline": {
-          "type": "string",
-          "default": "console=ttyS0 root=/dev/vda rw init=/init",
-          "description": "Kernel command line (without IP, which is appended at runtime from network config)."
-        }
-      }
-    },
-    "autostart": {
-      "type": "boolean",
-      "default": false,
-      "description": "Start VM automatically when array starts."
-    }
+  "openapi": "3.0.3",
+  "info": {
+    "title": "microVM Configuration Schema",
+    "description": "Infrastructure-as-code definition for a microVM on Unraid. The VMM (cloud-hypervisor or firecracker) is determined by the config filename, not a field in the schema.",
+    "version": "2.0.0"
   },
-  "additionalProperties": false
+  "paths": {},
+  "components": {
+    "schemas": {
+      "VMConfig": {
+        "type": "object",
+        "description": "A microVM configuration stored as cloud-hypervisor.json or firecracker.json in the VM directory.",
+        "required": ["name", "vcpus", "memory_mb", "storage", "network", "image"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9\\-]*$",
+            "description": "VM identifier. Lowercase alphanumeric and hyphens only.",
+            "example": "my-web-server"
+          },
+          "vcpus": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64,
+            "description": "Number of virtual CPUs allocated to the VM.",
+            "example": 2
+          },
+          "memory_mb": {
+            "type": "integer",
+            "minimum": 64,
+            "maximum": 32768,
+            "description": "Memory allocation in megabytes.",
+            "example": 512
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "image": {
+            "$ref": "#/components/schemas/Image"
+          },
+          "kernel": {
+            "$ref": "#/components/schemas/Kernel"
+          },
+          "autostart": {
+            "type": "boolean",
+            "default": false,
+            "description": "Start VM automatically when the Unraid array starts.",
+            "example": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Storage": {
+        "type": "object",
+        "description": "Root filesystem storage configuration.",
+        "required": ["type", "size_mb"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["thin", "raw"],
+            "description": "Storage backend type. 'thin' uses device-mapper thin provisioning (space-efficient, copy-on-write). 'raw' uses a raw ext4 file on disk.",
+            "example": "thin"
+          },
+          "size_mb": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 102400,
+            "description": "Virtual disk size in MB. For thin type, actual usage grows on write.",
+            "example": 500
+          },
+          "thin_device_id": {
+            "type": "integer",
+            "minimum": 1000000,
+            "description": "Device-mapper thin device ID. Auto-assigned on VM creation. Required when type is 'thin'.",
+            "example": 1000000
+          }
+        }
+      },
+      "Network": {
+        "type": "object",
+        "description": "Network configuration. VMs get a static IP on the host bridge.",
+        "required": ["ip", "gateway", "mac", "bridge", "tap_id"],
+        "properties": {
+          "ip": {
+            "type": "string",
+            "format": "ipv4",
+            "description": "Static IPv4 address assigned to the VM.",
+            "example": "192.168.50.100"
+          },
+          "gateway": {
+            "type": "string",
+            "format": "ipv4",
+            "description": "Default gateway for the VM.",
+            "example": "192.168.50.1"
+          },
+          "mac": {
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",
+            "description": "MAC address for the VM's virtual NIC. Auto-generated if not specified at creation.",
+            "example": "52:54:00:ab:cd:ef"
+          },
+          "bridge": {
+            "type": "string",
+            "default": "br0",
+            "description": "Host bridge interface the TAP device is attached to.",
+            "example": "br0"
+          },
+          "tap_id": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Numeric TAP interface ID. Creates tap{N} on the host and attaches it to the bridge.",
+            "example": 3
+          }
+        }
+      },
+      "Image": {
+        "type": "object",
+        "description": "Root filesystem image source definition.",
+        "required": ["source"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["oci", "existing"],
+            "description": "Image source type. 'oci' pulls and extracts an OCI/Docker container image. 'existing' uses a pre-existing rootfs on disk.",
+            "example": "oci"
+          },
+          "ref": {
+            "type": "string",
+            "description": "OCI image reference (required when source is 'oci'). Standard Docker image notation.",
+            "example": "docker.io/nginx:stable-trixie"
+          }
+        }
+      },
+      "Kernel": {
+        "type": "object",
+        "description": "Kernel boot configuration. The kernel binary path is derived at runtime from the VMM type (filename).",
+        "properties": {
+          "cmdline": {
+            "type": "string",
+            "default": "console=ttyS0 root=/dev/vda rw init=/init",
+            "description": "Kernel command line arguments. Network IP parameters are appended automatically at boot time from the network config.",
+            "example": "console=ttyS0 root=/dev/vda rw init=/init"
+          }
+        }
+      }
+    }
+  }
 }
