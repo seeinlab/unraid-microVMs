@@ -2,44 +2,35 @@
 
 ## ✅ COMPLETED (this session)
 
-### Priority 1: Settings Page Redesign — DONE
-Service status grid with hierarchy:
-```
-● KVM                        [VM Manager]
-  ● VMM (Ready/Not Ready)
-    └─ Cloud Hypervisor      [Enable/Disable] [Download Kernel]
-    └─ Firecracker           [Enable/Disable] [Download Kernel]
-    └─ containerd            [Start/Stop] [View Log]
-    └─ devmapper             [Enable/Disable]
-  ● Liquidmetal              [Enable/Disable]
-    └─ flintlockd            [Start/Stop] [View Log]
-    └─ registry              [Start/Stop] [View Log]
-```
+### Settings Page Redesign — DONE
+- Sub-page tabs: General | Cloud Hypervisor | Firecracker | Liquidmetal
+- Status box with tree display (+--- microvms hierarchy)
+- Service buttons outside form (no markdown interference)
+- `pidof` for reliable process detection (not `pgrep -f`)
+- `$_REQUEST` for AJAX params (not `$_POST` which was empty in sub-pages)
+- `view_log` uses service name mapping (not file paths in AJAX)
+- Buttons: Stop/Start/Restart/View Log per service
+- Enable/Disable per VMM with Apply button
+- Devmapper disable guard (blocks if VMs use thin pool)
+- Auto-enable VMM when set as default
+- KVM/libvirt dependency check on boot
 
-Features:
-- VMM Ready = KVM ok + 1 VMM available + containerd running
-- Cannot disable VMM if microVMs defined for it
-- Cannot disable devmapper if VMs use thin pool storage
-- Basic View / Advanced View toggle (like VM Manager)
-- Settings grouped by panel (VMM Settings, Devmapper Settings, Liquidmetal Settings)
-- Flintlockd extra flags textarea (like Syslinux config)
-
-### Priority 3: Per-VMM Enable/Disable — DONE (in Settings grid)
-### Priority 4: Kernel URLs configurable — DONE (in Advanced view)
+### Key Bug Fixes
+- `pgrep -f microvms-containerd` matched Docker's containerd or self → `pidof`
+- `$_POST` params empty in sub-page context → `$_REQUEST`
+- Registry PID file empty → `pidof crane` for detection, `pgrep + kill` for stop
+- Buttons inside `markdown="1"` form render as block → moved outside form
 
 ## Remaining
 
 ### Priority 2: Option C — ctr snapshots replace dmsetup
-Replace `dmsetup` calls with `ctr snapshots` commands:
-- `create_thin_rootfs()` → `ctr -a $SOCK -n {vmm} snapshots prepare "vm-{name}" ""`
-- `delete_thin_rootfs()` → `ctr -a $SOCK -n {vmm} snapshots remove "vm-{name}"`
-- Remove `next_thin_device_id()` (containerd manages IDs)
+Replace `dmsetup` calls with `ctr snapshots` commands.
 
 ### Priority 5: Security (deferred)
-- TLS for flintlockd (auto self-signed + custom cert)
-- Basic auth token (auto-generated)
+- TLS for flintlockd
+- Basic auth token
 
 ### Priority 6: Clean Up
 - Remove old `microvm.liquidmetal-*.tgz`
 - Test full PLG install from clean state
-- Verify all paths work after fresh boot
+- Update README.md
