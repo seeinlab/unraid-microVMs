@@ -128,10 +128,35 @@ ARRAY STOP (event/stopping_svcs):
 | flintlockd download 404 | Binary named `flintlockd_amd64` not `flintlockd` | Fix URL |
 | grpcurl download 404 | Named `x86_64` not `amd64` | Fix URL |
 | Buttons render as block | Inside `markdown="1"` form | Move outside form |
+| Devmapper shows inactive after enable | Old deployment lacked ctr snapshot code | Deploy updated rc.microvms |
+
+### Thin Provisioning via Containerd Snapshots (Option C — Completed)
+
+Thin-provisioned block devices for VMs are managed entirely through containerd's devmapper snapshotter.
+No direct `dmsetup create-thin` / device ID tracking needed — containerd handles it internally via BoltDB.
+
+**Namespace convention:** matches the VMM — `cloud-hypervisor` or `firecracker`.
+
+```bash
+# Create a thin device for a VM
+/etc/rc.d/rc.microvms create_thin_rootfs <name> <size_mb> [vmm]
+# → ctr -a /var/run/microvms/containerd.sock -n <vmm> snapshots --snapshotter devmapper prepare "vm-<name>" ""
+# Returns: /dev/mapper/microvms-thinpool-snap-N
+
+# Activate (get device path for existing snapshot)
+/etc/rc.d/rc.microvms activate_thin_rootfs <name> [vmm]
+# → ctr ... snapshots --snapshotter devmapper mounts /tmp "vm-<name>"
+
+# Delete
+/etc/rc.d/rc.microvms delete_thin_rootfs <name> [vmm]
+# → ctr ... snapshots --snapshotter devmapper remove "vm-<name>"
+```
+
+**Stack:** dmsetup thinpool (loop-backed sparse files) → containerd devmapper snapshotter → ctr CLI
 
 ### Remaining Work
 
-1. **Option C**: Replace dmsetup with `ctr snapshots` (containerd manages all device IDs)
+1. ~~**Option C**: Replace dmsetup with `ctr snapshots` (containerd manages all device IDs)~~ ✅ Done
 2. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
 3. **Kernel auto-download**: Download on first install if missing
 4. **Update README.md**: Root level readme for GitHub
