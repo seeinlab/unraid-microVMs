@@ -109,12 +109,9 @@ One shared pool: microvms-thinpool
 ```
 [1/7] Load dm_thin_pool kernel module
 [2/7] Setup thin pool (microvms-thinpool)
-[3-5]  If FLINTLOCKD=enable:
-         [3/7] Start microvms-containerd (devmapper snapshotter)
-         [4/7] Start crane registry (127.0.0.1:5050, --disk)
-         [5/7] Start flintlockd (0.0.0.0:9090 gRPC)
-       Else:
-         [3-5/7] Skipped (direct mode only)
+[3/7] Start microvms-containerd (devmapper snapshotter) ← always when enabled
+[4/7] Start crane registry (127.0.0.1:5050)            ← only if FLINTLOCKD=enable
+[5/7] Start flintlockd (0.0.0.0:9090 gRPC)            ← only if FLINTLOCKD=enable
 [6/7] Create TAP interfaces (from VM configs)
 [7/7] Autostart VMs
 ```
