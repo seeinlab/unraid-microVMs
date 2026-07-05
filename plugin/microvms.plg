@@ -63,8 +63,8 @@ mkdir -p /boot/config/plugins/microvms/tmp
 <!-- ============================================================ -->
 
 <!-- Firecracker v1.16.0 -->
-<FILE Name="/boot/config/plugins/microvms/tmp/firecracker-v1.16.0-x86_64.tgz">
-<URL>https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.0/firecracker-v1.16.0-x86_64.tgz</URL>
+<FILE Name="/boot/config/plugins/microvms/tmp/firecracker-v1.16.1-x86_64.tgz">
+<URL>https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.1/firecracker-v1.16.1-x86_64.tgz</URL>
 </FILE>
 
 <!-- containerd v1.7.27 -->
@@ -90,9 +90,9 @@ DESTDIR="/boot/config/plugins/${PLUGIN}"
 echo "Extracting binaries from tarballs..."
 
 # Firecracker
-if [ -f "${TMPDIR}/firecracker-v1.16.0-x86_64.tgz" ]; then
-  tar -xf "${TMPDIR}/firecracker-v1.16.0-x86_64.tgz" -C "${TMPDIR}/" --wildcards '*/firecracker-v*' 2>/dev/null
-  FCBIN=$(find "${TMPDIR}" -name 'firecracker-v*' -type f ! -name '*.tgz' | head -1)
+if [ -f "${TMPDIR}/firecracker-v1.16.1-x86_64.tgz" ]; then
+  tar -xf "${TMPDIR}/firecracker-v1.16.1-x86_64.tgz" -C "${TMPDIR}/" --wildcards '*/firecracker-v*' 2>/dev/null
+  FCBIN=$(find "${TMPDIR}" -name 'firecracker-v*-x86_64' -type f ! -name '*.debug' ! -name '*.tgz' | head -1)
   if [ -n "$FCBIN" ]; then
     cp "$FCBIN" "${DESTDIR}/firecracker"
     chmod 0755 "${DESTDIR}/firecracker"
