@@ -1,26 +1,60 @@
-# Code Style Guide — microVM Manager Plugin
+# Code Style Guide — microVMs Plugin
 
 ## References
-- **Unraid WebGUI** (`dynamix.vm.manager`): Page structure, context menu, CSS patterns
-- **Tailscale plugin** (`unraid-tailscale`): GPL header, namespacing, OOP for utils
-- **ZFS Master** (`ZFS-Master-Unraid`): AJAX backend, SweetAlert2, frontend/backend split
+
+| Plugin | Repo | Patterns Used |
+|--------|------|---------------|
+| **Community Applications** | [Squidly271/community.applications](https://github.com/Squidly271/community.applications) | Repo structure, `pkg_build.sh`, `source/` layout, AJAX-heavy PHP, large single-file backends |
+| **Fix Common Problems** | [Squidly271/fix.common.problems](https://github.com/Squidly271/fix.common.problems) | Pure PHP plugin (99.2%), scan-and-report pattern, `source/` + `plugins/` repo layout |
+| **Unraid WebGUI** | `dynamix.vm.manager` (built-in) | Page structure, context menu, CSS patterns, `mk_option()` |
+| **Tailscale** | [unraid-tailscale](https://github.com/unraid/unraid-tailscale) | GPL header, namespacing, service management, JSON config |
+| **ZFS Master** | [ZFS-Master-Unraid](https://github.com/Joly0/ZFS-Master-Unraid) | AJAX backend, SweetAlert2, frontend/backend split |
+
+---
+
+## Repo Structure
+
+Following Squidly271 pattern (`community.applications`, `fix.common.problems`):
+
+```
+unraid-microVMs/
+├── source/microvms/                     # ← Not used (we use src/ directly)
+├── src/usr/local/emhttp/plugins/microvms/   # Plugin source (WebGUI)
+│   ├── MicroVMs.page                    # Tab container
+│   ├── MicroVMsMachines.page            # VM list + context menu
+│   ├── MicroVMsRootFS.page             # rootFS management
+│   ├── MicroVMsStats.page              # Statistics
+│   ├── MicroVMsSettings.page           # microVMs Controlplane
+│   ├── AddMicroVMs.page                # Create VM form
+│   ├── backend/MicroVMAdmin.php        # Single AJAX entry point (like CA)
+│   ├── include/common.php              # Shared functions
+│   ├── images/                          # VMM icons
+│   ├── console.html                    # ttyd wrapper
+│   ├── microvms.{png,svg}             # Plugin icon
+│   └── {start,stop,restart}.sh         # Service hooks
+├── src/usr/local/etc/rc.d/rc.microvms   # Service script
+├── src/usr/local/bin/microvms-console   # Console helper
+├── plugin/microvms.plg                  # Installer (PLG)
+├── docs/                                # Documentation
+├── build.sh                             # Package builder (like pkg_build.sh)
+└── scripts/                             # Dev/icon tools
+```
+
+**Key difference from Squidly271:** We use `src/` with the full target path structure instead of `source/{plugin-name}/`. Both patterns are valid — ours makes `rsync` deployment easier.
 
 ---
 
 ## File Headers
 
-Every PHP file must have:
 ```php
 <?php
 /*
- * microVM Manager for Unraid
+ * microVMs for Unraid
  * Copyright (C) 2026
+ * License: GPL-2.0
  *
- * This program is free software: GPL-2.0
- * See LICENSE file for details.
- *
- * File: filename.php
- * Description: Brief description of this file's purpose
+ * File: {filename}
+ * Description: {purpose}
  */
 ```
 
@@ -32,72 +66,92 @@ Every PHP file must have:
 - Functions: `microvm_snake_case()` (prefix with `microvm_`)
 - Variables: `$camelCase` for local, `$UPPER_CASE` for constants
 - Config keys: `UPPER_CASE` in .cfg files
+- Constants: `define('MICROVM_*', ...)`
 
 ### Functions
-- Every function must have a PHPDoc comment:
 ```php
 /**
  * Start a microVM by name.
  *
- * @param string $name VM name (lowercase, hyphens allowed)
+ * @param string $name VM name (lowercase, hyphens)
  * @return array ['success' => bool, 'output' => string]
  */
 function microvm_start_vm($name) { ... }
 ```
 
 ### Error Handling
-- Always return structured arrays: `['success' => bool, 'error' => string]`
+- Return structured arrays: `['success' => bool, 'error' => string]`
 - Use `escapeshellarg()` for all shell inputs
 - Use `json_encode()` for all JSON responses
-- Set `Content-Type: application/json` header in AJAX handlers
+- Set `Content-Type: application/json` in AJAX handlers
 
 ### Security
-- Sanitize POST inputs: `$name = preg_replace('/[^a-z0-9\-]/', '', ...)`
-- Never interpolate user input into shell commands without escaping
+- Sanitize: `$name = preg_replace('/[^a-z0-9\-]/', '', ...)`
+- Never interpolate user input without escaping
 - Check VM exists before operations
 
 ---
 
 ## JavaScript Conventions
 
-### Structure in .page files
+### In .page files
 ```html
 <script>
-// ============================================================
-// microVM Manager - Page Name
-// ============================================================
-
 var plugin = '<?=$plugin?>';
 
 // --- Context Menu ---
-function addMicroVMContext(name, state, engine) { ... }
+function addMicroVMContext(name, state, vmm) { ... }
 
 // --- VM Actions ---
 function vmAction(action, name) { ... }
 function vmConsole(name) { ... }
-function vmResize(name, engine) { ... }
-
-// --- Snapshot Management ---
-function vmSnapshots(name) { ... }
-function vmSnapshotRestore(name, tag) { ... }
-function vmSnapshotDelete(name, tag) { ... }
 
 // --- Utilities ---
 function escapeHtml(str) { ... }
-function showOutput(msg) { ... }
 
 // --- Init ---
-$(function() {
-  // switchButton, event bindings, etc.
-});
+$(function() { ... });
 </script>
 ```
 
-### Naming
-- Functions: `camelCase`
-- jQuery selectors: cache in variables for reuse
-- Use `swal()` for confirmations (Unraid includes SweetAlert)
-- Use `$.post()` for AJAX (jQuery always available)
+### Patterns (from CA/FCP)
+- `$.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {...})` for AJAX
+- `swal()` for confirmations (Unraid includes SweetAlert)
+- Single AJAX endpoint with `cmd` parameter (like CA's approach)
+- No external JS frameworks — jQuery is always available
+
+---
+
+## Backend Pattern (MicroVMAdmin.php)
+
+Following Community Applications' single-file backend:
+
+```php
+switch ($cmd) {
+    // Lifecycle
+    case 'list': ...
+    case 'start': ...
+    case 'stop': ...
+    case 'force_stop': ...
+    
+    // Info
+    case 'info': ...
+    case 'logs': ...
+    case 'status': ...
+    
+    // CRUD
+    case 'create': ...
+    case 'delete': ...
+    
+    // Snapshots
+    case 'snapshot': ...
+    case 'list_snapshots': ...
+    
+    // Service
+    case 'service': ...
+    case 'liquidmetal': ...
+}
+```
 
 ---
 
@@ -106,138 +160,114 @@ $(function() {
 ```
 Menu="..."
 Title="..."
+Icon="microvms.png"
 Tag="..."
 Cond="..."
-Markdown="false"
 ---
-<?php /* PHP logic */ ?>
+<?php /* Logic */ ?>
 
-<!-- CSS includes -->
-<link ...>
-<script src="..."></script>
+<style>/* CSS */</style>
 
-<!-- Custom CSS -->
-<style>
-/* Section: Layout */
-/* Section: Components */
-</style>
+<!-- HTML -->
 
-<!-- HTML content -->
-<table>...</table>
-
-<!-- JavaScript -->
-<script>
-// Organized by section (see above)
-</script>
+<script>/* JS */</script>
 ```
 
----
-
-## Backend (MicroVMAdmin.php)
-
-### Structure
-```php
-<?php
-// Header comment
-// Requires
-// Config loading
-// Input sanitization
-
-// Command dispatcher (switch)
-switch ($cmd) {
-    case 'list': ...
-    case 'start': ...
-    case 'stop': ...
-    // ... grouped by category
-}
-```
-
-### Command categories:
-1. **Lifecycle**: list, start, stop, force_stop
-2. **Info**: info, logs, logs_terminal
-3. **Resize**: resize (CH only)
-4. **Snapshots**: snapshot, list_snapshots, delete_snapshot, restore_snapshot
-5. **Console**: console, console_stop
-6. **CRUD**: create, create_json, delete, delete_rootfs, pull_rootfs
-7. **Config**: autostart, service
+### Menu Types
+- `Menu="Tasks:65"` → Main tab (MicroVMs.page)
+- `Menu="MicroVMs:1"` → Sub-tab (Machines, RootFS, Stats)
+- `Menu="OtherSettings"` → Settings page
 
 ---
 
-## Shell Scripts (rc.microvm)
+## Shell Script Pattern (rc.microvms)
 
-### Structure
 ```bash
 #!/bin/bash
-# /etc/rc.d/rc.microvm - microVM Manager service script
-# Description: Start/stop microVM instances
-# Depends: cloud-hypervisor, firecracker, bridge-utils
+# /etc/rc.d/rc.microvms - microVMs service
 
 # --- Configuration ---
-PLUGIN="microvm.manager"
-CFGFILE="..."
+PLUGIN="microvms"
+CFGFILE="/boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg"
 
 # --- Helpers ---
-log() { ... }
-resolve_path() { ... }
+log() { logger -t "rc.microvms" "$1"; echo "$1"; }
 
-# --- VM Operations ---
+# --- Service Functions ---
+start_containerd() { ... }
+start_flintlockd() { ... }
 start_vm() { ... }
 stop_vm() { ... }
 
-# --- Service ---
-microvm_start() { ... }
-microvm_stop() { ... }
-
 # --- Main ---
-case "$1" in ...
+microvm_start() { ... }  # Boot sequence
+microvm_stop() { ... }   # Shutdown sequence
+
+# --- Dispatch ---
+case "$1" in
+  start) microvm_start ;;
+  stop)  microvm_stop ;;
+  ...
+esac
 ```
 
 ---
 
-## Directory Structure (target)
+## PLG Installer Pattern
 
+Following Squidly271 conventions:
+1. `<FILE>` downloads with `<URL>` for binaries
+2. Tarballs to `tmp/` directory, extracted in `<FILE Run>` block
+3. Single install `<FILE Run>` block for all setup
+4. Single remove `<FILE Run Method="remove">` block for cleanup
+5. `<CHANGES>` block at top with version history
+6. `launch="Settings/PageName"` for post-install navigation
+
+---
+
+## Config File Pattern
+
+```ini
+# /boot/config/plugins/microvms/microvms.controlplane.cfg
+SERVICE="enable"
+VMDIR="/mnt/user/microvms"
+BRIDGE="br0"
+DEFAULT_VMM="cloud-hypervisor"
+FLINTLOCKD="disable"
+FLINTLOCKD_GRPC_PORT="9090"
 ```
-src/usr/local/emhttp/plugins/microvm.manager/
-├── MicroVMs.page              # Parent tab container
-├── MicroVMMachines.page       # Tab 1: VM list (context menu, table)
-├── MicroVMRootFS.page         # Tab 2: rootFS management
-├── MicroVMStats.page          # Tab 3: Usage statistics
-├── MicroVMSettings.page       # Settings page
-├── AddMicroVM.page            # Create VM form
-├── backend/
-│   └── MicroVMAdmin.php       # AJAX command handler
-├── include/
-│   └── common.php             # Shared PHP functions
-├── images/
-│   ├── cloud-hypervisor.png   # Engine icon
-│   └── firecracker.png        # Engine icon
-├── microvm.manager.png        # Plugin settings icon
-├── microvm.manager.svg        # SVG source
-├── console.html               # Standalone console page (fallback)
-├── microvm-console            # PTY helper script
-├── start.sh                   # Service start
-├── stop.sh                    # Service stop
-└── restart.sh                 # Service restart
-```
+
+- INI format (parsed by both bash `source` and PHP `parse_ini_file`)
+- All values quoted
+- UPPER_CASE keys
+- Form saves via Unraid's `update.php` with `#file` hidden field
 
 ---
 
 ## Key Patterns from References
 
-### From VMs page (dynamix.vm.manager)
+### From Community Applications (Squidly271)
+- **Single massive PHP backend** — one file handles all AJAX commands
+- **`$_POST['action']`** dispatch pattern
+- **No OOP** — procedural PHP, functions in include files
+- **Direct `exec()`** for system operations
+- **`pkg_build.sh`** for creating `.txz`/`.tgz` packages
+- **Icon in CA** via `apps.txt` metadata
+
+### From Fix Common Problems (Squidly271)
+- **Scan-and-report pattern** — check system state, report issues
+- **Pure PHP** (99.2%) — minimal JS
+- **Scheduled execution** via cron/event hooks
+- **Flash-based config** at `/boot/config/plugins/{name}/`
+
+### From dynamix.vm.manager (Unraid built-in)
 - `context.attach('#vm-ID', opts)` for right-click menus
-- `$.cookie()` for user preferences
-- `loadlist()` pattern for AJAX refresh
-- `addVMContext()` builds menu dynamically based on state
+- `loadlist()` for AJAX table refresh
+- `addVMContext()` builds menu by state
+- `mk_option()` helper for `<select>` options
 
-### From ZFS Master
-- `backend/ZFSMAdmin.php` — single AJAX entry point
-- SweetAlert2 for all confirmations
-- `refreshData()` after operations
-- Lua scripts for complex operations
-
-### From Tailscale
-- Composer autoload for PHP dependencies
-- Event handlers (`event/` directory)
-- JSON-based configuration
-- Separate utility classes per concern
+### From Tailscale Plugin
+- Service management in rc.d script
+- JSON-based state tracking
+- Event handlers for array start/stop
+- Separate binary management (download + cache on flash)
