@@ -44,8 +44,8 @@ $cfg = microvm_load_config();
 $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
 $bridge = $cfg['BRIDGE'] ?? 'br0';
 
-$cmd = $_POST['cmd'] ?? '';
-$name = $_POST['name'] ?? '';
+$cmd = $_REQUEST['cmd'] ?? '';
+$name = $_REQUEST['name'] ?? '';
 
 switch ($cmd) {
     case 'list':
@@ -690,13 +690,17 @@ INIT;
         break;
 
     case 'view_log':
-        $logfile = $_POST['logfile'] ?? '';
-        // Only allow reading specific known log files
-        $allowed = ['/var/log/microvms/flintlockd.log', '/var/log/microvms/containerd.log', '/var/log/microvms/registry.log'];
-        if (!in_array($logfile, $allowed)) {
-            echo json_encode(['success' => false, 'error' => 'Invalid log file']);
+        $service = $_REQUEST['service'] ?? '';
+        $log_map = [
+            'containerd' => '/var/log/microvms/containerd.log',
+            'flintlockd' => '/var/log/microvms/flintlockd.log',
+            'registry' => '/var/log/microvms/registry.log',
+        ];
+        if (!isset($log_map[$service])) {
+            echo json_encode(['success' => false, 'error' => "Unknown service: $service"]);
             break;
         }
+        $logfile = $log_map[$service];
         if (file_exists($logfile)) {
             $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
@@ -748,7 +752,7 @@ INIT;
 
     case 'download_kernel':
         // Single kernel download (from Settings page per-VMM button)
-        $engine = $_POST['engine'] ?? '';
+        $engine = $_REQUEST['engine'] ?? '';
         $kernelDir = '/mnt/user/system/microvms';
         $customUrl = '';
 
@@ -785,8 +789,8 @@ INIT;
 
     case 'service_action':
         // Start/stop individual services (flintlockd only from UI)
-        $service = $_POST['service'] ?? '';
-        $action = $_POST['action'] ?? '';
+        $service = $_REQUEST['service'] ?? '';
+        $action = $_REQUEST['action'] ?? '';
 
         $allowed = ['flintlockd', 'containerd', 'registry'];
         if (!in_array($service, $allowed)) {
@@ -844,8 +848,8 @@ INIT;
 
     case 'toggle_setting':
         // Toggle a single config key (for Enable/Disable buttons in service grid)
-        $key = $_POST['key'] ?? '';
-        $value = $_POST['value'] ?? '';
+        $key = $_REQUEST['key'] ?? '';
+        $value = $_REQUEST['value'] ?? '';
         $allowed_keys = ['CH_ENABLED', 'FC_ENABLED', 'FLINTLOCKD', 'DEVMAPPER'];
         if (!in_array($key, $allowed_keys)) {
             echo json_encode(['success' => false, 'error' => "Not allowed: $key"]);
