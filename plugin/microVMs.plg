@@ -45,7 +45,7 @@ mkdir -p /boot/config/plugins/microvms/tmp
 
 <!-- flintlockd v0.9.0 -->
 <FILE Name="/boot/config/plugins/microvms/flintlockd" Mode="0755">
-<URL>https://github.com/liquidmetal-dev/flintlock/releases/download/v0.9.0/flintlockd</URL>
+<URL>https://github.com/liquidmetal-dev/flintlock/releases/download/v0.9.0/flintlockd_amd64</URL>
 </FILE>
 
 <!-- ttyd v1.7.7 -->
@@ -54,8 +54,8 @@ mkdir -p /boot/config/plugins/microvms/tmp
 </FILE>
 
 <!-- grpcurl v1.9.1 -->
-<FILE Name="/boot/config/plugins/microvms/grpcurl" Mode="0755">
-<URL>https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_amd64.tar.gz</URL>
+<FILE Name="/boot/config/plugins/microvms/grpcurl.tar.gz">
+<URL>https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz</URL>
 </FILE>
 
 <!-- ============================================================ -->
@@ -120,6 +120,17 @@ if [ -f "${TMPDIR}/go-containerregistry_Linux_x86_64.tar.gz" ]; then
   fi
 fi
 
+# grpcurl
+if [ -f "${DESTDIR}/grpcurl.tar.gz" ]; then
+  tar -xf "${DESTDIR}/grpcurl.tar.gz" -C "${TMPDIR}/" grpcurl 2>/dev/null
+  if [ -f "${TMPDIR}/grpcurl" ]; then
+    cp "${TMPDIR}/grpcurl" "${DESTDIR}/grpcurl"
+    chmod 0755 "${DESTDIR}/grpcurl"
+    echo "  grpcurl extracted OK"
+  fi
+  rm -f "${DESTDIR}/grpcurl.tar.gz"
+fi
+
 # Cleanup tmp
 rm -rf "${TMPDIR}"
 echo "Done."
@@ -149,19 +160,18 @@ echo "Installing ${PLUGIN} v${VERSION}..."
 rm -rf /usr/local/emhttp/plugins/${PLUGIN}
 
 # Extract plugin package
-tar -xf /boot/config/plugins/${PLUGIN}/${PLUGIN}-${VERSION}.tgz -C /usr/local/emhttp/plugins/ 2>/dev/null
+tar -xf /boot/config/plugins/${PLUGIN}/${PLUGIN}-${VERSION}.tgz -C / 2>/dev/null
 
 # Install binaries
 for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd crane ttyd grpcurl; do
   [ -f "/boot/config/plugins/${PLUGIN}/$bin" ] && cp "/boot/config/plugins/${PLUGIN}/$bin" "/usr/local/bin/$bin" && chmod +x "/usr/local/bin/$bin"
 done
 
-# Install service script
-cp /usr/local/emhttp/plugins/${EMHTTP}/rc.microvms /etc/rc.d/rc.microvms 2>/dev/null
-chmod +x /etc/rc.d/rc.microvms 2>/dev/null
+# Install service script (tgz extracts to /usr/local/etc/rc.d/)
+ln -sf /usr/local/etc/rc.d/rc.microvms /etc/rc.d/rc.microvms
+chmod +x /usr/local/etc/rc.d/rc.microvms 2>/dev/null
 
-# Install console helper
-cp /usr/local/emhttp/plugins/${EMHTTP}/microvms-console /usr/local/bin/microvms-console 2>/dev/null
+# Console helper already at /usr/local/bin/microvms-console from tgz
 chmod +x /usr/local/bin/microvms-console 2>/dev/null
 
 # Create default config if not exists
