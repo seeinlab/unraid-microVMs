@@ -1,0 +1,74 @@
+Menu="MicroVMsSettings:4"
+Title="Liquidmetal"
+Tag="bolt"
+---
+<?php
+$plugin = 'microvms';
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$flintlockd_enabled = ($cfg['FLINTLOCKD'] ?? 'disable') === 'enable';
+$flintlockd_running = !empty(trim(shell_exec('pgrep -x flintlockd 2>/dev/null')));
+$flintlockd_version = trim(shell_exec('flintlockd version 2>/dev/null'));
+$registry_running = !empty(trim(shell_exec('cat /var/run/microvms/crane-registry.pid 2>/dev/null | xargs -I{} test -d /proc/{} 2>/dev/null && echo 1')));
+?>
+<style>
+.mvm-btn { padding:5px 14px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:6px; margin-top:8px; }
+.mvm-btn:hover { background:rgba(128,128,128,0.1); }
+</style>
+
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
+<input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
+
+_(Enable Liquidmetal)_:
+: <select name="FLINTLOCKD" size="1">
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "enable", "Yes")?>
+  <?=mk_option($cfg['FLINTLOCKD'] ?? 'disable', "disable", "No")?>
+  </select>
+
+<?php if ($flintlockd_enabled): ?>
+
+_(Crane Registry Storage)_:
+: <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt">
+
+_(Flintlockd gRPC Port)_:
+: <input type="number" name="FLINTLOCKD_GRPC_PORT" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>" min="1024" max="65535" class="narrow">
+
+_(Flintlockd Extra Flags)_:
+: <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
+
+> Command-line flags passed to flintlockd on startup.
+
+_(Flintlockd)_:
+: <?=$flintlockd_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">VIEW LOG</button>
+
+_(Registry)_:
+: <?=$registry_running ? '<span style="color:#4CAF50;">running</span>' : '<span style="color:#f44336;">stopped</span>'?> <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START</button><?php endif; ?><button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">VIEW LOG</button>
+
+<?php endif; ?>
+
+&nbsp;
+: <input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">
+</form>
+
+<script>
+var plugin = '<?=$plugin?>';
+function done() { location = '/Settings/MicroVMsSettings'; }
+function viewLog(service) {
+  var logMap = {'crane-registry':'/var/log/microvms/registry.log','flintlockd':'/var/log/microvms/flintlockd.log'};
+  $.post('/plugins/'+plugin+'/backend/MicroVMAdmin.php',{cmd:'view_log',logfile:logMap[service]||''},function(data){
+    if (typeof data==='string') try{data=JSON.parse(data);}catch(e){}
+    if (data.success) swal({title:service,text:'<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">'+(data.log||'(empty)')+'</pre>',html:true,confirmButtonText:'Close'});
+    else swal({title:'Error',text:data.error||'Failed',type:'error'});
+  });
+}
+function serviceAction(service,action) {
+  $.post('/plugins/'+plugin+'/backend/MicroVMAdmin.php',{cmd:'service_action',service:service,action:action},function(data){
+    if(typeof data==='string')try{data=JSON.parse(data);}catch(e){}
+    if(data&&data.success)location.reload();
+    else swal({title:'Error',text:(data&&data.error)||'Failed',type:'error'});
+  }).fail(function(){swal({title:'Error',text:'Request failed',type:'error'});});
+}
+</script>

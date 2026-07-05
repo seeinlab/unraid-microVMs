@@ -1,0 +1,62 @@
+Menu="MicroVMsSettings:3"
+Title="Firecracker"
+Tag="fire"
+---
+<?php
+$plugin = 'microvms';
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/plugins/$plugin/include/common.php";
+
+$cfg = microvm_load_config();
+$kernelDir = '/mnt/user/system/microvms';
+$fc_binary = is_file('/usr/local/bin/firecracker');
+$fc_kernel = is_file("$kernelDir/firecracker/kernels/vmlinux");
+$fc_version = $fc_binary ? trim(shell_exec('firecracker --version 2>&1 | head -1')) : '';
+$fc_kernel_ver = $fc_kernel ? trim(shell_exec("grep -aoP 'Linux version \\K[\\d.]+' " . escapeshellarg("$kernelDir/firecracker/kernels/vmlinux") . " 2>/dev/null | head -1")) : '';
+$fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
+?>
+<style>
+.mvm-btn { padding:5px 14px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:6px; margin-top:8px; }
+.mvm-btn:hover { background:rgba(128,128,128,0.1); }
+</style>
+
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
+<input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
+
+_(Enable Firecracker)_:
+: <select name="FC_ENABLED" size="1">
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "yes", "Yes")?>
+  <?=mk_option($cfg['FC_ENABLED'] ?? 'no', "no", "No")?>
+  </select>
+
+_(Binary)_:
+: <?=$fc_binary ? htmlspecialchars($fc_version) : '<span style="color:#f44336;">not installed</span>'?>
+
+_(Kernel)_:
+: <?php if ($fc_kernel): ?>Linux <?=$fc_kernel_ver?> — <span style="color:#4CAF50;">installed</span><?php else: ?><span style="color:#f44336;">not installed</span> <button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD KERNEL</button><?php endif; ?>
+
+_(Kernel URL)_:
+: <input type="text" name="FC_KERNEL_URL" value="<?=htmlspecialchars($cfg['FC_KERNEL_URL'] ?? '')?>" placeholder="Leave blank for default" style="width:70%;">
+
+> Custom URL for the Firecracker kernel. Leave blank to use the built-in default.
+
+&nbsp;
+: <input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">
+</form>
+
+<script>
+var plugin = '<?=$plugin?>';
+function done() { location = '/Settings/MicroVMsSettings'; }
+function downloadKernel(engine) {
+  swal({title:'Download '+engine+' kernel?',showCancelButton:true,confirmButtonText:'Download',closeOnConfirm:false},function(ok){
+    if(!ok)return;
+    swal({title:'Downloading...',text:'Please wait...',showConfirmButton:false});
+    $.post('/plugins/'+plugin+'/backend/MicroVMAdmin.php',{cmd:'download_kernel',engine:engine},function(data){
+      if(typeof data==='string')try{data=JSON.parse(data);}catch(e){}
+      if(data&&data.success)swal({title:'Done',text:data.message,type:'success'},function(){location.reload();});
+      else swal({title:'Error',text:(data&&data.error)||'Failed',type:'error'});
+    }).fail(function(){swal({title:'Error',text:'Request failed',type:'error'});});
+  });
+}
+</script>
