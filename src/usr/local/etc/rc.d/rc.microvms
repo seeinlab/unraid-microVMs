@@ -269,7 +269,7 @@ EOF
   echo "$pid" > "$CONTAINERD_PID"
 
   # Wait for socket to appear
-  local timeout=15
+  local timeout=30
   local elapsed=0
   while [ ! -S "$CONTAINERD_SOCK" ] && [ $elapsed -lt $timeout ]; do
     if ! kill -0 "$pid" 2>/dev/null; then
