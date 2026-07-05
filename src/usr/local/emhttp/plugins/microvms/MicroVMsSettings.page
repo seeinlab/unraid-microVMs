@@ -57,9 +57,6 @@ $bridges = glob('/sys/class/net/br*');
 $bridge_names = array_map(function($b){ return basename($b); }, $bridges ?: []);
 if (empty($bridge_names)) $bridge_names = ['br0'];
 ?>
-<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
-<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
-
 <style>
 .svc-grid { width:100%; border-collapse:collapse; margin:10px 0 20px; }
 .svc-grid th { text-align:left; padding:8px 12px; border-bottom:2px solid rgba(128,128,128,0.3); font-size:0.85em; text-transform:uppercase; opacity:0.7; }
@@ -143,41 +140,10 @@ if (empty($bridge_names)) $bridge_names = ['br0'];
 </tbody>
 </table>
 
-<!-- ─── Switch Button ───────────────────────────────────────────────────── -->
-&nbsp;
-: <span><input type="checkbox" class="advancedview"></span>
-
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
 <input type="hidden" name="#file" value="<?=$plugin?>/<?=$plugin?>.controlplane.cfg">
 <input type="hidden" name="#command" value="/etc/rc.d/rc.microvms restart">
-
-<div markdown="1" class="basic">
-
-_(Enable microVMs)_:
-: <select name="SERVICE" size="1">
-  <?=mk_option($cfg['SERVICE'] ?? 'disable', "enable", "Yes")?>
-  <?=mk_option($cfg['SERVICE'] ?? 'disable', "disable", "No")?>
-  </select>
-
-_(VM Storage Location)_:
-: <input type="text" name="VMDIR" value="<?=htmlspecialchars($cfg['VMDIR'] ?? '/mnt/user/microvms')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt" placeholder="/mnt/user/microvms">
-
-_(Network Bridge)_:
-: <select name="BRIDGE" size="1">
-  <?php foreach ($bridge_names as $br): ?>
-  <?=mk_option($cfg['BRIDGE'] ?? 'br0', $br, $br)?>
-  <?php endforeach; ?>
-  </select>
-
-_(Autostart VMs on Array Start)_:
-: <select name="AUTOSTART" size="1">
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "yes", "Yes")?>
-  <?=mk_option($cfg['AUTOSTART'] ?? 'no', "no", "No")?>
-  </select>
-
-</div>
-<div markdown="1" class="advanced">
 
 _(Enable microVMs)_:
 : <select name="SERVICE" size="1">
@@ -235,8 +201,6 @@ _(Flintlockd Extra Flags)_:
 
 <?php endif; ?>
 
-</div>
-
 &nbsp;
 : <input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()">
 </form>
@@ -281,20 +245,5 @@ function toggleVMM(key,value) {
 }
 
 $(function(){
-  if ($.cookie('microvms_view')=='advanced') {
-    $('.advanced').show();
-    $('.basic').hide();
-  }
-  $('.advancedview').switchButton({
-    labels_placement: 'left',
-    on_label: '_(Advanced View)_',
-    off_label: '_(Basic View)_',
-    checked: $.cookie('microvms_view')=='advanced'
-  });
-  $('.advancedview').change(function(){
-    $('.advanced').toggle('slow');
-    $('.basic').toggle('slow');
-    $.cookie('microvms_view', $('.advancedview').is(':checked') ? 'advanced':'basic', {expires:3650});
-  });
 });
 </script>
