@@ -1,0 +1,261 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN>
+<PLUGIN name="microvms" author="seein" version="2026.07.05.1"
+  pluginURL="https://raw.githubusercontent.com/seein/unraid-microVMs/main/plugin/microVMs.plg"
+  launch="Settings/MicroVMsSettings"
+  min="6.12.0">
+
+<CHANGES><![CDATA[
+### 2026.07.05.1
+- Plugin renamed: microvms
+- Settings: microVMs Controlplane
+- Engine renamed to VMM (Cloud Hypervisor, Firecracker)
+- Infra-as-code config: cloud-hypervisor.json / firecracker.json
+- Devmapper thin pool for space-efficient rootfs
+- Liquidmetal section: enable/disable flintlockd + containerd + crane registry
+- Logs consolidated to /var/log/microvms/ (like libvirt)
+- microvms-containerd (separate from Docker's containerd)
+- All paths restructured under /mnt/user/system/microvms/
+]]></CHANGES>
+
+<!-- PRE-INSTALL: Stop existing service -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+/etc/rc.d/rc.microvms stop 2>/dev/null
+# Create tmp directory for tarball extraction
+mkdir -p /boot/config/plugins/microvms/tmp
+]]>
+</INLINE>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- DIRECT BINARY DOWNLOADS                                       -->
+<!-- ============================================================ -->
+
+<!-- Cloud Hypervisor v52.0 -->
+<FILE Name="/boot/config/plugins/microvms/cloud-hypervisor" Mode="0755">
+<URL>https://github.com/cloud-hypervisor/cloud-hypervisor/releases/download/v52.0/cloud-hypervisor-static</URL>
+</FILE>
+
+<!-- ch-remote v52.0 -->
+<FILE Name="/boot/config/plugins/microvms/ch-remote" Mode="0755">
+<URL>https://github.com/cloud-hypervisor/cloud-hypervisor/releases/download/v52.0/ch-remote-static</URL>
+</FILE>
+
+<!-- flintlockd v0.9.0 -->
+<FILE Name="/boot/config/plugins/microvms/flintlockd" Mode="0755">
+<URL>https://github.com/liquidmetal-dev/flintlock/releases/download/v0.9.0/flintlockd</URL>
+</FILE>
+
+<!-- ttyd v1.7.7 -->
+<FILE Name="/boot/config/plugins/microvms/ttyd" Mode="0755">
+<URL>https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64</URL>
+</FILE>
+
+<!-- grpcurl v1.9.1 -->
+<FILE Name="/boot/config/plugins/microvms/grpcurl" Mode="0755">
+<URL>https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_amd64.tar.gz</URL>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- TARBALL DOWNLOADS                                              -->
+<!-- ============================================================ -->
+
+<!-- Firecracker v1.16.0 -->
+<FILE Name="/boot/config/plugins/microvms/tmp/firecracker-v1.16.0-x86_64.tgz">
+<URL>https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.0/firecracker-v1.16.0-x86_64.tgz</URL>
+</FILE>
+
+<!-- containerd v1.7.27 -->
+<FILE Name="/boot/config/plugins/microvms/tmp/containerd-static-1.7.27-linux-amd64.tar.gz">
+<URL>https://github.com/containerd/containerd/releases/download/v1.7.27/containerd-static-1.7.27-linux-amd64.tar.gz</URL>
+</FILE>
+
+<!-- crane (go-containerregistry) -->
+<FILE Name="/boot/config/plugins/microvms/tmp/go-containerregistry_Linux_x86_64.tar.gz">
+<URL>https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz</URL>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- EXTRACT TARBALLS                                               -->
+<!-- ============================================================ -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+PLUGIN="microvms"
+TMPDIR="/boot/config/plugins/${PLUGIN}/tmp"
+DESTDIR="/boot/config/plugins/${PLUGIN}"
+
+echo "Extracting binaries from tarballs..."
+
+# Firecracker
+if [ -f "${TMPDIR}/firecracker-v1.16.0-x86_64.tgz" ]; then
+  tar -xf "${TMPDIR}/firecracker-v1.16.0-x86_64.tgz" -C "${TMPDIR}/" --wildcards '*/firecracker-v*' 2>/dev/null
+  FCBIN=$(find "${TMPDIR}" -name 'firecracker-v*' -type f ! -name '*.tgz' | head -1)
+  if [ -n "$FCBIN" ]; then
+    cp "$FCBIN" "${DESTDIR}/firecracker"
+    chmod 0755 "${DESTDIR}/firecracker"
+    echo "  firecracker extracted OK"
+  fi
+fi
+
+# containerd → microvms-containerd
+if [ -f "${TMPDIR}/containerd-static-1.7.27-linux-amd64.tar.gz" ]; then
+  tar -xf "${TMPDIR}/containerd-static-1.7.27-linux-amd64.tar.gz" -C "${TMPDIR}/" bin/containerd 2>/dev/null
+  if [ -f "${TMPDIR}/bin/containerd" ]; then
+    cp "${TMPDIR}/bin/containerd" "${DESTDIR}/microvms-containerd"
+    chmod 0755 "${DESTDIR}/microvms-containerd"
+    echo "  microvms-containerd extracted OK"
+  fi
+fi
+
+# crane
+if [ -f "${TMPDIR}/go-containerregistry_Linux_x86_64.tar.gz" ]; then
+  tar -xf "${TMPDIR}/go-containerregistry_Linux_x86_64.tar.gz" -C "${TMPDIR}/" crane 2>/dev/null
+  if [ -f "${TMPDIR}/crane" ]; then
+    cp "${TMPDIR}/crane" "${DESTDIR}/crane"
+    chmod 0755 "${DESTDIR}/crane"
+    echo "  crane extracted OK"
+  fi
+fi
+
+# Cleanup tmp
+rm -rf "${TMPDIR}"
+echo "Done."
+]]>
+</INLINE>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- PLUGIN PACKAGE                                                 -->
+<!-- ============================================================ -->
+<FILE Name="/boot/config/plugins/microvms/microvms-2026.07.05.1.tgz">
+<LOCAL>/boot/config/plugins/microvms/microvms-2026.07.05.1.tgz</LOCAL>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- INSTALL                                                        -->
+<!-- ============================================================ -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+PLUGIN="microvms"
+VERSION="2026.07.05.1"
+
+echo "Installing ${PLUGIN} v${VERSION}..."
+
+# Remove old plugin files
+rm -rf /usr/local/emhttp/plugins/${PLUGIN}
+
+# Extract plugin package
+tar -xf /boot/config/plugins/${PLUGIN}/${PLUGIN}-${VERSION}.tgz -C /usr/local/emhttp/plugins/ 2>/dev/null
+
+# Install binaries
+for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd crane ttyd grpcurl; do
+  [ -f "/boot/config/plugins/${PLUGIN}/$bin" ] && cp "/boot/config/plugins/${PLUGIN}/$bin" "/usr/local/bin/$bin" && chmod +x "/usr/local/bin/$bin"
+done
+
+# Install service script
+cp /usr/local/emhttp/plugins/${EMHTTP}/rc.microvms /etc/rc.d/rc.microvms 2>/dev/null
+chmod +x /etc/rc.d/rc.microvms 2>/dev/null
+
+# Install console helper
+cp /usr/local/emhttp/plugins/${EMHTTP}/microvms-console /usr/local/bin/microvms-console 2>/dev/null
+chmod +x /usr/local/bin/microvms-console 2>/dev/null
+
+# Create default config if not exists
+if [ ! -f /boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg ]; then
+cat > /boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg << 'CFGEOF'
+SERVICE="enable"
+VMDIR="/mnt/user/microvms"
+BRIDGE="br0"
+DEFAULT_CPUS="1"
+DEFAULT_MEMORY="256"
+DEFAULT_VMM="cloud-hypervisor"
+AUTOSTART="no"
+THINPOOL_DATA_SIZE_GB="50"
+FLINTLOCKD="disable"
+FLINTLOCKD_GRPC_PORT="9090"
+CRANE_REGISTRY_DIR="/mnt/user/system/microvms/crane/registry"
+CFGEOF
+fi
+
+# Create directories
+mkdir -p /mnt/user/microvms 2>/dev/null
+mkdir -p /mnt/user/system/microvms/cloud-hypervisor/kernels 2>/dev/null
+mkdir -p /mnt/user/system/microvms/firecracker/kernels 2>/dev/null
+mkdir -p /mnt/user/system/microvms/containerd 2>/dev/null
+mkdir -p /var/log/microvms/cloud-hypervisor 2>/dev/null
+mkdir -p /var/log/microvms/firecracker 2>/dev/null
+
+# Start service
+/etc/rc.d/rc.microvms start 2>/dev/null
+
+echo ""
+echo "-----------------------------------------------------------"
+echo " microVMs plugin installed (v${VERSION})"
+echo ""
+echo " Settings → microVMs Controlplane"
+echo "-----------------------------------------------------------"
+]]>
+</INLINE>
+</FILE>
+
+<!-- ============================================================ -->
+<!-- REMOVE                                                         -->
+<!-- ============================================================ -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+<![CDATA[
+PLUGIN="microvms"
+echo "Removing ${PLUGIN}..."
+
+# Stop service
+/etc/rc.d/rc.microvms stop 2>/dev/null
+
+# Remove binaries
+rm -f /usr/local/bin/cloud-hypervisor /usr/local/bin/ch-remote
+rm -f /usr/local/bin/firecracker /usr/local/bin/flintlockd
+rm -f /usr/local/bin/microvms-containerd /usr/local/bin/crane
+rm -f /usr/local/bin/ttyd /usr/local/bin/grpcurl
+rm -f /usr/local/bin/microvms-console
+
+# Kill console relays
+pkill -f 'ttyd.*microvms' 2>/dev/null
+
+# Remove service script
+rm -f /etc/rc.d/rc.microvms
+
+# Remove plugin files
+rm -rf /usr/local/emhttp/plugins/${PLUGIN}
+
+# Remove cached binaries (keep config)
+rm -f /boot/config/plugins/${PLUGIN}/cloud-hypervisor
+rm -f /boot/config/plugins/${PLUGIN}/ch-remote
+rm -f /boot/config/plugins/${PLUGIN}/firecracker
+rm -f /boot/config/plugins/${PLUGIN}/flintlockd
+rm -f /boot/config/plugins/${PLUGIN}/microvms-containerd
+rm -f /boot/config/plugins/${PLUGIN}/crane
+rm -f /boot/config/plugins/${PLUGIN}/ttyd
+rm -f /boot/config/plugins/${PLUGIN}/grpcurl
+rm -f /boot/config/plugins/${PLUGIN}/*.tgz
+rm -rf /boot/config/plugins/${PLUGIN}/tmp
+
+# Remove logs
+rm -rf /var/log/microvms
+
+echo ""
+echo "-----------------------------------------------------------"
+echo " microVMs removed."
+echo ""
+echo " PRESERVED:"
+echo "   Config:  /boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg"
+echo "   VM data: /mnt/user/microvms/"
+echo "   System:  /mnt/user/system/microvms/"
+echo "-----------------------------------------------------------"
+]]>
+</INLINE>
+</FILE>
+
+</PLUGIN>
