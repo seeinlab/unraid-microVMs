@@ -90,8 +90,8 @@ switch ($cmd) {
         if ($info) {
             echo json_encode($info);
         } else {
-            $configFile = "$vmdir/$name/config.json";
-            if (file_exists($configFile)) {
+            $configFile = microvm_find_config_file("$vmdir/$name");
+            if ($configFile) {
                 echo file_get_contents($configFile);
             } else {
                 echo json_encode(['error' => 'VM not found']);
@@ -115,11 +115,11 @@ switch ($cmd) {
 
     case 'resize':
         // Only Cloud Hypervisor supports live resize via ch-remote
-        $configFile = "$vmdir/$name/config.json";
+        $configFile = microvm_find_config_file("$vmdir/$name");
         $vmConfig = [];
-        if (file_exists($configFile)) {
+        if ($configFile) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
-            $vmEngine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+            $vmEngine = microvm_get_vmm($vmConfig);
             if ($vmEngine === 'firecracker') {
                 echo json_encode(['success' => false, 'error' => 'Live resize not supported for Firecracker VMM. Recreate VM with new config.']);
                 break;
@@ -128,14 +128,18 @@ switch ($cmd) {
         $cpus = $_POST['cpus'] ?? null;
         $memory = $_POST['memory'] ?? null;
         $result = microvm_resize_vm($name, $cpus, $memory);
-        // Update config.json with new values if resize succeeded
+        // Update config with new values if resize succeeded
         if (!empty($result['cpus']) && $cpus) {
-            $vmConfig['boot_vcpus'] = intval($cpus);
+            if (isset($vmConfig['vcpus'])) {
+                $vmConfig['vcpus'] = intval($cpus);
+            } else {
+                $vmConfig['boot_vcpus'] = intval($cpus);
+            }
         }
         if (!empty($result['memory']) && $memory) {
             $vmConfig['memory_mb'] = intval($memory) / 1048576; // bytes to MB
         }
-        if (!empty($vmConfig)) {
+        if (!empty($vmConfig) && $configFile) {
             file_put_contents($configFile, json_encode($vmConfig, JSON_PRETTY_PRINT));
         }
         echo json_encode($result);
@@ -194,10 +198,11 @@ switch ($cmd) {
         @unlink("/tmp/microvm-{$name}.sock");
 
         // Delete thin device if VM uses one
-        $configFile = "$vmPath/config.json";
-        if (file_exists($configFile)) {
+        $configFile = microvm_find_config_file($vmPath);
+        if ($configFile) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
-            $thinId = $vmConfig['thin_device_id'] ?? null;
+            $storage = microvm_get_storage($vmConfig);
+            $thinId = $storage['thin_device_id'] ?? null;
             if ($thinId) {
                 exec("/etc/rc.d/rc.microvm delete_thin_rootfs " . escapeshellarg($name) . " $thinId 2>&1");
             }
@@ -231,18 +236,21 @@ switch ($cmd) {
         $ociImage = $_POST['oci_image'] ?? 'nginx:alpine';
         $diskSize = intval($_POST['disk_size'] ?? 500);
         $rootfsPath = $_POST['rootfs_path'] ?? '';
-        $engine = $_POST['engine'] ?? 'cloud-hypervisor';
+        $vmm = $_POST['engine'] ?? 'cloud-hypervisor';
 
         // --- Direct Mode ---
         $vmPath = "$vmdir/$name";
         $systemDir = '/mnt/user/system/microvms';
-        $kernel = "$systemDir/$engine/kernels/vmlinux";
 
         // Create VM directory
         @mkdir($vmPath, 0755, true);
 
         // Generate MAC
         $mac = sprintf("52:54:00:%02x:%02x:%02x", rand(0,255), rand(0,255), rand(0,255));
+
+        // Storage type
+        $storageType = $_POST['storage_type'] ?? 'thin';
+        $thinDeviceId = null;
 
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
@@ -255,9 +263,6 @@ switch ($cmd) {
                 echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
                 break;
             }
-
-            // Create thin-provisioned block device or raw file based on user choice
-            $storageType = $_POST['storage_type'] ?? 'thin';
 
             if ($storageType === 'thin') {
                 // Thin pool block device
@@ -273,7 +278,6 @@ switch ($cmd) {
             } else {
                 // Raw file
                 $rootfs = "$vmPath/rootfs.raw";
-                $thinDeviceId = null;
                 exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
                 exec("mkfs.ext4 -F $rootfs 2>/dev/null");
                 exec("mkdir -p /tmp/microvm-mount-$name");
@@ -323,33 +327,44 @@ INIT;
             @unlink($tmpTar);
 
         } elseif ($source === 'existing' && !empty($rootfsPath)) {
-            $rootfs = $rootfsPath;
+            // Existing rootfs — no storage creation needed
         }
 
-        // Create config.json
+        // Build new config format
         $config = [
             'name' => $name,
-            'engine' => $engine,
-            'kernel' => $kernel,
-            'disk' => $rootfs,
-            'cmdline' => "console=ttyS0 root=/dev/vda rw init=/init ip=$ip::$gateway:255.255.255.0:::off",
-            'boot_vcpus' => $cpus,
-            'max_vcpus' => $cpus * 2,
+            'vmm' => $vmm,
+            'vcpus' => $cpus,
             'memory_mb' => $memory,
-            'mac' => $mac,
-            'ip' => $ip,
-            'bridge' => $bridge,
-            'tap_id' => microvm_next_tap_id($vmdir),
-            'disk_size_mb' => $diskSize,
-            'storage_type' => $storageType,
+            'storage' => [
+                'type' => $storageType,
+                'size_mb' => $diskSize,
+            ],
+            'network' => [
+                'ip' => $ip,
+                'gateway' => $gateway,
+                'mac' => $mac,
+                'bridge' => $bridge,
+                'tap_id' => microvm_next_tap_id($vmdir),
+            ],
+            'image' => [
+                'source' => $source,
+                'ref' => ($source === 'oci') ? $ociImage : ($rootfsPath ?: ''),
+            ],
+            'kernel' => [
+                'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/init',
+            ],
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
         ];
         if (!empty($thinDeviceId)) {
-            $config['thin_device_id'] = $thinDeviceId;
+            $config['storage']['thin_device_id'] = $thinDeviceId;
         }
-        file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
 
-        microvm_log("VM created: $name at $vmPath");
+        // Write config as {vmm}.json
+        $configFilename = "$vmPath/$vmm.json";
+        file_put_contents($configFilename, json_encode($config, JSON_PRETTY_PRINT));
+
+        microvm_log("VM created: $name at $vmPath (config: $vmm.json)");
         // Auto-start the VM if autostart is enabled
         if (($_POST['autostart'] ?? 'false') === 'true') {
             $startResult = microvm_start_vm($name);
@@ -371,9 +386,12 @@ INIT;
             break;
         }
         $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($config['name']));
+        $vmm = $config['vmm'] ?? $config['engine'] ?? 'cloud-hypervisor';
         $vmPath = "$vmdir/$name";
         @mkdir($vmPath, 0755, true);
-        file_put_contents("$vmPath/config.json", json_encode($config, JSON_PRETTY_PRINT));
+        // Write as {vmm}.json
+        $configFilename = "$vmPath/$vmm.json";
+        file_put_contents($configFilename, json_encode($config, JSON_PRETTY_PRINT));
         echo json_encode(['success' => true, 'message' => "VM '$name' created from JSON."]);
         break;
 
@@ -390,9 +408,9 @@ INIT;
         }
 
         // Detect engine
-        $configFile = "$vmdir/$name/config.json";
-        $vmConfig = file_exists($configFile) ? json_decode(file_get_contents($configFile), true) : [];
-        $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+        $configFile = microvm_find_config_file("$vmdir/$name");
+        $vmConfig = $configFile ? json_decode(file_get_contents($configFile), true) : [];
+        $engine = microvm_get_vmm($vmConfig);
 
         if ($engine !== 'cloud-hypervisor') {
             echo json_encode(['success' => false, 'error' => "Serial console not supported for Firecracker. Use Logs instead."]);
@@ -554,8 +572,8 @@ INIT;
     case 'autostart':
         // Toggle autostart for a VM
         $enabled = ($_POST['enabled'] ?? 'false') === 'true';
-        $configFile = "$vmdir/$name/config.json";
-        if (file_exists($configFile)) {
+        $configFile = microvm_find_config_file("$vmdir/$name");
+        if ($configFile) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
             $vmConfig['autostart'] = $enabled;
             file_put_contents($configFile, json_encode($vmConfig, JSON_PRETTY_PRINT));

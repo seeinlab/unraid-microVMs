@@ -36,12 +36,87 @@ function microvm_load_config() {
     ];
 }
 
+/**
+ * Find the VM config file in a VM directory.
+ * Looks for cloud-hypervisor.json or firecracker.json (new format),
+ * falls back to config.json (legacy).
+ *
+ * @param string $vmPath Path to the VM directory
+ * @return string|null Full path to config file, or null if not found
+ */
+function microvm_find_config_file($vmPath) {
+    foreach (['cloud-hypervisor.json', 'firecracker.json'] as $candidate) {
+        $path = "$vmPath/$candidate";
+        if (file_exists($path)) return $path;
+    }
+    // Legacy fallback
+    $legacy = "$vmPath/config.json";
+    if (file_exists($legacy)) return $legacy;
+    return null;
+}
+
+/**
+ * Load and normalize a VM config from disk.
+ * Handles both new nested format and legacy flat format.
+ *
+ * @param string $configFile Path to the config file
+ * @return array|null Normalized config array, or null on failure
+ */
+function microvm_load_vm_config($configFile) {
+    if (!file_exists($configFile)) return null;
+    $config = json_decode(file_get_contents($configFile), true);
+    if (!$config) return null;
+    return $config;
+}
+
+/**
+ * Get the VMM type from a config (new or legacy format).
+ */
+function microvm_get_vmm($config) {
+    return $config['vmm'] ?? $config['engine'] ?? 'cloud-hypervisor';
+}
+
+/**
+ * Get network config from a VM config (new or legacy format).
+ */
+function microvm_get_network($config) {
+    if (isset($config['network'])) {
+        return $config['network'];
+    }
+    // Legacy flat format
+    return [
+        'ip' => $config['ip'] ?? '',
+        'gateway' => '192.168.50.1',
+        'mac' => $config['mac'] ?? '',
+        'bridge' => $config['bridge'] ?? 'br0',
+        'tap_id' => $config['tap_id'] ?? 0,
+    ];
+}
+
+/**
+ * Get storage config from a VM config (new or legacy format).
+ */
+function microvm_get_storage($config) {
+    if (isset($config['storage'])) {
+        return $config['storage'];
+    }
+    // Legacy flat format
+    return [
+        'type' => $config['storage_type'] ?? 'raw',
+        'size_mb' => $config['disk_size_mb'] ?? 500,
+        'thin_device_id' => $config['thin_device_id'] ?? null,
+    ];
+}
+
 function microvm_next_tap_id($vmdir) {
     $max_id = -1;
     if (is_dir($vmdir)) {
-        foreach (glob("$vmdir/*/config.json") as $f) {
-            $cfg = json_decode(file_get_contents($f), true);
-            $id = $cfg['tap_id'] ?? -1;
+        foreach (glob("$vmdir/*/") as $vmPath) {
+            $configFile = microvm_find_config_file(rtrim($vmPath, '/'));
+            if (!$configFile) continue;
+            $cfg = json_decode(file_get_contents($configFile), true);
+            $network = microvm_get_network($cfg);
+            $id = $network['tap_id'] ?? -1;
             if ($id > $max_id) $max_id = $id;
         }
     }
@@ -55,16 +130,22 @@ function microvm_list_vms() {
 
     if (!is_dir($vmdir)) return $vms;
 
-    foreach (glob("$vmdir/*/config.json") as $configFile) {
-        $name = basename(dirname($configFile));
+    foreach (glob("$vmdir/*/") as $vmPath) {
+        $vmPath = rtrim($vmPath, '/');
+        $name = basename($vmPath);
+        $configFile = microvm_find_config_file($vmPath);
+        if (!$configFile) continue;
+
         $config = json_decode(file_get_contents($configFile), true);
+        if (!$config) continue;
+
         $sock = "/tmp/microvm-{$name}.sock";
         
         // Check if VM is running
         $running = false;
         if (file_exists($sock)) {
-            $engine = $config['engine'] ?? 'cloud-hypervisor';
-            if ($engine === 'firecracker') {
+            $vmm = microvm_get_vmm($config);
+            if ($vmm === 'firecracker') {
                 // FC: check if process with this VM name is alive
                 $running = !empty(trim(shell_exec("pgrep -f 'microvm-{$name}' 2>/dev/null")));
             } else {
@@ -133,12 +214,12 @@ function microvm_snapshot_vm($name, $tag = null) {
     $tag = $tag ?: date('Y-m-d_His');
     $snapdir = "$vmdir/$name/snapshots/$tag";
 
-    // Detect engine from config.json
-    $configFile = "$vmdir/$name/config.json";
+    // Detect engine from config
+    $configFile = microvm_find_config_file("$vmdir/$name");
     $engine = 'cloud-hypervisor';
-    if (file_exists($configFile)) {
+    if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true);
-        $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+        $engine = microvm_get_vmm($vmConfig);
     }
 
     mkdir($snapdir, 0755, true);
@@ -288,12 +369,12 @@ function microvm_restore_snapshot($name, $tag) {
     }
 
     // Detect engine
-    $configFile = "$vmdir/$name/config.json";
+    $configFile = microvm_find_config_file("$vmdir/$name");
     $vmConfig = [];
-    if (file_exists($configFile)) {
+    if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true) ?: [];
     }
-    $engine = $vmConfig['engine'] ?? 'cloud-hypervisor';
+    $engine = microvm_get_vmm($vmConfig);
 
     if ($engine === 'firecracker') {
         return microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $cfg);
@@ -322,8 +403,9 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
         @unlink($sock);
     }
 
-    $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
-    $tap_id = $vmConfig['tap_id'] ?? null;
+    $network = microvm_get_network($vmConfig);
+    $bridge = $network['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
+    $tap_id = $network['tap_id'] ?? null;
     if ($tap_id === null) {
         return ['success' => false, 'error' => "No tap_id in config for VM '$name'"];
     }
@@ -386,8 +468,9 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
     }
     @unlink($sock);
 
-    $bridge = $vmConfig['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
-    $tap_id = $vmConfig['tap_id'] ?? null;
+    $network = microvm_get_network($vmConfig);
+    $bridge = $network['bridge'] ?? ($cfg['BRIDGE'] ?? 'br0');
+    $tap_id = $network['tap_id'] ?? null;
     if ($tap_id === null) {
         return ['success' => false, 'error' => "No tap_id in config for VM '$name'"];
     }
@@ -692,13 +775,15 @@ function flintlock_stop_vm($name, $namespace = null) {
 function flintlock_save_uid($name, $uid) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $configFile = "$vmdir/$name/config.json";
+    $vmPath = "$vmdir/$name";
+    $configFile = microvm_find_config_file($vmPath);
 
-    if (file_exists($configFile)) {
+    if ($configFile) {
         $config = json_decode(file_get_contents($configFile), true) ?: [];
     } else {
-        @mkdir("$vmdir/$name", 0755, true);
+        @mkdir($vmPath, 0755, true);
         $config = [];
+        $configFile = "$vmPath/cloud-hypervisor.json";
     }
 
     $config['flintlock_uid'] = $uid;
@@ -715,9 +800,9 @@ function flintlock_save_uid($name, $uid) {
 function flintlock_load_uid($name) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $configFile = "$vmdir/$name/config.json";
+    $configFile = microvm_find_config_file("$vmdir/$name");
 
-    if (!file_exists($configFile)) return null;
+    if (!$configFile) return null;
 
     $config = json_decode(file_get_contents($configFile), true);
     return $config['flintlock_uid'] ?? null;

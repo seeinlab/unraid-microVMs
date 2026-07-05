@@ -141,7 +141,7 @@ function pullImage() {
 function deleteRootfs(name, path) {
   swal({
     title: 'Delete rootFS?',
-    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nNote: If the VM is running, it must be stopped first. The VM config (config.json) will be kept.',
+    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nNote: If the VM is running, it must be stopped first. The VM config will be kept.',
     type: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Delete',

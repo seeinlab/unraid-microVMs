@@ -518,9 +518,13 @@ push_kernel_images() {
 create_taps() {
   [ -d "$VMDIR" ] || return
   for vmdir in "$VMDIR"/*/; do
-    [ -f "$vmdir/config.json" ] || continue
+    local config_file=""
+    for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
+      [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
+    done
+    [ -z "$config_file" ] && continue
     local name=$(basename "$vmdir")
-    local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$vmdir/config.json")
+    local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config_file")
     [ -z "$tap_id" ] && continue
     local tap_name="tap${tap_id}"
     if ! ip link show "$tap_name" &>/dev/null; then
@@ -551,8 +555,12 @@ next_thin_device_id() {
   local max_id=$THIN_DEVICE_ID_BASE
   [ -d "$VMDIR" ] || { echo "$max_id"; return; }
   for vmdir in "$VMDIR"/*/; do
-    [ -f "$vmdir/config.json" ] || continue
-    local tid=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$vmdir/config.json" 2>/dev/null)
+    local config_file=""
+    for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
+      [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
+    done
+    [ -z "$config_file" ] && continue
+    local tid=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$config_file" 2>/dev/null)
     [ -n "$tid" ] && [ "$tid" -ge "$max_id" ] && max_id=$((tid + 1))
   done
   echo "$max_id"
@@ -678,48 +686,94 @@ activate_thin_rootfs() {
 start_vm() {
   local name="$1"
   local vmdir="$VMDIR/$name"
-  local config="$vmdir/config.json"
   local sock="/tmp/microvm-${name}.sock"
 
-  [ -f "$config" ] || { log "ERROR: No config for VM '$name'"; return 1; }
+  # Find config file (new format: {vmm}.json, legacy: config.json)
+  local config=""
+  for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
+    [ -f "$vmdir/$candidate" ] && config="$vmdir/$candidate" && break
+  done
+
+  [ -n "$config" ] || { log "ERROR: No config for VM '$name'"; return 1; }
   [ -S "$sock" ] && { log "VM '$name' already running"; return 0; }
 
-  # Read config
-  local kernel=$(grep -oP '"kernel"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
-  local disk=$(grep -oP '"disk"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
-  local cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
-  local cpus=$(grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+' "$config")
-  local max_cpus=$(grep -oP '"max_vcpus"\s*:\s*\K[0-9]+' "$config")
+  # Detect config format (new has "vmm" field, legacy has "engine")
+  local vmm=$(grep -oP '"vmm"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+  local is_new_format="true"
+  if [ -z "$vmm" ]; then
+    # Legacy format
+    vmm=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+    is_new_format="false"
+  fi
+  vmm=${vmm:-$DEFAULT_VMM}
+
+  # Derive kernel path from vmm (never stored in config)
+  local kernel="${SYSTEM_DIR}/${vmm}/kernels/vmlinux"
+  kernel=$(resolve_path "$kernel")
+
+  # Read common fields
   local memory=$(grep -oP '"memory_mb"\s*:\s*\K[0-9]+' "$config")
   local mac=$(grep -oP '"mac"\s*:\s*"\K[^"]+' "$config")
-  local engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config")
-
-  # Defaults
-  cpus=${cpus:-$DEFAULT_CPUS}
-  max_cpus=${max_cpus:-$((cpus * 2))}
+  local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$config")
   memory=${memory:-$DEFAULT_MEMORY}
-  engine=${engine:-$DEFAULT_VMM}
 
-  # If VM uses thin provisioned storage, activate the block device
-  local thin_device_id=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$config")
-  local disk_size_mb=$(grep -oP '"disk_size_mb"\s*:\s*\K[0-9]+' "$config")
-  if [ -n "$thin_device_id" ]; then
-    activate_thin_rootfs "$name" "${disk_size_mb:-500}" "$thin_device_id"
-    disk="/dev/mapper/microvms-${name}"
+  if [ "$is_new_format" = "true" ]; then
+    # --- New config format ---
+    local cpus=$(grep -oP '"vcpus"\s*:\s*\K[0-9]+' "$config")
+    cpus=${cpus:-$DEFAULT_CPUS}
+    local max_cpus=$((cpus * 2))
+
+    # Storage: derive disk path from storage.type + name
+    local storage_type=$(grep -oP '"type"\s*:\s*"\K[^"]+' "$config" | head -1)
+    local disk_size_mb=$(grep -oP '"size_mb"\s*:\s*\K[0-9]+' "$config")
+    local thin_device_id=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$config")
+    storage_type=${storage_type:-raw}
+
+    local disk=""
+    if [ "$storage_type" = "thin" ] && [ -n "$thin_device_id" ]; then
+      activate_thin_rootfs "$name" "${disk_size_mb:-500}" "$thin_device_id"
+      disk="/dev/mapper/microvms-${name}"
+    else
+      disk="$vmdir/rootfs.raw"
+      disk=$(resolve_path "$disk")
+    fi
+
+    # Network: read from nested object
+    local ip=$(grep -oP '"ip"\s*:\s*"\K[^"]+' "$config")
+    local gateway=$(grep -oP '"gateway"\s*:\s*"\K[^"]+' "$config")
+    local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config")
+    gateway=${gateway:-192.168.50.1}
+
+    # Kernel cmdline: read base from config, append network at runtime
+    local base_cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config")
+    base_cmdline=${base_cmdline:-"console=ttyS0 root=/dev/vda rw init=/init"}
+    local cmdline="${base_cmdline} ip=${ip}::${gateway}:255.255.255.0:::off"
+  else
+    # --- Legacy config format ---
+    local cpus=$(grep -oP '"boot_vcpus"\s*:\s*\K[0-9]+' "$config")
+    local max_cpus=$(grep -oP '"max_vcpus"\s*:\s*\K[0-9]+' "$config")
+    cpus=${cpus:-$DEFAULT_CPUS}
+    max_cpus=${max_cpus:-$((cpus * 2))}
+
+    local disk=$(grep -oP '"disk"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+    local cmdline=$(grep -oP '"cmdline"\s*:\s*"\K[^"]+' "$config" | tr -d '\\')
+    local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config")
+
+    # If VM uses thin provisioned storage, activate the block device
+    local thin_device_id=$(grep -oP '"thin_device_id"\s*:\s*\K[0-9]+' "$config")
+    local disk_size_mb=$(grep -oP '"disk_size_mb"\s*:\s*\K[0-9]+' "$config")
+    if [ -n "$thin_device_id" ]; then
+      activate_thin_rootfs "$name" "${disk_size_mb:-500}" "$thin_device_id"
+      disk="/dev/mapper/microvms-${name}"
+    fi
+
+    # Resolve FUSE paths to real disk paths
+    [ -z "$thin_device_id" ] && disk=$(resolve_path "$disk")
   fi
 
-  # Resolve FUSE paths to real disk paths
-  kernel=$(resolve_path "$kernel")
-  [ -z "$thin_device_id" ] && disk=$(resolve_path "$disk")
+  log "Starting VM '$name': vmm=$vmm cpus=$cpus mem=${memory}M"
 
-  # Use engine-specific kernel
-  kernel="${SYSTEM_DIR}/${engine}/kernels/vmlinux"
-  kernel=$(resolve_path "$kernel")
-
-  log "Starting VM '$name': engine=$engine cpus=$cpus mem=${memory}M"
-
-  # Get TAP ID from config
-  local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config")
+  # Get TAP ID
   if [ -z "$tap_id" ]; then
     log "ERROR: No tap_id in config for VM '$name'"
     return 1
@@ -733,7 +787,7 @@ start_vm() {
     ip link set "$tap_name" up 2>/dev/null
   fi
 
-  if [ "$engine" = "firecracker" ]; then
+  if [ "$vmm" = "firecracker" ]; then
     # Firecracker config
     local fc_cfg="/tmp/microvm-${name}-fc.json"
     cat > "$fc_cfg" << FCEOF
@@ -773,7 +827,7 @@ FCEOF
       -v >> "$vmdir/vm.log" 2>&1 &
   fi
 
-  log "Started VM '$name' (engine=$engine, PID=$!)"
+  log "Started VM '$name' (vmm=$vmm, PID=$!)"
 }
 
 stop_vm() {
@@ -794,14 +848,19 @@ stop_vm() {
     rm -f "$ttyd_log_pid"
   fi
 
-  # Detect engine
-  local engine="$DEFAULT_VMM"
-  if [ -f "$vmdir/config.json" ]; then
-    engine=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$vmdir/config.json" 2>/dev/null)
-    engine=${engine:-$DEFAULT_VMM}
+  # Detect VMM from config (new or legacy format)
+  local vmm="$DEFAULT_VMM"
+  local config_file=""
+  for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
+    [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
+  done
+  if [ -n "$config_file" ]; then
+    local found_vmm=$(grep -oP '"vmm"\s*:\s*"\K[^"]+' "$config_file" 2>/dev/null)
+    [ -z "$found_vmm" ] && found_vmm=$(grep -oP '"engine"\s*:\s*"\K[^"]+' "$config_file" 2>/dev/null)
+    vmm=${found_vmm:-$DEFAULT_VMM}
   fi
 
-  if [ "$engine" = "firecracker" ]; then
+  if [ "$vmm" = "firecracker" ]; then
     local pid=$(pgrep -f "microvm-${name}" 2>/dev/null | head -1)
     if [ -n "$pid" ]; then
       kill "$pid" 2>/dev/null
@@ -910,9 +969,13 @@ microvm_start() {
   log "[7/7] Autostarting VMs..."
   if [ "$AUTOSTART" = "yes" ]; then
     for vmdir in "$VMDIR"/*/; do
-      [ -f "$vmdir/config.json" ] || continue
+      local config_file=""
+      for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
+        [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
+      done
+      [ -z "$config_file" ] && continue
       local name=$(basename "$vmdir")
-      local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$vmdir/config.json")
+      local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$config_file")
       if [ "$autostart" = "true" ]; then
         start_vm "$name"
       fi
