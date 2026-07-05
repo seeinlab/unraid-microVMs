@@ -171,6 +171,11 @@ _(Network Bridge)_:
   <?php endforeach; ?>
   </select>
 
+_(Networking)_:
+: <select name="DEFAULT_NETWORK" size="1">
+  <?=mk_option($cfg['DEFAULT_NETWORK'] ?? 'macvtap', "macvtap", "macvtap")?>
+  </select>
+
 _(Default VMM)_:
 : <select name="DEFAULT_VMM" size="1">
   <?php if ($ch_enabled): ?><?=mk_option($cfg['DEFAULT_VMM'] ?? 'cloud-hypervisor', "cloud-hypervisor", "Cloud Hypervisor")?><?php endif; ?>

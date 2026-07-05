@@ -13,6 +13,8 @@ $bridge = $cfg['BRIDGE'] ?? 'br0';
 $default_cpus = $cfg['DEFAULT_CPUS'] ?? '1';
 $default_mem = $cfg['DEFAULT_MEMORY'] ?? '256';
 $nproc = trim(shell_exec('nproc'));
+$ch_enabled = ($cfg['CH_ENABLED'] ?? 'yes') === 'yes';
+$fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 ?>
 
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
@@ -23,20 +25,33 @@ $nproc = trim(shell_exec('nproc'));
 <form id="microvm_add_form" onsubmit="return submitForm()">
 
 <dl>
-  <dt>VMM:</dt>
+  <dt>Virtual Machine Monitor:</dt>
   <dd>
     <div style="display:inline-flex; gap:15px; align-items:center;">
+      <?php if ($ch_enabled): ?>
       <label style="cursor:pointer; text-align:center; padding:8px 16px; border:2px solid #4CAF50; border-radius:8px; background:#1a2e1a;" id="label_ch">
         <input type="radio" name="engine" id="engine_ch" value="cloud-hypervisor" checked style="display:none;">
         <img src="/plugins/microvms/images/cloud-hypervisor.png" style="width:40px; height:40px; object-fit:contain; display:block; margin:0 auto 4px;">
         <span style="font-size:11px;">Cloud Hypervisor</span>
       </label>
-      <label style="cursor:pointer; text-align:center; padding:8px 16px; border:2px solid #555; border-radius:8px;" id="label_fc">
-        <input type="radio" name="engine" id="engine_fc" value="firecracker" style="display:none;">
+      <?php endif; ?>
+      <?php if ($fc_enabled): ?>
+      <label style="cursor:pointer; text-align:center; padding:8px 16px; border:2px solid <?=$ch_enabled ? '#555' : '#ff9800'?>; border-radius:8px;<?=!$ch_enabled ? ' background:#2e2a1a;' : ''?>" id="label_fc">
+        <input type="radio" name="engine" id="engine_fc" value="firecracker" <?=!$ch_enabled ? 'checked' : ''?> style="display:none;">
         <img src="/plugins/microvms/images/firecracker.png" style="width:40px; height:40px; object-fit:contain; display:block; margin:0 auto 4px;">
         <span style="font-size:11px;">Firecracker</span>
       </label>
+      <?php endif; ?>
     </div>
+  </dd>
+</dl>
+
+<dl>
+  <dt>Networking:</dt>
+  <dd>
+    <select id="vm_networking" style="width:200px;">
+      <option value="macvtap" selected>macvtap</option>
+    </select>
   </dd>
 </dl>
 

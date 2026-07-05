@@ -113,17 +113,19 @@ img.vm-icon-stopped { opacity:0.4; }
   <?php foreach ($vms as $vm):
     $name = htmlspecialchars($vm['name']);
     $state = $vm['state'];
-    $cpus = $vm['config']['boot_vcpus'] ?? '-';
-    $mem_mb = $vm['config']['memory_mb'] ?? '-';
+    $vmConfig = $vm['config'];
+    $cpus = $vmConfig['vcpus'] ?? $vmConfig['boot_vcpus'] ?? '-';
+    $mem_mb = $vmConfig['memory_mb'] ?? '-';
     $mem_display = ($mem_mb !== '-' && $mem_mb >= 1024) ? round($mem_mb / 1024, 1) . ' GB' : $mem_mb . ' MB';
-    $ip = htmlspecialchars($vm['config']['ip'] ?? '-');
-    $engine = $vm['config']['engine'] ?? 'cloud-hypervisor';
+    $network = microvm_get_network($vmConfig);
+    $ip = htmlspecialchars($network['ip'] ?? '-');
+    $engine = microvm_get_vmm($vmConfig);
     $engine_display = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
     $icon = "/plugins/microvms/images/{$engine}.png";
-    $tap_id = $vm['config']['tap_id'] ?? '-';
-    $bridge_name = $vm['config']['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
-    $tap_display = ($tap_id !== '-') ? "tap{$tap_id}@{$bridge_name}" : "-";
-    $autostart = !empty($vm['config']['autostart']);
+    $tap_id = $network['tap_id'] ?? null;
+    $bridge_name = $network['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
+    $tap_display = ($tap_id !== null && $tap_id !== '') ? "tap{$tap_id}@{$bridge_name}" : "-";
+    $autostart = !empty($vmConfig['autostart']);
 
     $status_class = ($state === 'running') ? 'started' : 'stopped';
     $color_class = ($state === 'running') ? 'green-text' : 'red-text';
