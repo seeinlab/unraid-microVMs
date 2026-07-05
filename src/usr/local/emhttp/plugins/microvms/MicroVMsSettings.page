@@ -335,7 +335,7 @@ var plugin = '<?=$plugin?>';
 function done() { location = '/Settings'; }
 
 function viewLog(service) {
-  var logFile = (service === 'flintlockd') ? '/var/log/flintlockd.log' : '/var/log/microvms-containerd.log';
+  var logFile = (service === 'flintlockd') ? '/var/log/microvms/flintlockd.log' : '/var/log/microvms/containerd.log';
   var title = service === 'flintlockd' ? 'Flintlockd Log' : 'Containerd Log';
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', logfile: logFile}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}

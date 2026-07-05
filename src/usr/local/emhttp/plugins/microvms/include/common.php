@@ -423,7 +423,7 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
     $cmd = "nohup cloud-hypervisor"
         . " --api-socket " . escapeshellarg($sock)
         . " --restore source_url=" . escapeshellarg("file://$snapPath")
-        . " > /var/log/microvm-{$name}.log 2>&1 &";
+        . " > /var/log/microvms/vm-{$name}.log 2>&1 &";
     exec($cmd);
     sleep(2);
 
@@ -434,7 +434,7 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
         'success' => ($verifyRet === 0),
         'message' => ($verifyRet === 0)
             ? "VM '$name' restored from snapshot '$tag' and is running"
-            : "Restore command issued but VM may not be responding yet. Check /var/log/microvm-{$name}.log",
+            : "Restore command issued but VM may not be responding yet. Check /var/log/microvms/vm-{$name}.log",
     ];
 }
 
@@ -485,7 +485,7 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
     }
 
     // Start a new firecracker process (no boot config — we'll load from snapshot)
-    $logFile = "/var/log/microvm-{$name}.log";
+    $logFile = "/var/log/microvms/vm-{$name}.log";
     $cmd = "nohup firecracker --api-sock " . escapeshellarg($sock)
         . " --id " . escapeshellarg($name)
         . " > " . escapeshellarg($logFile) . " 2>&1 &";

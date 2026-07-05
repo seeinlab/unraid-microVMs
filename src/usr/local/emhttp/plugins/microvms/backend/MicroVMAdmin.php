@@ -35,7 +35,7 @@ header('Content-Type: application/json');
 
 // Log function
 function microvm_log($msg) {
-    $logfile = '/var/log/microvms.log';
+    $logfile = '/var/log/microvms/backend.log';
     $ts = date('Y-m-d H:i:s');
     file_put_contents($logfile, "[$ts] $msg\n", FILE_APPEND);
 }
@@ -398,7 +398,7 @@ INIT;
     case 'console':
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
         $logFile = "$vmdir/$name/vm.log";
-        if (!file_exists($logFile)) $logFile = "/var/log/microvm-{$name}.log";
+        if (!file_exists($logFile)) $logFile = "/var/log/microvms/vm-{$name}.log";
         $sock = "/tmp/microvm-{$name}.sock";
 
         // Check VM is running
@@ -506,7 +506,7 @@ INIT;
     case 'logs':
         // Return last 100 lines of VM log (AJAX)
         $logFile = "$vmdir/$name/vm.log";
-        if (!file_exists($logFile)) $logFile = "/var/log/microvm-{$name}.log";
+        if (!file_exists($logFile)) $logFile = "/var/log/microvms/vm-{$name}.log";
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $lines]);
@@ -520,7 +520,7 @@ INIT;
         $logFile = "$vmdir/$name/vm.log";
         // Fallback to old path if new path doesn't exist
         if (!file_exists($logFile)) {
-            $logFile = "/var/log/microvm-{$name}.log";
+            $logFile = "/var/log/microvms/vm-{$name}.log";
         }
         if (!file_exists($logFile)) {
             echo json_encode(['success' => false, 'error' => "No log file found for '$name'"]);
@@ -692,7 +692,7 @@ INIT;
     case 'view_log':
         $logfile = $_POST['logfile'] ?? '';
         // Only allow reading specific known log files
-        $allowed = ['/var/log/flintlockd.log', '/var/log/microvms-containerd.log'];
+        $allowed = ['/var/log/microvms/flintlockd.log', '/var/log/microvms/containerd.log'];
         if (!in_array($logfile, $allowed)) {
             echo json_encode(['success' => false, 'error' => 'Invalid log file']);
             break;

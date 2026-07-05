@@ -22,8 +22,8 @@ FLINTLOCKD_PID="${RUNTIME_DIR}/flintlockd.pid"
 CONTAINERD_SOCK="${RUNTIME_DIR}/containerd.sock"
 
 # Logs
-CONTAINERD_LOG="/var/log/microvms-containerd.log"
-FLINTLOCKD_LOG="/var/log/flintlockd.log"
+CONTAINERD_LOG="/var/log/microvms/containerd.log"
+FLINTLOCKD_LOG="/var/log/microvms/flintlockd.log"
 
 # Load config
 [ -f "$CFGFILE" ] && source "$CFGFILE"
@@ -425,7 +425,7 @@ stop_flintlockd() {
 REGISTRY_PORT="5050"
 REGISTRY_DIR="${CRANE_REGISTRY_DIR}"
 REGISTRY_PID="${RUNTIME_DIR}/crane-registry.pid"
-REGISTRY_LOG="/var/log/crane-registry.log"
+REGISTRY_LOG="/var/log/microvms/registry.log"
 CRANE_BIN="/usr/local/bin/crane"
 GRPCURL_BIN="/usr/local/bin/grpcurl"
 
@@ -883,6 +883,7 @@ microvm_start() {
   mkdir -p "$RUNTIME_DIR"
   mkdir -p "$VMDIR/kernels"
   mkdir -p "$SYSTEM_DIR"
+  mkdir -p /var/log/microvms
 
   # Step 1: Load kernel module
   log "[1/7] Loading dm_thin_pool module..."
