@@ -58,87 +58,101 @@ $bridge_names = array_map(function($b){ return basename($b); }, $bridges ?: []);
 if (empty($bridge_names)) $bridge_names = ['br0'];
 ?>
 <style>
-.svc-grid { width:100%; border-collapse:collapse; margin:10px 0 20px; }
-.svc-grid th { text-align:left; padding:8px 12px; border-bottom:2px solid rgba(128,128,128,0.3); font-size:0.85em; text-transform:uppercase; opacity:0.7; }
-.svc-grid td { padding:10px 12px; border-bottom:1px solid rgba(128,128,128,0.15); vertical-align:middle; }
-.svc-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
-.svc-dot-green { background:#4CAF50; box-shadow:0 0 4px rgba(76,175,80,0.5); }
-.svc-dot-red { background:#f44336; box-shadow:0 0 4px rgba(244,67,54,0.5); }
-.svc-dot-grey { background:#999; }
-.svc-dep { color:#999; font-size:0.85em; padding-left:24px; }
-.svc-dep::before { content:'└─ '; font-family:monospace; }
-.svc-action-btn { padding:3px 10px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.3); background:transparent; margin-right:4px; }
-.svc-action-btn:hover { background:rgba(128,128,128,0.1); }
-.kernel-status { display:inline-block; padding:2px 8px; border-radius:3px; font-size:0.85em; }
-.kernel-ok { background:rgba(76,175,80,0.15); color:#4CAF50; }
-.kernel-missing { background:rgba(244,67,54,0.15); color:#f44336; }
+.mvm-status-box { border:1px solid rgba(128,128,128,0.3); border-radius:4px; padding:20px; margin:10px 0 24px; }
+.mvm-status-title { font-weight:bold; font-size:1.1em; margin-bottom:4px; }
+.mvm-status-line { font-family:monospace; font-size:13px; line-height:1.8; white-space:pre; background:rgba(0,0,0,0.2); padding:12px 16px; border-radius:4px; margin:12px 0; overflow-x:auto; }
+.mvm-status-line .green { color:#4CAF50; }
+.mvm-status-line .red { color:#f44336; }
+.mvm-status-line .grey { color:#999; }
+.mvm-btn { padding:5px 14px; font-size:0.85em; cursor:pointer; border-radius:3px; border:1px solid rgba(128,128,128,0.4); background:transparent; margin-right:6px; margin-top:8px; }
+.mvm-btn:hover { background:rgba(128,128,128,0.1); }
+.mvm-btn-grp { margin-top:12px; }
+.mvm-help { font-size:0.85em; opacity:0.7; margin-top:12px; }
 </style>
 
-<!-- ─── Service Status Grid ─────────────────────────────────────────────── -->
-<table class="svc-grid">
-<thead><tr><th>Service</th><th>Status</th><th>Info</th><th>Action</th></tr></thead>
-<tbody>
-  <tr>
-    <td><i class="fa fa-microchip" style="margin-right:6px;opacity:0.6;"></i>KVM</td>
-    <td><span class="svc-dot <?=$kvm_loaded ? 'svc-dot-green' : 'svc-dot-red'?>"></span><?=$kvm_loaded ? 'Available' : 'Not available'?></td>
-    <td>/dev/kvm</td>
-    <td><a href="/Settings/VMSettings" class="svc-action-btn">VM Manager</a></td>
-  </tr>
-  <tr>
-    <td style="padding-left:16px;"><i class="fa fa-cogs" style="margin-right:6px;opacity:0.6;"></i>VMM</td>
-    <td><span class="svc-dot <?=$vmm_ready ? 'svc-dot-green' : 'svc-dot-red'?>"></span><?=$vmm_ready ? 'Ready' : 'Not Ready'?></td>
-    <td><?php
-      if ($vmm_ready) echo 'All dependencies met';
-      else { $r=[]; if (!$kvm_loaded) $r[]='KVM unavailable'; if (!$ch_available && !$fc_available) $r[]='No VMM available'; if (!$containerd_running) $r[]='containerd not running'; echo implode(', ',$r); }
-    ?></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td class="svc-dep">Cloud Hypervisor</td>
-    <td><?php if (!$ch_enabled): ?><span class="svc-dot svc-dot-grey"></span>Disabled<?php elseif ($ch_binary && $ch_kernel): ?><span class="svc-dot svc-dot-green"></span>Available<?php else: ?><span class="svc-dot svc-dot-red"></span>Not Available<?php endif; ?></td>
-    <td><?=$ch_enabled ? ($ch_version ?: 'no binary') . ($ch_kernel ? " | Kernel: Linux $ch_kernel_ver" : '') : ''?></td>
-    <td><?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?><button type="button" class="svc-action-btn" onclick="downloadKernel('cloud-hypervisor')">Download Kernel</button><?php endif; ?><?php if (!$ch_vms_exist): ?><button type="button" class="svc-action-btn" onclick="toggleVMM('CH_ENABLED','<?=$ch_enabled?'no':'yes'?>')"><?=$ch_enabled?'Disable':'Enable'?></button><?php endif; ?></td>
-  </tr>
-  <tr>
-    <td class="svc-dep">Firecracker</td>
-    <td><?php if (!$fc_enabled): ?><span class="svc-dot svc-dot-grey"></span>Disabled<?php elseif ($fc_binary && $fc_kernel): ?><span class="svc-dot svc-dot-green"></span>Available<?php else: ?><span class="svc-dot svc-dot-red"></span>Not Available<?php endif; ?></td>
-    <td><?=$fc_enabled ? ($fc_version ?: 'no binary') . ($fc_kernel ? " | Kernel: Linux $fc_kernel_ver" : '') : ''?></td>
-    <td><?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?><button type="button" class="svc-action-btn" onclick="downloadKernel('firecracker')">Download Kernel</button><?php endif; ?><?php if (!$fc_vms_exist): ?><button type="button" class="svc-action-btn" onclick="toggleVMM('FC_ENABLED','<?=$fc_enabled?'no':'yes'?>')"><?=$fc_enabled?'Disable':'Enable'?></button><?php endif; ?></td>
-  </tr>
-  <tr>
-    <td class="svc-dep">containerd</td>
-    <td><?php if (!$enabled): ?><span class="svc-dot svc-dot-grey"></span>Disabled<?php else: ?><span class="svc-dot <?=$containerd_running?'svc-dot-green':'svc-dot-red'?>"></span><?=$containerd_running?'Running':'Stopped'?><?php endif; ?></td>
-    <td><?=htmlspecialchars($containerd_version ?: '')?></td>
-    <td><?php if ($enabled): ?><?php if ($containerd_running): ?><button type="button" class="svc-action-btn" onclick="serviceAction('containerd','stop')">Stop</button><?php else: ?><button type="button" class="svc-action-btn" onclick="serviceAction('containerd','start')">Start</button><?php endif; ?><button type="button" class="svc-action-btn" onclick="viewLog('microvms-containerd')">View Log</button><?php endif; ?></td>
-  </tr>
-  <tr>
-    <td class="svc-dep">devmapper</td>
-    <td><?php if (!$devmapper_enabled): ?><span class="svc-dot svc-dot-grey"></span>Disabled<?php elseif ($thinpool_active): ?><span class="svc-dot svc-dot-green"></span>Active<?php else: ?><span class="svc-dot svc-dot-red"></span>Inactive<?php endif; ?></td>
-    <td><?=$devmapper_enabled ? 'Thin provisioned pool' : 'Raw file mode only'?></td>
-    <td><button type="button" class="svc-action-btn" onclick="toggleVMM('DEVMAPPER','<?=$devmapper_enabled?'disable':'enable'?>')"><?=$devmapper_enabled?'Disable':'Enable'?></button></td>
-  </tr>
-  <tr>
-    <td><i class="fa fa-bolt" style="margin-right:6px;opacity:0.6;"></i>Liquidmetal</td>
-    <td><?php if (!$flintlockd_enabled): ?><span class="svc-dot svc-dot-grey"></span>Disabled<?php elseif ($flintlockd_running): ?><span class="svc-dot svc-dot-green"></span>Running<?php else: ?><span class="svc-dot svc-dot-red"></span>Stopped<?php endif; ?></td>
-    <td><?=$flintlockd_enabled ? 'Remote gRPC orchestration' : ''?></td>
-    <td><button type="button" class="svc-action-btn" onclick="toggleVMM('FLINTLOCKD','<?=$flintlockd_enabled?'disable':'enable'?>')"><?=$flintlockd_enabled?'Disable':'Enable'?></button></td>
-  </tr>
-  <?php if ($flintlockd_enabled): ?>
-  <tr>
-    <td class="svc-dep">flintlockd</td>
-    <td><span class="svc-dot <?=$flintlockd_running?'svc-dot-green':'svc-dot-red'?>"></span><?=$flintlockd_running?'Running':'Stopped'?></td>
-    <td><?=htmlspecialchars($flintlockd_version ?: '')?> | gRPC :<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?></td>
-    <td><?php if ($flintlockd_running): ?><button type="button" class="svc-action-btn" onclick="serviceAction('flintlockd','stop')">Stop</button><?php else: ?><button type="button" class="svc-action-btn" onclick="serviceAction('flintlockd','start')">Start</button><?php endif; ?><button type="button" class="svc-action-btn" onclick="viewLog('flintlockd')">View Log</button></td>
-  </tr>
-  <tr>
-    <td class="svc-dep">registry</td>
-    <td><span class="svc-dot <?=$registry_running?'svc-dot-green':'svc-dot-red'?>"></span><?=$registry_running?'Running':'Stopped'?></td>
-    <td>OCI image registry (127.0.0.1:5050)</td>
-    <td><?php if ($registry_running): ?><button type="button" class="svc-action-btn" onclick="serviceAction('registry','stop')">Stop</button><?php else: ?><button type="button" class="svc-action-btn" onclick="serviceAction('registry','start')">Start</button><?php endif; ?><button type="button" class="svc-action-btn" onclick="viewLog('crane-registry')">View Log</button></td>
-  </tr>
-  <?php endif; ?>
-</tbody>
-</table>
+<!-- ─── Service Status Box ──────────────────────────────────────────────── -->
+<div class="mvm-status-box">
+  <div class="mvm-status-title">microVMs Service Status</div>
+  <div>Status: <?=$vmm_ready ? '<span style="color:#4CAF50;font-weight:bold;">Ready</span>' : '<span style="color:#f44336;font-weight:bold;">Not Ready</span>'?></div>
+
+  <div class="mvm-status-line"><?php
+// Build status output
+$lines = [];
+$lines[] = "+--- microvms-controlplane";
+$lines[] = "kvm          : " . ($kvm_loaded ? '<span class="green">/dev/kvm available</span>' : '<span class="red">/dev/kvm not found</span>');
+
+// Cloud Hypervisor
+if ($ch_enabled) {
+    $ch_st = ($ch_binary && $ch_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
+    $ch_info = $ch_version ?: 'no binary';
+    if ($ch_kernel) $ch_info .= " (Linux $ch_kernel_ver)";
+    $lines[] = "ch           : $ch_st — $ch_info";
+} else {
+    $lines[] = "ch           : " . '<span class="grey">disabled</span>';
+}
+
+// Firecracker
+if ($fc_enabled) {
+    $fc_st = ($fc_binary && $fc_kernel) ? '<span class="green">available</span>' : '<span class="red">not available</span>';
+    $fc_info = $fc_version ?: 'no binary';
+    if ($fc_kernel) $fc_info .= " (Linux $fc_kernel_ver)";
+    $lines[] = "fc           : $fc_st — $fc_info";
+} else {
+    $lines[] = "fc           : " . '<span class="grey">disabled</span>';
+}
+
+// containerd
+if ($enabled) {
+    $lines[] = "containerd   : " . ($containerd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($containerd_version ?: 'unknown');
+} else {
+    $lines[] = "containerd   : " . '<span class="grey">disabled</span>';
+}
+
+// devmapper
+if ($devmapper_enabled) {
+    $lines[] = "devmapper    : " . ($thinpool_active ? '<span class="green">active</span>' : '<span class="red">inactive</span>') . " — thin provisioned pool";
+} else {
+    $lines[] = "devmapper    : " . '<span class="grey">disabled</span>' . " — raw file mode only";
+}
+
+// Liquidmetal
+if ($flintlockd_enabled) {
+    $lines[] = "flintlockd   : " . ($flintlockd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($flintlockd_version ?: '') . " gRPC :" . htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090');
+    $lines[] = "registry     : " . ($registry_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — OCI 127.0.0.1:5050";
+} else {
+    $lines[] = "flintlockd   : " . '<span class="grey">disabled</span>';
+}
+
+echo implode("\n", $lines);
+?></div>
+
+  <div class="mvm-btn-grp">
+    <button type="button" class="mvm-btn" onclick="location.reload()">REFRESH STATUS</button>
+    <?php if ($enabled): ?>
+      <?php if ($containerd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','stop')">STOP CONTAINERD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('containerd','start')">START CONTAINERD</button><?php endif; ?>
+      <button type="button" class="mvm-btn" onclick="viewLog('microvms-containerd')">VIEW LOG</button>
+    <?php endif; ?>
+    <?php if ($ch_enabled && !$ch_kernel && $ch_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('cloud-hypervisor')">DOWNLOAD CH KERNEL</button><?php endif; ?>
+    <?php if ($fc_enabled && !$fc_kernel && $fc_binary): ?><button type="button" class="mvm-btn" onclick="downloadKernel('firecracker')">DOWNLOAD FC KERNEL</button><?php endif; ?>
+    <?php if ($flintlockd_enabled): ?>
+      <?php if ($flintlockd_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','stop')">STOP FLINTLOCKD</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('flintlockd','start')">START FLINTLOCKD</button><?php endif; ?>
+      <button type="button" class="mvm-btn" onclick="viewLog('flintlockd')">FLINTLOCKD LOG</button>
+      <?php if ($registry_running): ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','stop')">STOP REGISTRY</button><?php else: ?><button type="button" class="mvm-btn" onclick="serviceAction('registry','start')">START REGISTRY</button><?php endif; ?>
+      <button type="button" class="mvm-btn" onclick="viewLog('crane-registry')">REGISTRY LOG</button>
+    <?php endif; ?>
+  </div>
+
+  <div class="mvm-help">View the current status of microVMs services and manage individual components.</div>
+</div>
+
+<!-- ─── Toggles (Enable/Disable) ────────────────────────────────────────── -->
+<div style="margin-bottom:20px;">
+  <?php if (!$ch_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('CH_ENABLED','<?=$ch_enabled?'no':'yes'?>')"><?=$ch_enabled?'DISABLE':'ENABLE'?> CLOUD HYPERVISOR</button><?php endif; ?>
+  <?php if (!$fc_vms_exist): ?><button type="button" class="mvm-btn" onclick="toggleVMM('FC_ENABLED','<?=$fc_enabled?'no':'yes'?>')"><?=$fc_enabled?'DISABLE':'ENABLE'?> FIRECRACKER</button><?php endif; ?>
+  <button type="button" class="mvm-btn" onclick="toggleVMM('DEVMAPPER','<?=$devmapper_enabled?'disable':'enable'?>')"><?=$devmapper_enabled?'DISABLE':'ENABLE'?> DEVMAPPER</button>
+  <button type="button" class="mvm-btn" onclick="toggleVMM('FLINTLOCKD','<?=$flintlockd_enabled?'disable':'enable'?>')"><?=$flintlockd_enabled?'DISABLE':'ENABLE'?> LIQUIDMETAL</button>
+  <a href="/Settings/VMSettings" class="mvm-btn" style="text-decoration:none;display:inline-block;">VM MANAGER</a>
+</div>
 
 <!-- ─── Settings Form ───────────────────────────────────────────────────── -->
 <form markdown="1" method="POST" action="/update.php" target="progressFrame">
