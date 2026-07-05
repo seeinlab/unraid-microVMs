@@ -250,7 +250,7 @@ switch ($cmd) {
 
         // Storage type
         $storageType = $_POST['storage_type'] ?? 'thin';
-        $thinDeviceId = null;
+        $thinDeviceId = null; // containerd manages device IDs
 
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
@@ -265,9 +265,8 @@ switch ($cmd) {
             }
 
             if ($storageType === 'thin') {
-                // Thin pool block device
-                $thinDeviceId = intval(trim(shell_exec("/etc/rc.d/rc.microvmss next_thin_device_id 2>/dev/null")));
-                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvmss create_thin_rootfs " . escapeshellarg($name) . " $diskSize $thinDeviceId 2>/dev/null"));
+                // Thin pool block device via containerd snapshotter
+                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvms create_thin_rootfs " . escapeshellarg($name) . " " . escapeshellarg($diskSize) . " " . escapeshellarg($vmm) . " 2>&1 | tail -1"));
 
                 if (empty($rootfs) || !file_exists($rootfs)) {
                     echo json_encode(['success' => false, 'error' => "Failed to create thin device. Is thin pool active?"]);
