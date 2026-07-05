@@ -398,7 +398,7 @@ INIT;
     case 'console':
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
         $logFile = "$vmdir/$name/vm.log";
-        if (!file_exists($logFile)) $logFile = "/var/log/microvms/vm-{$name}.log";
+        if (!file_exists($logFile)) $logFile = microvm_get_log_path($name, $vmdir);
         $sock = "/tmp/microvm-{$name}.sock";
 
         // Check VM is running
@@ -506,7 +506,7 @@ INIT;
     case 'logs':
         // Return last 100 lines of VM log (AJAX)
         $logFile = "$vmdir/$name/vm.log";
-        if (!file_exists($logFile)) $logFile = "/var/log/microvms/vm-{$name}.log";
+        if (!file_exists($logFile)) $logFile = microvm_get_log_path($name, $vmdir);
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $lines]);
@@ -520,7 +520,7 @@ INIT;
         $logFile = "$vmdir/$name/vm.log";
         // Fallback to old path if new path doesn't exist
         if (!file_exists($logFile)) {
-            $logFile = "/var/log/microvms/vm-{$name}.log";
+            $logFile = microvm_get_log_path($name, $vmdir);
         }
         if (!file_exists($logFile)) {
             echo json_encode(['success' => false, 'error' => "No log file found for '$name'"]);

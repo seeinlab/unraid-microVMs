@@ -777,7 +777,7 @@ start_vm() {
 }
 FCEOF
     "$FC_BIN" --api-sock "$sock" --config-file "$fc_cfg" \
-      >> "$vmdir/vm.log" 2>&1 &
+      >> "/var/log/microvms/firecracker/${name}.log" 2>&1 &
   else
     # Cloud Hypervisor
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
@@ -792,7 +792,7 @@ FCEOF
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
       --net "tap=$tap_name,mac=$mac" \
       --serial pty --console off \
-      -v >> "$vmdir/vm.log" 2>&1 &
+      -v >> "/var/log/microvms/cloud-hypervisor/${name}.log" 2>&1 &
   fi
 
   log "Started VM '$name' (vmm=$vmm, PID=$!)"
@@ -884,6 +884,8 @@ microvm_start() {
   mkdir -p "$VMDIR/kernels"
   mkdir -p "$SYSTEM_DIR"
   mkdir -p /var/log/microvms
+  mkdir -p /var/log/microvms/cloud-hypervisor
+  mkdir -p /var/log/microvms/firecracker
 
   # Step 1: Load kernel module
   log "[1/7] Loading dm_thin_pool module..."
