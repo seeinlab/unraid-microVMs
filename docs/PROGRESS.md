@@ -80,9 +80,9 @@
 ## Remaining Work
 
 1. **Per-VM Logs button** — show /var/log/microvms/{vmm}/{name}.log in context menu
-2. **Storage tab** — "Prune Unused Images" button, image/snapshot inventory
+2. ~~**Storage tab** — "Prune Unused Images" button, image/snapshot inventory~~ ✅ Done
 3. **TLS/auth for flintlockd** — deferred
-4. **Max memory config** — currently hardcoded as memory×2
+4. ~~**Max memory config** — currently hardcoded as memory×2~~ ✅ Done (configurable via Add VM form)
 5. **macvtap label** — form says macvtap but uses TAP+bridge (cosmetic)
 6. **Update root README.md** — for GitHub
 
