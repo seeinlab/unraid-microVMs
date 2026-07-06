@@ -153,3 +153,38 @@ Currently: `hotplug_size=$((memory * 2))M` — make configurable.
 5. [ ] Full create flow from UI → VM boots with thin device
 6. [ ] VM accessible on LAN
 7. [ ] Delete removes snapshot
+
+
+## Cleanup: Unused Image Layers
+
+### On VM Delete:
+```php
+// After removing snapshot vm-{name}:
+// Check if any other VM uses the same image_ref
+$imageRef = $config['storage']['image_ref'] ?? '';
+$stillUsed = false;
+foreach (glob("$vmdir/*/cloud-hypervisor.json") + glob("$vmdir/*/firecracker.json") as $f) {
+    $other = json_decode(file_get_contents($f), true);
+    if (($other['storage']['image_ref'] ?? '') === $imageRef) { $stillUsed = true; break; }
+}
+if (!$stillUsed && $imageRef) {
+    exec("ctr -a $sock -n $vmm images rm " . escapeshellarg($imageRef) . " 2>/dev/null");
+}
+```
+
+### Storage Tab (rename from "rootFS"):
+- Add "Prune Unused Images" button
+- Shows: used images, space usage, number of snapshots
+- Prune command: `ctr -a $SOCK -n {ns} images prune`
+
+## Tab Rename
+
+- **"rootFS" tab** → **"Storage" tab**
+- File: `MicroVMsRootFS.page` stays (filename doesn't matter for tab title)
+- Change `Title="rootFS"` to `Title="Storage"` in the .page header
+
+## Additional File to Modify
+
+| File | Change |
+|------|--------|
+| `MicroVMsRootFS.page` | Rename title to "Storage", add "Prune Unused Images" button |

@@ -1,7 +1,6 @@
 Menu="MicroVMs:2"
-Title="rootFS"
+Title="Storage"
 Tag="hdd-o"
-Cond="is_file('/usr/local/bin/flintlockd')"
 Markdown="false"
 ---
 <?php
