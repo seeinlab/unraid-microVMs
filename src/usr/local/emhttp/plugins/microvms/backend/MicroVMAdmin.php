@@ -411,9 +411,6 @@ done
 $execCmd &
 APP_PID=\$!
 
-# Print boot marker after app has time to output startup messages
-(sleep 3; echo ""; echo "=== microVM booted! ==="; echo "") &
-
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
   # Spawn shell with controlling TTY (try BusyBox -c, then util-linux --ctty, then plain)
@@ -458,7 +455,6 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 
 # Run OCI entrypoint + cmd (no console)
-echo "=== microVM booted! ==="
 exec $execCmd
 INIT;
             }
@@ -921,7 +917,6 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 
 # Run OCI entrypoint + cmd (no console)
-echo "=== microVM booted! ==="
 exec $execCmd
 INIT;
         file_put_contents("/tmp/microvm-mount-$pullName/init", $pullInitScript);
@@ -991,12 +986,8 @@ INIT;
         }
 
         if (file_exists($logfile)) {
-            // Show only boot log (up to console marker), not interactive session
-            $log = shell_exec("sed -n '1,/=== microVM booted! ===/p' " . escapeshellarg($logfile) . " 2>/dev/null");
-            if (empty($log)) {
-                // No marker found — show last 100 lines (VM may not have console enabled)
-                $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
-            }
+            // Show full log (kernel boot + app output) like docker logs
+            $log = shell_exec("tail -200 " . escapeshellarg($logfile) . " 2>/dev/null");
             // Strip ANSI escape sequences (colors, cursor queries)
             $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
