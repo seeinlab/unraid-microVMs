@@ -18,15 +18,16 @@ if [ ! -f "$CONFIG" ]; then
   exit 1
 fi
 
-# Simple JSON field extractor (no jq needed)
+# Simple JSON field extractor (no jq needed, handles multi-line pretty-printed JSON)
 json_val() {
-  grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$CONFIG" | head -1 | sed 's/.*:.*"\([^"]*\)".*/\1/'
+  sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONFIG" | head -1
 }
 json_bool() {
-  grep -o "\"$1\"[[:space:]]*:[[:space:]]*[a-z]*" "$CONFIG" | head -1 | sed 's/.*:[[:space:]]*//'
+  sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p' "$CONFIG" | head -1
 }
 json_array() {
-  grep -o "\"$1\"[[:space:]]*:[[:space:]]*\[[^]]*\]" "$CONFIG" | head -1 | sed 's/.*\[//;s/\]//;s/"//g;s/,/ /g'
+  # Extract array content between [ and ], strip quotes and whitespace
+  sed -n '/"'"$1"'".*\[/,/\]/p' "$CONFIG" | grep -v "\"$1\"" | sed 's/[][]//g;s/"//g;s/,//g' | tr -s ' \n' ' ' | sed 's/^ *//;s/ *$//'
 }
 
 # 3. Set hostname
