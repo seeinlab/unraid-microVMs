@@ -109,3 +109,17 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **Rename "OCI/Docker Image"** → "Container Image" or "Image" (simpler, everyone knows what it means)
 - **Reference**: Fly.io `fly machine run` — minimal required fields, smart defaults for everything else
 
+
+
+### Firecracker Snapshots
+- **Research**: FC supports memory+disk snapshots via API (`/snapshot/create`, `/snapshot/load`)
+- **Previous work**: User has done this before — need to find and review past implementation
+- **Use cases**: Fast restore (Lambda pattern), save/resume, clone VMs
+- **API endpoints**:
+  - `PUT /snapshot/create` — creates snapshot (mem + vmstate)
+  - `PUT /snapshot/load` — restores from snapshot
+  - `PATCH /vm` — resume after load
+- **TODO**: Add Snapshot/Restore to FC context menu (like CH already has)
+- **TODO**: Research if FC snapshot can be combined with our catatonit+fly-init pattern
+- **Reference**: https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md
+
