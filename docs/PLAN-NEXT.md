@@ -90,3 +90,9 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **Cause**: TAP allocation fix now scans ALL system TAPs (including from libvirt/other services)
 - **Fix**: Only count TAPs that are owned by microvms plugin (e.g., check if master is our bridge AND created by us). Or maintain a registry file of plugin-owned TAPs.
 
+
+
+### Console: ^[[N;NR escape in prompt (cosmetic)
+- **Status**: Existing VMs cosmetic only, self-resolves on recreate (TERM=dumb fix in new init)
+- **No action needed**
+
