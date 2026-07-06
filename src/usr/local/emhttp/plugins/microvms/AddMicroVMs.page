@@ -50,7 +50,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dt>Networking:</dt>
   <dd>
     <select id="vm_networking" style="width:200px;">
-      <option value="macvtap" selected>TAP Bridge</option>
+      <option value="macvtap" selected>macvtap</option>
     </select>
   </dd>
 </dl>
@@ -142,13 +142,17 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 <dl id="row_disk_size">
   <dt>Disk Size:</dt>
-  <dd><select id="vm_disk_size" style="width:120px;">
-    <option value="200">200 MB</option>
-    <option value="500" selected>500 MB</option>
-    <option value="1024">1.0 GB</option>
-    <option value="2048">2.0 GB</option>
-    <option value="5120">5.0 GB</option>
-  </select></dd>
+  <dd><select id="vm_disk_size" style="width:120px;" onchange="toggleDiskInput(this)">
+    <option value="128">128 MB</option>
+    <option value="256" selected>256 MB</option>
+    <option value="512">512 MB</option>
+    <option value="1024">1 GB</option>
+    <option value="2048">2 GB</option>
+    <option value="4096">4 GB</option>
+    <option value="custom">Custom</option>
+  </select>
+  <input type="number" id="vm_disk_size_custom" style="width:100px; display:none; margin-left:8px;" placeholder="MB" min="64">
+  </dd>
 </dl>
 </div>
 
@@ -184,6 +188,11 @@ $(function() {
 function toggleSource(val) {
   document.getElementById('section_oci').style.display = val === 'oci' ? '' : 'none';
   document.getElementById('section_existing').style.display = val === 'existing' ? '' : 'none';
+}
+
+function toggleDiskInput(sel) {
+  var customInput = document.getElementById('vm_disk_size_custom');
+  customInput.style.display = (sel.value === 'custom') ? 'inline-block' : 'none';
 }
 
 function toggleStorageFields() {
@@ -309,7 +318,7 @@ function submitForm() {
     gateway: document.getElementById('vm_gateway').value,
     source: source,
     oci_image: ociImage,
-    disk_size: document.getElementById('vm_disk_size').value,
+    disk_size: (document.getElementById('vm_disk_size').value === 'custom') ? document.getElementById('vm_disk_size_custom').value : document.getElementById('vm_disk_size').value,
     storage_type: document.getElementById('vm_storage_type').value,
     rootfs_path: document.getElementById('vm_rootfs_path').value,
     autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false',
