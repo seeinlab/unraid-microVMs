@@ -407,14 +407,16 @@ for s in /bin/bash /bin/ash /bin/sh /usr/bin/sh; do
   [ -x "\$s" ] && SHELL="\$s" && break
 done
 
-echo "=== MicroVM Console ==="
-echo "App: $execCmd"
-echo ""
-
 # Start app in background
 $execCmd &
 APP_PID=\$!
-echo "App started (PID \$APP_PID)"
+
+# Wait for app startup output (like Docker/Lambda pattern)
+sleep 2
+
+echo ""
+echo "=== microVM booted! ==="
+echo ""
 
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
@@ -459,7 +461,8 @@ fi
 echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 
-# Run OCI entrypoint + cmd
+# Run OCI entrypoint + cmd (no console)
+echo "=== microVM booted! ==="
 exec $execCmd
 INIT;
             }
@@ -831,8 +834,8 @@ INIT;
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
         foreach (['cloud-hypervisor', 'firecracker'] as $ns) {
-            $out = shell_exec("ctr -a $sock -n $ns images prune 2>&1");
-            if ($out) $output[] = "$ns: $out";
+            $out = shell_exec("ctr -a $sock -n $ns images prune --all 2>&1");
+            if ($out) $output[] = "$ns: " . trim($out);
         }
         echo json_encode(['success' => true, 'message' => implode("\n", $output) ?: 'No unused images to prune']);
         break;
@@ -921,7 +924,8 @@ fi
 echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 
-# Run OCI entrypoint + cmd
+# Run OCI entrypoint + cmd (no console)
+echo "=== microVM booted! ==="
 exec $execCmd
 INIT;
         file_put_contents("/tmp/microvm-mount-$pullName/init", $pullInitScript);
@@ -992,7 +996,7 @@ INIT;
 
         if (file_exists($logfile)) {
             // Show only boot log (up to console marker), not interactive session
-            $log = shell_exec("sed -n '1,/=== MicroVM Console ===/p' " . escapeshellarg($logfile) . " 2>/dev/null");
+            $log = shell_exec("sed -n '1,/=== microVM booted! ===/p' " . escapeshellarg($logfile) . " 2>/dev/null");
             if (empty($log)) {
                 // No marker found — show last 100 lines (VM may not have console enabled)
                 $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
