@@ -5,6 +5,9 @@ if [ ! -e "$PTY" ]; then
   echo "Error: PTY $PTY does not exist"
   exit 1
 fi
+# Set raw mode on this terminal (ttyd side)
+stty raw -echo 2>/dev/null
+# Open PTY bidirectionally
 exec 3<>"$PTY"
 cat <&3 &
 cat >&3

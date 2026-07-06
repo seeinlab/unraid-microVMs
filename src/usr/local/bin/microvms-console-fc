@@ -14,12 +14,12 @@ if [ ! -f "$LOG" ]; then
   exit 1
 fi
 
-# Show existing output
-cat "$LOG"
-
-# Tail new output in background
-tail -f "$LOG" &
+# Tail output (start from current end, show only new output)
+tail -n 0 -f "$LOG" &
 TAIL_PID=$!
+
+# Send a newline to trigger prompt display
+printf '\n' > "$FIFO"
 
 # Read stdin and write to FIFO (sends to FC serial)
 while IFS= read -r line; do

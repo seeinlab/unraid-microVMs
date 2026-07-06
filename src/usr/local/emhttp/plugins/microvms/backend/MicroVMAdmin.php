@@ -396,6 +396,7 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HOME=/root
+export TERM=vt100
 
 # Find available shell
 SHELL=""
