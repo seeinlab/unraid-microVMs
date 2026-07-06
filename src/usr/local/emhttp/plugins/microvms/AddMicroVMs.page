@@ -169,11 +169,12 @@ function toggleStorageFields() {
   var type = document.getElementById('vm_storage_type').value;
   var sourceRow = document.getElementById('row_rootfs_source');
   var diskSizeRow = document.getElementById('row_disk_size');
+  var existingSection = document.getElementById('section_existing');
   if (type === 'thin') {
     sourceRow.style.display = 'none';
     diskSizeRow.style.display = 'none';
-    document.getElementById('section_oci').style.display = 'none';
-    document.getElementById('section_existing').style.display = 'none';
+    existingSection.style.display = 'none';
+    document.getElementById('section_oci').style.display = '';
   } else {
     sourceRow.style.display = '';
     diskSizeRow.style.display = '';
@@ -223,6 +224,9 @@ function submitForm() {
   var name = document.getElementById('vm_name').value;
   var source = document.getElementById('rootfs_source').value;
   var ociImage = document.getElementById('vm_oci_image').value;
+  var storageType = document.getElementById('vm_storage_type').value;
+  // Thin pool always uses OCI (source dropdown is hidden)
+  if (storageType === 'thin') source = 'oci';
 
   // Show Docker-style progress popup
   var logHtml = '<div style="text-align:left;">';
@@ -263,7 +267,11 @@ function submitForm() {
   addLine('Bridge: <?=$bridge?> | Memory: ' + document.getElementById('vm_memory').value + 'MB | vCPUs: ' + document.getElementById('vm_cpus').value);
   if (source === 'oci') {
     addLine('Pulling image: ' + ociImage + '...');
-    addLine('  crane export ' + ociImage + ' → rootfs.tar', '#88c0d0');
+    if (storageType === 'thin') {
+      addLine('  ctr images pull ' + ociImage + ' (containerd devmapper)', '#88c0d0');
+    } else {
+      addLine('  crane export ' + ociImage + ' → rootfs.tar', '#88c0d0');
+    }
     setProgress(10);
   }
   addLine('Creating rootfs and config...');

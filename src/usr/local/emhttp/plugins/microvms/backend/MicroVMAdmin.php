@@ -274,9 +274,24 @@ switch ($cmd) {
                 $snapshotKey = "vm-$name";
                 $ctr = "ctr -a $sock -n $vmm";
 
+                // Normalize image reference for containerd (requires fully qualified)
+                $pullImage = $ociImage;
+                // Add docker.io/ prefix if no registry specified
+                if (!str_contains($pullImage, '/')) {
+                    $pullImage = "docker.io/library/$pullImage";
+                } elseif (preg_match('#^docker\.io/([^/]+)$#', $pullImage, $m)) {
+                    // docker.io/nginx → docker.io/library/nginx
+                    $pullImage = "docker.io/library/" . $m[1];
+                } elseif (!str_contains($pullImage, '.') && substr_count($pullImage, '/') === 1) {
+                    // nginx:alpine or ubuntu:22.04 (no dots, single slash = Docker Hub)
+                    $pullImage = "docker.io/library/$pullImage";
+                }
+                // Add :latest if no tag
+                if (!str_contains($pullImage, ':')) $pullImage .= ':latest';
+
                 // 1. Pull image into containerd
-                microvm_log("Pulling OCI via containerd: $ociImage");
-                exec("$ctr images pull --platform linux/amd64 " . escapeshellarg($ociImage) . " 2>&1", $pullOutput, $pullRet);
+                microvm_log("Pulling OCI via containerd: $pullImage");
+                exec("$ctr images pull --platform linux/amd64 " . escapeshellarg($pullImage) . " 2>&1", $pullOutput, $pullRet);
                 microvm_log("ctr pull exit: $pullRet");
                 if ($pullRet !== 0) {
                     echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
@@ -290,7 +305,10 @@ switch ($cmd) {
                     break;
                 }
 
-                // 3. Prepare active snapshot from image layer
+                // 3. Remove stale snapshot if exists (re-create case)
+                exec("$ctr snapshots --snapshotter devmapper remove " . escapeshellarg($snapshotKey) . " 2>/dev/null");
+
+                // 4. Prepare active snapshot from image layer
                 exec("$ctr snapshots --snapshotter devmapper prepare " . escapeshellarg($snapshotKey) . " " . escapeshellarg($parent) . " 2>&1", $prepOut, $prepRet);
                 if ($prepRet !== 0) {
                     echo json_encode(['success' => false, 'error' => 'Failed to prepare snapshot: ' . implode("\n", $prepOut)]);
