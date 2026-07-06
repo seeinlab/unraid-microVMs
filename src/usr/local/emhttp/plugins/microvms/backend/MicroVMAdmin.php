@@ -414,7 +414,7 @@ echo "App started (PID \$APP_PID)"
 
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
-  exec setsid --ctty \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0
+  exec setsid -c \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0
 else
   echo "No shell available. Console disabled."
   wait \$APP_PID
