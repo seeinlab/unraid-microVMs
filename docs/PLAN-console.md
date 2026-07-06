@@ -197,3 +197,27 @@ None — already working.
 - Clean separation of input (FIFO) and output (log file)
 - Proven working on FC already
 - Same console script for both VMMs (code reuse)
+
+
+### Fly.io init-snapshot (reference implementation)
+- Repo: https://github.com/superfly/init-snapshot (303 stars, public)
+- **Rust-based**, compiled with musl (static binary)
+- Reads `/fly/run.json` with: ImageConfig (entrypoint/cmd/env/user/workdir), IPConfigs, mounts, hostname, DNS, tty flag
+- Has dedicated `pty` module for console access
+- Has `api` module (lifecycle/health)
+- Powers every Firecracker microVM at Fly.io
+
+### Comparison
+
+| | Our `/init` (shell) | Fly.io (Rust) | catatonit (C) |
+|--|---|---|---|
+| PID 1 signal/zombie | ❌ | ✅ | ✅ |
+| Network/mount setup | ✅ | ✅ | ❌ |
+| OCI entrypoint/cmd | ✅ | ✅ | ❌ |
+| Console/PTY | Hacky | Proper module | ❌ |
+| Size | ~2KB script | ~5MB binary | ~30KB binary |
+
+### Recommended path (phased):
+1. **Now**: inject `catatonit` static binary (~30KB) + shell init does setup then `exec catatonit -- $CMD`
+2. **Future**: custom Rust init (inspired by Fly's init-snapshot) with integrated network, PTY console, API
+
