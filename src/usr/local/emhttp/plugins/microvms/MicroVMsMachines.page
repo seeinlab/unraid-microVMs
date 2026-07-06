@@ -297,7 +297,7 @@ function vmConsole(name) {
       inp.id = 'console-input';
       inp.type = 'text';
       inp.placeholder = 'command...';
-      inp.style.cssText = 'flex:1;background:#0d1117;color:#3fb950;border:1px solid #3fb950;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;min-width:0;';
+      inp.style.cssText = 'width:calc(100% - 100px);background:#0d1117;color:#3fb950;border:1px solid #3fb950;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;';
       row.appendChild(inp);
       var btn = document.createElement('button');
       btn.textContent = 'Send';
