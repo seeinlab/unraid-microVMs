@@ -1,0 +1,29 @@
+#!/bin/bash
+# /usr/local/bin/microvms-console-fc - bidirectional FC serial console
+# Args: $1 = VM name
+NAME=$1
+FIFO="/tmp/microvms-${NAME}.fifo"
+LOG="/var/log/microvms/firecracker/${NAME}.log"
+
+if [ ! -p "$FIFO" ]; then
+  echo "Error: FIFO $FIFO does not exist"
+  exit 1
+fi
+if [ ! -f "$LOG" ]; then
+  echo "Error: Log $LOG does not exist"
+  exit 1
+fi
+
+# Show existing output
+cat "$LOG"
+
+# Tail new output in background
+tail -f "$LOG" &
+TAIL_PID=$!
+
+# Read stdin and write to FIFO (sends to FC serial)
+while IFS= read -r line; do
+  printf '%s\n' "$line" > "$FIFO"
+done
+
+kill $TAIL_PID 2>/dev/null

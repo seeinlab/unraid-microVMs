@@ -563,14 +563,60 @@ INIT;
         $engine = microvm_get_vmm($configFile);
 
         if ($engine === 'firecracker') {
-            // FC: PTY path saved by rc.microvms on start
-            $ptyFile = "/var/tmp/microvms-{$name}.pty";
-            $ptyPath = file_exists($ptyFile) ? trim(file_get_contents($ptyFile)) : '';
-            if (empty($ptyPath) || !file_exists($ptyPath)) {
-                echo json_encode(['success' => false, 'error' => "No console PTY available. Restart the VM to enable console."]);
+            // FC: uses FIFO for input, log for output
+            $fifoFile = "/var/tmp/microvms-{$name}.fifo";
+            $fifoPath = file_exists($fifoFile) ? trim(file_get_contents($fifoFile)) : "/tmp/microvms-{$name}.fifo";
+            if (!file_exists($fifoPath)) {
+                echo json_encode(['success' => false, 'error' => "No console FIFO available. Restart the VM to enable console."]);
                 break;
             }
-            // $ptyPath is set for FC, fall through to ttyd setup
+
+            // Check ttyd
+            $ttydBin = '/usr/local/bin/ttyd';
+            if (!is_executable($ttydBin)) {
+                echo json_encode(['success' => false, 'error' => 'ttyd not installed.']);
+                break;
+            }
+
+            $sockName = "microvm-{$name}.console";
+            $sockPath = "/var/tmp/{$sockName}.sock";
+            $pidFile = "/var/tmp/ttyd-microvms-{$name}.pid";
+
+            // Kill existing ttyd
+            if (file_exists($pidFile)) {
+                $oldPid = trim(file_get_contents($pidFile));
+                if ($oldPid && file_exists("/proc/$oldPid")) {
+                    exec("kill $oldPid 2>/dev/null");
+                    usleep(500000);
+                }
+                @unlink($pidFile);
+            }
+            @unlink($sockPath);
+
+            $cmd = sprintf(
+                'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
+                "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
+                '-i %s /usr/local/bin/microvms-console-fc %s > /dev/null 2>&1 & echo $!',
+                $ttydBin,
+                escapeshellarg($sockPath),
+                escapeshellarg($name)
+            );
+            $pid = trim(shell_exec($cmd));
+            if ($pid) {
+                file_put_contents($pidFile, $pid);
+            }
+            usleep(500000);
+
+            if (file_exists($sockPath)) {
+                echo json_encode([
+                    'success' => true,
+                    'url' => "/logterminal/{$sockName}/",
+                    'name' => $name,
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'error' => "Failed to start console (ttyd socket not created)"]);
+            }
+            break;
         } elseif ($engine !== 'cloud-hypervisor') {
             echo json_encode(['success' => false, 'error' => "Console not supported for this VMM."]);
             break;

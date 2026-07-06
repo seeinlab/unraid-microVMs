@@ -814,22 +814,20 @@ start_vm() {
   }
 }
 FCEOF
-    # Launch FC via script to allocate PTY (enables interactive console)
+    # Launch FC with FIFO for bidirectional serial console
     local fc_log="/var/log/microvms/firecracker/${name}.log"
+    local fc_fifo="/tmp/microvms-${name}.fifo"
     : > "$fc_log"
-    setsid script -qfc "$FC_BIN --api-sock $sock --config-file $fc_cfg" "$fc_log" </dev/null &>/dev/null &
-    local script_pid=$!
-    sleep 1
-    # Find the PTY allocated by script
-    local fc_pty=""
-    for fd in /proc/$script_pid/fd/*; do
-      local target=$(readlink "$fd" 2>/dev/null)
-      case "$target" in /dev/pts/*) fc_pty="$target"; break;; esac
-    done
-    if [ -n "$fc_pty" ]; then
-      echo "$fc_pty" > "/var/tmp/microvms-${name}.pty"
-      log "FC console PTY: $fc_pty"
-    fi
+    rm -f "$fc_fifo"
+    mkfifo "$fc_fifo"
+    # FC stdin from FIFO, stdout/stderr to log AND to a PTY for ttyd
+    # Use script to allocate a PTY, pipe FIFO into FC's stdin
+    (tail -f "$fc_fifo" | "$FC_BIN" --api-sock "$sock" --config-file "$fc_cfg") >> "$fc_log" 2>&1 &
+    local fc_pid=$!
+    sleep 0.5
+    # Save FIFO path for console input
+    echo "$fc_fifo" > "/var/tmp/microvms-${name}.fifo"
+    log "FC started (PID $fc_pid), console FIFO: $fc_fifo"
   else
     # Cloud Hypervisor
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
