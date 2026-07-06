@@ -123,3 +123,12 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **TODO**: Research if FC snapshot can be combined with our catatonit+fly-init pattern
 - **Reference**: https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md
 
+
+
+### Storage Tab Fixes
+- **Prune button**: Already fixed with `--all` flag (commit `d8a9b7b`) — verify it works now
+- **Rename**: "Prune Unused Images" → "Prune Unused" (shorter, covers images + snapshots)
+- **Image inventory**: Verify it shows images from both namespaces (cloud-hypervisor + firecracker)
+- **Snapshot list**: Should show devmapper snapshots with their associated VMs
+- **"Not valid!" error**: Fix response validation in the frontend after prune action
+
