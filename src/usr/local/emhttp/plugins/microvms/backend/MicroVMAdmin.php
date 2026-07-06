@@ -369,11 +369,48 @@ switch ($cmd) {
             $execCmd = trim("$entrypoint $cmd");
             if (empty($execCmd)) $execCmd = '/bin/sh';
 
-            // Inject init script that:
-            // 1. Mounts virtual filesystems (proc, sys, dev)
-            // 2. Parses kernel cmdline ip=A::G:M:::off to configure eth0
-            // 3. Launches the OCI ENTRYPOINT + CMD
-            $initScript = <<<INIT
+            // Inject init script
+            $enableConsole = ($_REQUEST['console'] ?? 'true') === 'true';
+            if ($enableConsole) {
+                // Console mode: app runs in background, shell in foreground
+                $initScript = <<<INIT
+#!/bin/sh
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+
+# Network config from kernel cmdline
+for d in /sys/class/net/*; do n=\$(basename \$d); [ "\$n" != "lo" ] && IFACE=\$n && break; done
+IFACE=\${IFACE:-eth0}
+CMDLINE=\$(cat /proc/cmdline)
+IP=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
+GW=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
+if [ -n "\$IP" ]; then
+  ip link set lo up 2>/dev/null
+  ip link set \$IFACE up 2>/dev/null
+  ip addr add \${IP}/24 dev \$IFACE 2>/dev/null
+  [ -n "\$GW" ] && ip route add default via \$GW dev \$IFACE 2>/dev/null
+fi
+echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+echo "=== MicroVM Console ==="
+echo "App: $execCmd"
+echo ""
+
+# Start app in background
+$execCmd &
+APP_PID=\$!
+echo "App started (PID \$APP_PID)"
+
+# Interactive shell
+exec /bin/sh
+INIT;
+            } else {
+                // No console: just exec the app directly
+                $initScript = <<<INIT
 #!/bin/sh
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
@@ -398,6 +435,7 @@ echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 # Run OCI entrypoint + cmd
 exec $execCmd
 INIT;
+            }
             file_put_contents("/tmp/microvm-mount-$name/init", $initScript);
             chmod("/tmp/microvm-mount-$name/init", 0755);
 
@@ -443,6 +481,7 @@ INIT;
                 'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/init',
             ],
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
+            'console' => $enableConsole,
         ];
         if (!empty($thinDeviceId)) {
             $config['storage']['thin_device_id'] = $thinDeviceId;

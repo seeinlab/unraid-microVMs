@@ -61,6 +61,11 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 
 <dl>
+  <dt>Console:</dt>
+  <dd><input class="console-add" type="checkbox" id="vm_console" checked></dd>
+</dl>
+
+<dl>
   <dt>Name:</dt>
   <dd><input type="text" id="vm_name" required placeholder="my-web-server" pattern="[a-z0-9\-]+" title="lowercase, numbers, hyphens" style="width:300px;"></dd>
 </dl>
@@ -173,6 +178,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 <script>
 $(function() {
   $('.autostart-add').switchButton({labels_placement:'right', on_label:'YES', off_label:'NO'});
+  $('.console-add').switchButton({labels_placement:'right', on_label:'YES', off_label:'NO'});
 });
 
 function toggleSource(val) {
@@ -306,7 +312,8 @@ function submitForm() {
     disk_size: document.getElementById('vm_disk_size').value,
     storage_type: document.getElementById('vm_storage_type').value,
     rootfs_path: document.getElementById('vm_rootfs_path').value,
-    autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false'
+    autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false',
+    console: $('#vm_console').prop('checked') ? 'true' : 'false'
   }, function(data) {
     var result = (typeof data === 'object') ? data : JSON.parse(data);
     setProgress(100);
