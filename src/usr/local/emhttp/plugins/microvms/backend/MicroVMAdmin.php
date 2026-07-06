@@ -411,12 +411,8 @@ done
 $execCmd &
 APP_PID=\$!
 
-# Wait for app startup output (like Docker/Lambda pattern)
-sleep 2
-
-echo ""
-echo "=== microVM booted! ==="
-echo ""
+# Print boot marker after app has time to output startup messages
+(sleep 3; echo ""; echo "=== microVM booted! ==="; echo "") &
 
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
