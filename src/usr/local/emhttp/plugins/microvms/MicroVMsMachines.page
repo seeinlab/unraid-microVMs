@@ -201,10 +201,6 @@ function addMicroVMContext(name, state, engine) {
         vmSnapshots(name);
       }});
     }
-    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
-      e.preventDefault();
-      vmVmmLogs(name, engine);
-    }});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
@@ -220,10 +216,6 @@ function addMicroVMContext(name, state, engine) {
         vmSnapshots(name);
       }});
     }
-    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
-      e.preventDefault();
-      vmVmmLogs(name, engine);
-    }});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
@@ -268,29 +260,57 @@ function vmAction(action, name) {
 }
 
 function vmConsole(name) {
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console', name: name}, function(data) {
-    if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch(e) {}
-    }
-    if (data.success && data.url) {
-      var w = 900, h = 600;
-      var left = (screen.width - w) / 2;
-      var top = (screen.height - h) / 2;
-      var popup = window.open(
-        data.url,
-        'microvm_console_' + name,
-        'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no'
-      );
-      if (!popup) {
-        window.open(data.url, '_blank');
-      }
-    } else {
-      var errMsg = data.error || 'Failed to start console relay';
-      swal({title: 'Console Error', text: errMsg, type: 'error'});
-    }
-  }).fail(function() {
-    swal({title: 'Console Error', text: 'Failed to connect to backend', type: 'error'});
+  // Console popup: output box (serial log) + terminal input box
+  swal({
+    title: name + ' — Console',
+    text: '<div style="text-align:left;">' +
+      '<pre id="console-output" style="max-height:350px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;min-height:200px;">Loading...</pre>' +
+      '<div style="margin-top:8px;display:flex;align-items:center;">' +
+        '<span style="color:#0f0;font-family:monospace;margin-right:8px;">Terminal:</span>' +
+        '<input id="console-input" type="text" style="flex:1;background:#1a1a2e;color:#0f0;border:1px solid #444;padding:6px 10px;font-family:monospace;font-size:12px;border-radius:4px;" placeholder="Type command and press Enter..." autocomplete="off">' +
+      '</div>' +
+    '</div>',
+    html: true,
+    showCancelButton: false,
+    confirmButtonText: 'Close',
+    customClass: 'console-swal'
   });
+
+  // Load output from serial log
+  var refreshOutput = function() {
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_output', name: name}, function(data) {
+      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+      if (data && data.success) {
+        var pre = document.getElementById('console-output');
+        if (pre) {
+          pre.textContent = data.log || '(empty)';
+          pre.scrollTop = pre.scrollHeight;
+        }
+      }
+    });
+  };
+  refreshOutput();
+  var refreshInterval = setInterval(refreshOutput, 3000);
+
+  // Terminal input: send command via FIFO
+  setTimeout(function() {
+    var input = document.getElementById('console-input');
+    if (input) {
+      input.focus();
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && this.value.trim()) {
+          var cmd = this.value;
+          this.value = '';
+          $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_input', name: name, input: cmd}, function() {
+            setTimeout(refreshOutput, 500);
+          });
+        }
+      });
+    }
+  }, 300);
+
+  // Stop refresh when swal closes
+  $(document).on('click', '.confirm, .cancel', function() { clearInterval(refreshInterval); });
 }
 
 function vmResize(name, engine) {

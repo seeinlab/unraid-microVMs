@@ -909,6 +909,49 @@ INIT;
         }
         break;
 
+    case 'console_output':
+        // Read serial log for Console output box
+        $name = $_REQUEST['name'] ?? '';
+        if (!preg_match('/^[a-z0-9\-]+$/', $name)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid name']);
+            break;
+        }
+        $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+        $configFile = microvm_find_config_file("$vmdir/$name");
+        $vmm = $configFile ? microvm_get_vmm($configFile) : 'cloud-hypervisor';
+        if ($vmm === 'cloud-hypervisor') {
+            $logfile = "/var/log/microvms/cloud-hypervisor/{$name}.serial.log";
+        } else {
+            $logfile = "/var/log/microvms/firecracker/{$name}.log";
+        }
+        if (file_exists($logfile)) {
+            $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
+            $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
+            echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
+        } else {
+            echo json_encode(['success' => true, 'log' => '(no output yet)']);
+        }
+        break;
+
+    case 'console_input':
+        // Send command to VM via FIFO
+        $name = $_REQUEST['name'] ?? '';
+        $input = $_REQUEST['input'] ?? '';
+        if (!preg_match('/^[a-z0-9\-]+$/', $name)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid name']);
+            break;
+        }
+        $fifo = "/tmp/microvms-{$name}.fifo";
+        if (file_exists($fifo)) {
+            $escaped = str_replace("'", "'\\''", $input);
+            exec("printf '%s\\n' '$escaped' > " . escapeshellarg($fifo) . " 2>&1 &");
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'No FIFO available. Is the VM running?']);
+        }
+        break;
+
     case 'view_log':
         $service = $_REQUEST['service'] ?? '';
         $log_map = [
@@ -941,11 +984,8 @@ INIT;
         }
 
         if (file_exists($logfile)) {
-            // Show boot + app output up to console marker (exclude interactive shell)
-            $log = shell_exec("sed -n '1,/--- console ---/p' " . escapeshellarg($logfile) . " 2>/dev/null");
-            if (empty(trim($log))) {
-                $log = shell_exec("tail -200 " . escapeshellarg($logfile) . " 2>/dev/null");
-            }
+            // Show full log (boot + app + kernel events)
+            $log = shell_exec("tail -200 " . escapeshellarg($logfile) . " 2>/dev/null");
             // Strip ANSI escape sequences (colors, cursor queries)
             $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
