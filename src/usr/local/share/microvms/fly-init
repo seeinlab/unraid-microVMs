@@ -68,10 +68,23 @@ export COLUMNS=200
 export LINES=50
 
 # 6. Build exec command from entrypoint + cmd
-ENTRYPOINT=$(json_array entrypoint)
-CMD=$(json_array cmd)
-EXEC_CMD="${ENTRYPOINT:+$ENTRYPOINT }${CMD}"
-[ -z "$EXEC_CMD" ] && EXEC_CMD="/bin/sh"
+# Write command to helper script (preserves args with spaces/semicolons)
+RUNCMD="/fly/run.sh"
+{
+  echo "#!/bin/sh"
+  # Build command from JSON arrays, quoting each element
+  printf 'exec'
+  sed -n '/"entrypoint".*\[/,/\]/p' "$CONFIG" | grep -v '"entrypoint"' | sed 's/[][]//g;s/,//g;s/^[[:space:]]*//' | grep -v '^$' | while IFS= read -r arg; do
+    arg=$(echo "$arg" | sed 's/^"//;s/"$//')
+    printf ' "%s"' "$arg"
+  done
+  sed -n '/"cmd".*\[/,/\]/p' "$CONFIG" | grep -v '"cmd"' | sed 's/[][]//g;s/,//g;s/^[[:space:]]*//' | grep -v '^$' | while IFS= read -r arg; do
+    arg=$(echo "$arg" | sed 's/^"//;s/"$//')
+    printf ' "%s"' "$arg"
+  done
+  echo ""
+} > "$RUNCMD"
+chmod 755 "$RUNCMD"
 
 # 7. Console mode
 CONSOLE=$(json_bool console)
@@ -82,7 +95,7 @@ done
 
 if [ "$CONSOLE" = "true" ] && [ -n "$SHELL" ]; then
   # Run app via catatonit in background (proper signal handling)
-  /sbin/catatonit -- sh -c "$EXEC_CMD" &
+  /sbin/catatonit -- /fly/run.sh &
   APP_PID=$!
 
   # Spawn interactive shell on serial console
@@ -98,5 +111,5 @@ if [ "$CONSOLE" = "true" ] && [ -n "$SHELL" ]; then
   while true; do sleep 3600; done
 else
   # No console: exec through catatonit as PID 1
-  exec /sbin/catatonit -- sh -c "$EXEC_CMD"
+  exec /sbin/catatonit -- /fly/run.sh
 fi
