@@ -333,23 +333,15 @@ switch ($cmd) {
                     break;
                 }
 
-                // Raw: dd creates sparse file → mkfs.ext4 → mount file → extract tar
-                // → inject init → umount → VM uses file directly (resolved via resolve_path)
+                // Raw: dd creates sparse file → mkfs.ext4 → mount+inject in single script
                 $rootfs = "$vmPath/rootfs.raw";
                 exec("dd if=/dev/zero of=$rootfs bs=1M count=$diskSize 2>/dev/null");
                 exec("mkfs.ext4 -F $rootfs 2>/dev/null");
-                exec("mkdir -p /tmp/microvm-mount-$name");
                 $mountDev = $rootfs;
                 foreach (["/mnt/cache", "/mnt/mtier", "/mnt/ztier", "/mnt/rtier"] as $base) {
                     $candidate = $base . "/" . ltrim(str_replace("/mnt/user/", "", $rootfs), "/");
                     if (file_exists($candidate)) { $mountDev = $candidate; break; }
                 }
-                exec("mount $mountDev /tmp/microvm-mount-$name");
-            }
-
-            // Extract tar only for raw rootFS (thin pool already has image content from containerd)
-            if ($storageType !== 'thin') {
-                exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
             }
 
             // Get OCI image entrypoint and cmd
@@ -361,7 +353,6 @@ switch ($cmd) {
                     $imgCfg = json_decode($imageConfig, true);
                     $ep = $imgCfg['config']['Entrypoint'] ?? [];
                     $cm = $imgCfg['config']['Cmd'] ?? [];
-                    // Shell-escape each arg to preserve spaces/semicolons
                     $entrypoint = implode(' ', array_map('escapeshellarg', $ep));
                     $cmd = implode(' ', array_map('escapeshellarg', $cm));
                 }
@@ -369,17 +360,8 @@ switch ($cmd) {
             $execCmd = trim("$entrypoint $cmd");
             if (empty($execCmd)) $execCmd = '/bin/sh';
 
-            // Inject generic init + /fly/run.json (Fly.io pattern)
+            // Generate /fly/run.json content
             $enableConsole = ($_REQUEST['console'] ?? 'true') === 'true';
-            $mountPath = "/tmp/microvm-mount-$name";
-
-            // Create directories and inject files (use shell — PHP copy fails on mount points)
-            exec("mkdir -p $mountPath/fly $mountPath/sbin");
-            exec("cp /usr/local/share/microvms/fly-init $mountPath/fly/init && chmod 755 $mountPath/fly/init");
-            exec("cp /usr/local/share/microvms/catatonit $mountPath/sbin/catatonit && chmod 755 $mountPath/sbin/catatonit");
-            exec("ln -sf /fly/init $mountPath/init");
-
-            // Generate /fly/run.json (per-VM config)
             $runConfig = [
                 'entrypoint' => $entrypoint ? array_map('trim', explode("' '", trim($entrypoint, "'"))) : [],
                 'cmd' => $cmd ? array_map('trim', explode("' '", trim($cmd, "'"))) : [],
@@ -394,15 +376,43 @@ switch ($cmd) {
                 'tty' => true,
             ];
             $runJson = json_encode($runConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            exec("cat > $mountPath/fly/run.json << 'RUNJSON'\n$runJson\nRUNJSON");
 
-            if ($storageType === 'thin') {
-                // Keep snapshot but unmount via containerd
-                exec("$ctr images unmount /tmp/microvm-mount-$name 2>/dev/null");
-            } else {
-                exec("umount /tmp/microvm-mount-$name");
+            // Single script: mount → extract → inject → run.json → unmount
+            // (Unraid pattern: all mount ops in one process to ensure namespace consistency)
+            $mountPath = "/tmp/microvm-mount-$name";
+            $tarCmd = ($storageType !== 'thin' && isset($tmpTar)) ? "tar -xf $tmpTar -C $mountPath" : "true";
+            $umountCmd = ($storageType === 'thin') ? "$ctr images unmount $mountPath 2>/dev/null" : "umount $mountPath";
+
+            $createScript = <<<SCRIPT
+#!/bin/bash
+set -e
+MOUNT="$mountPath"
+mkdir -p \$MOUNT
+mount $mountDev \$MOUNT
+$tarCmd
+mkdir -p \$MOUNT/fly \$MOUNT/sbin
+cp /usr/local/share/microvms/fly-init \$MOUNT/fly/init
+chmod 755 \$MOUNT/fly/init
+cp /usr/local/share/microvms/catatonit \$MOUNT/sbin/catatonit
+chmod 755 \$MOUNT/sbin/catatonit
+ln -sf /fly/init \$MOUNT/init
+cat > \$MOUNT/fly/run.json << 'RUNJSONEOF'
+$runJson
+RUNJSONEOF
+$umountCmd
+rmdir \$MOUNT 2>/dev/null
+SCRIPT;
+            $scriptPath = "/tmp/microvm-create-$name.sh";
+            file_put_contents($scriptPath, $createScript);
+            chmod($scriptPath, 0755);
+            exec("$scriptPath 2>&1", $scriptOut, $scriptRet);
+            @unlink($scriptPath);
+            if ($scriptRet !== 0) {
+                microvm_log("Create script FAILED (ret=$scriptRet): " . implode("\n", $scriptOut));
+                echo json_encode(['success' => false, 'error' => 'rootfs injection failed: ' . implode(' ', $scriptOut)]);
+                break;
             }
-            exec("rmdir /tmp/microvm-mount-$name 2>/dev/null");
+            microvm_log("rootfs created and injected OK");
             if ($storageType !== 'thin' && isset($tmpTar)) @unlink($tmpTar);
 
         } elseif ($source === 'existing' && !empty($rootfsPath)) {
