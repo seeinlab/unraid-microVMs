@@ -78,3 +78,15 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **Fix**: Add `--all` flag to the prune command, or provide separate buttons for "Prune unused" vs "Prune all"
 - **Also**: The "Not valid!" error suggests a validation issue in the response handling
 
+
+
+### IP address collision on create
+- **Symptom**: Two VMs get assigned the same IP (192.168.50.220)
+- **Cause**: IP allocation doesn't check existing VM configs for used IPs
+- **Fix**: Scan all VM configs for assigned IPs before allocating a new one (or let user always specify manually)
+
+### TAP interface not reusing lower numbers
+- **Symptom**: New VMs get tap10, tap11, tap12 even when tap0-tap5 existed before
+- **Cause**: TAP allocation fix now scans ALL system TAPs (including from libvirt/other services)
+- **Fix**: Only count TAPs that are owned by microvms plugin (e.g., check if master is our bridge AND created by us). Or maintain a registry file of plugin-owned TAPs.
+
