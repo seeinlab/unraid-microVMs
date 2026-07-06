@@ -96,3 +96,16 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **Status**: Existing VMs cosmetic only, self-resolves on recreate (TERM=dumb fix in new init)
 - **No action needed**
 
+
+
+### UI: Add VM Form Improvements
+- **Autostart**: default to Yes (most VMs should autostart)
+- **Networking section**: group IP Address + Gateway together, smarter form:
+  - Auto-suggest next available IP from subnet
+  - Gateway auto-fill from bridge config
+  - Future: internal IPAM (IP Address Management) — allocate from pool, no manual entry
+  - Future: remote IPAM integration (like Fly.io/AWS VPC pattern)
+- **Field ordering**: more logical flow (Name → Image → Resources → Network → Options)
+- **Rename "OCI/Docker Image"** → "Container Image" or "Image" (simpler, everyone knows what it means)
+- **Reference**: Fly.io `fly machine run` — minimal required fields, smart defaults for everything else
+
