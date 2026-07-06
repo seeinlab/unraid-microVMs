@@ -831,6 +831,29 @@ INIT;
         echo json_encode(['success' => true, 'path' => $rootfs]);
         break;
 
+    case 'vm_log':
+        // VM-level output (kernel boot + init)
+        // FC: the process log IS the serial output
+        // CH: serial PTY output captured to a separate .serial.log file
+        $engine = $_REQUEST['engine'] ?? 'cloud-hypervisor';
+        $allowed_vmms = ['cloud-hypervisor', 'firecracker'];
+        if (!in_array($engine, $allowed_vmms) || !preg_match('/^[a-z0-9\-]+$/', $name)) {
+            echo json_encode(['success' => false, 'error' => "Invalid engine or name"]);
+            break;
+        }
+        if ($engine === 'firecracker') {
+            $logfile = "/var/log/microvms/firecracker/{$name}.log";
+        } else {
+            $logfile = "/var/log/microvms/cloud-hypervisor/{$name}.serial.log";
+        }
+        if (file_exists($logfile)) {
+            $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
+            echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
+        } else {
+            echo json_encode(['success' => true, 'log' => '(no VM output captured yet)']);
+        }
+        break;
+
     case 'view_log':
         $service = $_REQUEST['service'] ?? '';
         $log_map = [

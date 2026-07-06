@@ -837,7 +837,24 @@ FCEOF
       -v >> "/var/log/microvms/cloud-hypervisor/${name}.log" 2>&1 &
   fi
 
-  log "Started VM '$name' (vmm=$vmm, PID=$!)"
+  local vm_pid=$!
+  log "Started VM '$name' (vmm=$vmm, PID=$vm_pid)"
+
+  # For Cloud Hypervisor: capture serial PTY output to a separate file
+  if [ "$vmm" = "cloud-hypervisor" ]; then
+    local serial_log="/var/log/microvms/cloud-hypervisor/${name}.serial.log"
+    # Wait briefly for CH to report PTY path in its log
+    sleep 1
+    local pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" | head -1)
+    if [ -n "$pty_path" ] && [ -e "$pty_path" ]; then
+      cat "$pty_path" >> "$serial_log" 2>/dev/null &
+      local serial_pid=$!
+      echo "$serial_pid" > "/var/tmp/microvms-${name}-serial.pid"
+      log "Capturing serial output from $pty_path (PID $serial_pid)"
+    else
+      log "WARNING: Could not find PTY for serial capture on '$name'"
+    fi
+  fi
 }
 
 stop_vm() {
@@ -856,6 +873,14 @@ stop_vm() {
   if [ -f "$ttyd_log_pid" ]; then
     kill $(cat "$ttyd_log_pid") 2>/dev/null
     rm -f "$ttyd_log_pid"
+  fi
+
+  # Kill serial capture process (CH PTY → serial.log)
+  local serial_pid_file="/var/tmp/microvms-${name}-serial.pid"
+  if [ -f "$serial_pid_file" ]; then
+    kill $(cat "$serial_pid_file") 2>/dev/null
+    rm -f "$serial_pid_file"
+    log "Stopped serial capture for: $name"
   fi
 
   # Detect VMM from config (new or legacy format)
