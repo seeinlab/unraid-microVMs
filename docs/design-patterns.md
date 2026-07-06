@@ -94,16 +94,15 @@
 ### Thin Pool (devmapper via containerd)
 ```
 One shared pool: microvms-thinpool
-  └── All managed via containerd ctr API (BoltDB tracks device IDs)
-      Namespaces: cloud-hypervisor, firecracker, flintlock
+  └── Managed via containerd ctr API (BoltDB tracks device IDs)
+      Namespaces: cloud-hypervisor, firecracker (separate per VMM)
 
-API:
-  create_thin_rootfs  → ctr snapshots prepare "vm-{name}" ""
-  activate_thin_rootfs → ctr snapshots mounts "vm-{name}" /tmp
-  delete_thin_rootfs  → ctr snapshots remove "vm-{name}"
+Create: ctr images mount --snapshotter devmapper --rw {image} /tmp/microvm-mount-{name}
+Start:  ctr snapshots mounts /tmp "/tmp/microvm-mount-{name}" → /dev/mapper/...
+Delete: ctr snapshots remove "/tmp/microvm-mount-{name}"
 
 Device path: /dev/mapper/microvms-thinpool-snap-{id}
-No dmsetup for device management (only for pool creation).
+No disk size needed (thin provisioned, auto-grows within pool).
 ```
 
 ### Storage Types (per-VM choice)

@@ -159,10 +159,13 @@ No direct `dmsetup create-thin` / device ID tracking needed — containerd handl
 1. ~~**Option C**: Replace dmsetup with `ctr snapshots`~~ ✅ Verified working
 2. ~~**FC binary**~~ ✅ Fixed v1.16.1 (was extracting .debug variant)
 3. ~~**VMM detection**~~ ✅ By filename everywhere (no JSON field)
-4. **CH LAN connectivity**: TAP/macvtap networking for LAN-accessible VMs
-5. **TLS/auth for flintlockd**: Auto self-signed cert + basic auth token
-6. **Logs button**: Show per-VM log from /var/log/microvms/{vmm}/{name}.log
-7. **Update README.md**: Root level readme for GitHub
+4. ~~**Thin pool OCI flow**~~ ✅ `ctr images mount` (pull+unpack+snapshot+mount)
+5. ~~**Init injection**~~ ✅ OCI ENTRYPOINT/CMD from `crane config`
+6. ~~**CH disk readonly**~~ ✅ `readonly=false` flag added
+7. **CH LAN connectivity**: Verify nginx reachable after init/disk fixes
+8. **TLS/auth for flintlockd**: Deferred
+9. **Per-VM Logs button**: Show /var/log/microvms/{vmm}/{name}.log
+10. **Update README.md**: Root level readme for GitHub
 
 ---
 

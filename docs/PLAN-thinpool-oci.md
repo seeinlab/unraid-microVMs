@@ -1,190 +1,114 @@
-# Plan: Thin Pool — Full Containerd OCI Flow (VERIFIED)
+# Thin Pool — Containerd OCI Flow (IMPLEMENTED)
 
-## Verified Commands on Unraid
+## Final Implementation
 
+### Create VM (Thin Pool)
 ```bash
 SOCK=/var/run/microvms/containerd.sock
-NS=cloud-hypervisor  # or firecracker
+NS=cloud-hypervisor  # or firecracker (separate namespaces)
 
-# 1. Pull image (stores in containerd content store)
-ctr -a $SOCK -n $NS images pull docker.io/library/alpine:3.20
+# 1. Pull image
+ctr -a $SOCK -n $NS images pull --platform linux/amd64 docker.io/library/nginx:alpine
 
-# 2. Mount image as writable thin device (ONE command does it all!)
-ctr -a $SOCK -n $NS images mount --snapshotter devmapper --rw \
-  docker.io/library/alpine:3.20 /tmp/microvm-mount-{name}
-# → creates /dev/mapper/microvms-thinpool-snap-{id}
-# → mounts it at /tmp/microvm-mount-{name}
-# → snapshot key = "/tmp/microvm-mount-{name}" (or use custom key?)
+# 2. Mount as writable devmapper snapshot (ONE command: pull+unpack+snapshot+mount)
+ctr -a $SOCK -n $NS images mount --snapshotter devmapper --rw --platform linux/amd64 \
+  docker.io/library/nginx:alpine /tmp/microvm-mount-{name}
 
-# 3. Inject /init script (while mounted)
-# ... write /init to mount point ...
-
-# 4. Unmount (snapshot PERSISTS, device stays in pool)
+# 3. Inject /init (network config + OCI ENTRYPOINT/CMD)
+# 4. Unmount (snapshot persists)
 ctr -a $SOCK -n $NS images unmount /tmp/microvm-mount-{name}
-
-# 5. Get device path for VM start
-ctr -a $SOCK -n $NS snapshots --snapshotter devmapper mounts /tmp "/tmp/microvm-mount-{name}"
-# → "mount -t ext4 /dev/mapper/microvms-thinpool-snap-9 /tmp"
-# → parse: /dev/mapper/microvms-thinpool-snap-9
-
-# 6. Delete (when VM removed)
-ctr -a $SOCK -n $NS snapshots --snapshotter devmapper remove "/tmp/microvm-mount-{name}"
 ```
 
-## Better: Use VM name as snapshot key
-
-Instead of `/tmp/microvm-mount-{name}` as key, we should use `vm-{name}`:
-
+### Start VM (Thin Pool)
 ```bash
-# Create: use --label or direct snapshot prepare from image digest
-# After images pull, the image layers create committed snapshots.
-# We prepare an active snapshot from the image's top layer.
+# Get device path from snapshot (key = mount path)
+ctr -a $SOCK -n $NS snapshots --snapshotter devmapper mounts /tmp "/tmp/microvm-mount-{name}"
+# → mount -t ext4 /dev/mapper/microvms-thinpool-snap-{id} /tmp
+# Parse: /dev/mapper/microvms-thinpool-snap-{id}
 
-# Get image's top layer chain ID:
-PARENT=$(ctr -a $SOCK -n $NS snapshots --snapshotter devmapper list | grep "Committed" | awk '{print $1}')
-
-# Prepare named snapshot from parent:
-ctr -a $SOCK -n $NS snapshots --snapshotter devmapper prepare "vm-{name}" "$PARENT"
-
-# Get device and mount for init injection:
-DEVICE=$(ctr -a $SOCK -n $NS snapshots --snapshotter devmapper mounts /tmp "vm-{name}" | grep -oP '/dev/mapper/\S+')
-mount $DEVICE /tmp/microvm-mount-{name}
-# inject /init
-umount /tmp/microvm-mount-{name}
-
-# VM start: get device path
-DEVICE=$(ctr -a $SOCK -n $NS snapshots --snapshotter devmapper mounts /tmp "vm-{name}" | grep -oP '/dev/mapper/\S+')
-# → use $DEVICE as disk for CH/FC
-
-# VM delete:
-ctr -a $SOCK -n $NS snapshots --snapshotter devmapper remove "vm-{name}"
-# Optionally: ctr -a $SOCK -n $NS images rm docker.io/... (if no other VMs use it)
+# Pass to CH/FC as disk
+cloud-hypervisor --disk "path=/dev/mapper/microvms-thinpool-snap-14,readonly=false" ...
 ```
 
-## UI Changes (AddMicroVMs.page)
+### Delete VM (Thin Pool)
+```bash
+# Remove snapshot
+ctr -a $SOCK -n $NS snapshots --snapshotter devmapper remove "/tmp/microvm-mount-{name}"
 
-### Storage Type dropdown:
-- **"Thin Pool"** — uses containerd OCI pull + devmapper snapshot
-- **"Raw rootFS"** — uses crane export + raw file (current flow)
-
-### When "Thin Pool" selected:
-- HIDE: "rootFS Source" dropdown, "Disk Size" field
-- SHOW: "OCI/Docker Image" field only
-- Note: size is auto-managed by thin provisioning
-
-### When "Raw rootFS" selected:
-- SHOW: "rootFS Source", "OCI/Docker Image" OR "rootFS path", "Disk Size"
-- Same as current behavior
-
-### Memory:
-- "Initial Memory" → stays (boot memory)
-- Add "Max Memory" (CH only, for hotplug: default = initial × 2)
-- Hide "Max Memory" if Firecracker selected
-
-## Backend Changes (MicroVMAdmin.php)
-
-### Thin Pool create path:
-```php
-$sock = '/var/run/microvms/containerd.sock';
-$snapshotKey = "vm-$name";
-
-// 1. Pull image
-exec("ctr -a $sock -n $vmm images pull " . escapeshellarg($ociImage) . " 2>&1", $out, $ret);
-
-// 2. Get parent (image's committed layer)
-$parent = trim(shell_exec("ctr -a $sock -n $vmm snapshots --snapshotter devmapper list 2>/dev/null | grep Committed | tail -1 | awk '{print \$1}'"));
-
-// 3. Prepare snapshot from parent
-exec("ctr -a $sock -n $vmm snapshots --snapshotter devmapper prepare " . escapeshellarg($snapshotKey) . " " . escapeshellarg($parent) . " 2>&1", $out, $ret);
-
-// 4. Get device path and mount
-$device = trim(shell_exec("ctr -a $sock -n $vmm snapshots --snapshotter devmapper mounts /tmp " . escapeshellarg($snapshotKey) . " 2>/dev/null | grep -oP '/dev/mapper/\\S+'"));
-exec("mount $device /tmp/microvm-mount-$name");
-
-// 5. Inject /init
-// ... same init script injection ...
-
-// 6. Unmount
-exec("umount /tmp/microvm-mount-$name");
+# If no other VMs use same image, optionally clean image layers
+ctr -a $SOCK -n $NS images rm docker.io/library/nginx:alpine
 ```
 
-### Config JSON (thin pool):
+## Namespace Design
+
+| Namespace | Used by | Rationale |
+|-----------|---------|-----------|
+| `cloud-hypervisor` | CH VMs | Matches flintlock pattern, clean isolation |
+| `firecracker` | FC VMs | Independent VMM lifecycle tracking |
+| `flintlock` | flintlockd (if enabled) | gRPC orchestration, multi-host |
+
+Separate namespaces because:
+- Flintlock compatibility (if Liquidmetal enabled later)
+- Clean `ctr snapshots list -n {vmm}` per VMM
+- Storage saving negligible (users typically use one VMM)
+
+## Image Reference Normalization
+
+containerd requires fully qualified references:
+- `nginx:alpine` → `docker.io/library/nginx:alpine`
+- `docker.io/nginx:alpine` → `docker.io/library/nginx:alpine`
+- `ghcr.io/user/image:tag` → unchanged
+
+## Init Script Injection
+
+Every VM (both thin and raw) gets `/init` that:
+1. Mounts /proc, /sys, /dev, /dev/pts
+2. Parses kernel `ip=A::G:M:::off` cmdline → configures eth0
+3. Sets DNS (8.8.8.8, 1.1.1.1)
+4. Runs OCI ENTRYPOINT + CMD (from `crane config`)
+
+CMD quoting: each arg shell-escaped via `escapeshellarg()`:
+- `["nginx", "-g", "daemon off;"]` → `'nginx' '-g' 'daemon off;'`
+
+## CH Disk Config
+
+```
+--disk "path=$device,readonly=false"
+```
+Required because CH v52 auto-detects raw type and disables sector 0 writes without explicit flag.
+
+## Config JSON
+
+### Thin Pool:
 ```json
 {
   "storage": {
     "type": "thin",
-    "image_ref": "docker.io/nginx:stable-trixie"
+    "image_ref": "docker.io/library/nginx:alpine"
   }
 }
 ```
-- No `size_mb` (auto-managed)
-- `image_ref` for reference only
 
-## rc.microvms Changes
-
-### activate_thin_rootfs (already works):
-```bash
-# Gets device path from snapshot
-ctr snapshots --snapshotter devmapper mounts /tmp "vm-{name}" | grep -oP '/dev/mapper/\S+'
-```
-
-### CH launch — add max memory:
-```bash
---memory "size=${memory}M,hotplug_size=${max_memory}M"
-```
-Currently: `hotplug_size=$((memory * 2))M` — make configurable.
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `AddMicroVMs.page` | Hide fields based on storage type, add max memory, rename labels |
-| `MicroVMAdmin.php` | New thin pool path (ctr pull → prepare → mount → inject → unmount) |
-| `MicroVMsSettingsGeneral.page` | Add DEFAULT_MAX_MEMORY |
-| `rc.microvms` | Read max_memory from config, use in CH launch |
-| `common.php` | Update microvm_get_network if needed |
-
-## Test Plan
-
-1. ✅ `ctr images pull` — verified working
-2. ✅ `ctr images mount --snapshotter devmapper` — verified working  
-3. ✅ Snapshot persists after unmount — verified
-4. ✅ `snapshots mounts` returns device path — verified
-5. [ ] Full create flow from UI → VM boots with thin device
-6. [ ] VM accessible on LAN
-7. [ ] Delete removes snapshot
-
-
-## Cleanup: Unused Image Layers
-
-### On VM Delete:
-```php
-// After removing snapshot vm-{name}:
-// Check if any other VM uses the same image_ref
-$imageRef = $config['storage']['image_ref'] ?? '';
-$stillUsed = false;
-foreach (glob("$vmdir/*/cloud-hypervisor.json") + glob("$vmdir/*/firecracker.json") as $f) {
-    $other = json_decode(file_get_contents($f), true);
-    if (($other['storage']['image_ref'] ?? '') === $imageRef) { $stillUsed = true; break; }
-}
-if (!$stillUsed && $imageRef) {
-    exec("ctr -a $sock -n $vmm images rm " . escapeshellarg($imageRef) . " 2>/dev/null");
+### Raw rootFS:
+```json
+{
+  "storage": {
+    "type": "raw",
+    "size_mb": 200,
+    "image_ref": "docker.io/library/nginx:alpine"
+  }
 }
 ```
 
-### Storage Tab (rename from "rootFS"):
-- Add "Prune Unused Images" button
-- Shows: used images, space usage, number of snapshots
-- Prune command: `ctr -a $SOCK -n {ns} images prune`
+## UI (AddMicroVMs.page)
 
-## Tab Rename
+- Storage Type: "Thin Pool" / "Raw rootFS"
+- When Thin Pool: hides Disk Size, rootFS Source
+- When Raw rootFS: shows all fields
+- Progress: shows `ctr images pull` for thin, `crane export` for raw
 
-- **"rootFS" tab** → **"Storage" tab**
-- File: `MicroVMsRootFS.page` stays (filename doesn't matter for tab title)
-- Change `Title="rootFS"` to `Title="Storage"` in the .page header
+## Cleanup
 
-## Additional File to Modify
-
-| File | Change |
-|------|--------|
-| `MicroVMsRootFS.page` | Rename title to "Storage", add "Prune Unused Images" button |
+- On VM delete: remove snapshot, optionally remove image if unused
+- Storage tab: "Prune Unused Images" button (planned)
+- `ctr -a $SOCK -n $NS images prune` for bulk cleanup
