@@ -396,7 +396,10 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HOME=/root
-export TERM=vt100
+export TERM=dumb
+export COLUMNS=200
+export LINES=50
+stty columns 200 rows 50 2>/dev/null
 
 # Find available shell
 SHELL=""
@@ -1003,6 +1006,8 @@ INIT;
 
         if (file_exists($logfile)) {
             $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
+            // Strip ANSI escape sequences (colors, cursor queries)
+            $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
         } else {
             echo json_encode(['success' => true, 'log' => '(log file does not exist yet)']);
