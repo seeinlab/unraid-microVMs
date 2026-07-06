@@ -505,15 +505,13 @@ INIT;
             break;
         }
 
-        // Parse PTY path from CH log
+        // Parse PTY path from CH log (use LAST match — log accumulates across restarts)
         $ptyPath = null;
         if (file_exists($logFile)) {
             $logContent = file_get_contents($logFile);
-            if (preg_match('/serial:\s*SerialConfig\s*\{[^}]*file:\s*Some\("(\/dev\/pts\/\d+)"\)/s', $logContent, $matches)) {
-                $ptyPath = $matches[1];
-            }
-            if (!$ptyPath && preg_match('/serial.*?(?:file|pty)[:\s]*.*?(\/dev\/pts\/\d+)/si', $logContent, $matches2)) {
-                $ptyPath = $matches2[1];
+            // Find all PTY paths and take the last one (most recent boot)
+            if (preg_match_all('/\/dev\/pts\/\d+/', $logContent, $allMatches)) {
+                $ptyPath = end($allMatches[0]);
             }
         }
 

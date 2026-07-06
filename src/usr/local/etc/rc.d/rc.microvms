@@ -821,6 +821,10 @@ FCEOF
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
     [ -z "$ch_cmdline" ] && ch_cmdline="$cmdline"
 
+    # Truncate log for fresh run (avoid stale PTY paths)
+    : > "/var/log/microvms/cloud-hypervisor/${name}.log"
+    : > "/var/log/microvms/cloud-hypervisor/${name}.serial.log" 2>/dev/null
+
     # Calculate hotplug size (max_memory - memory)
     local hotplug_size=$((max_memory - memory))
     [ $hotplug_size -lt 0 ] && hotplug_size=$memory
@@ -845,7 +849,7 @@ FCEOF
     local serial_log="/var/log/microvms/cloud-hypervisor/${name}.serial.log"
     # Wait briefly for CH to report PTY path in its log
     sleep 1
-    local pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" | head -1)
+    local pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" | tail -1)
     if [ -n "$pty_path" ] && [ -e "$pty_path" ]; then
       cat "$pty_path" >> "$serial_log" 2>/dev/null &
       local serial_pid=$!
