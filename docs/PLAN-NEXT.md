@@ -55,3 +55,18 @@ cd src && tar -czf ../plugin/microvms-2026.07.05.1.tgz usr/ && cd ..
 ```bash
 ssh -i ~/.ssh/mastervault root@192.168.50.6
 ```
+
+
+## Known Issues / Planned Fixes
+
+### Thin Pool Create hangs on `ctr images pull`
+- **Symptom**: Creating a VM with thin pool storage gets stuck at "Pulling image..." forever
+- **Cause**: `ctr images pull` or `ctr images mount --snapshotter devmapper` can hang if:
+  - containerd's devmapper snapshotter is in a bad state
+  - The image is already pulled but the snapshot mount fails silently
+  - Thin pool is full or has stale locks
+- **Workaround**: Force stop the create, then manually `ctr -a /var/run/microvms/containerd.sock images ls` to check state
+- **TODO**: Add timeout to the pull/mount step (e.g., 60s), show error if exceeded
+- **TODO**: Pre-check if image already exists before pulling
+- **TODO**: Add a "Cancel" button to the create progress UI
+
