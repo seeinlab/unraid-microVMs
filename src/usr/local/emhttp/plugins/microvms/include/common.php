@@ -147,6 +147,11 @@ function microvm_next_tap_id($vmdir) {
             if ($id >= 0) $used_ids[$id] = true;
         }
     }
+    // Also check TAPs actually in use on the system (handles VMs not in vmdir)
+    exec("ip -o link show | grep -oP 'tap\d+' | grep -oP '\d+'", $activeTaps);
+    foreach ($activeTaps as $tapNum) {
+        $used_ids[(int)$tapNum] = true;
+    }
     // Find the lowest integer >= 0 not in the used set
     $next = 0;
     while (isset($used_ids[$next])) {
