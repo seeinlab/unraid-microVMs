@@ -50,7 +50,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dt>Networking:</dt>
   <dd>
     <select id="vm_networking" style="width:200px;">
-      <option value="macvtap" selected>macvtap</option>
+      <option value="macvtap" selected>TAP Bridge</option>
     </select>
   </dd>
 </dl>
@@ -76,7 +76,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 
 <dl>
   <dt>Initial Memory:</dt>
-  <dd><select id="vm_memory" style="width:120px;">
+  <dd><select id="vm_memory" style="width:120px;" onchange="updateMaxMemory()">
     <option value="128">128 MB</option>
     <option value="256" selected>256 MB</option>
     <option value="512">512 MB</option>
@@ -85,6 +85,21 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
     <option value="4096">4.0 GB</option>
     <option value="8192">8.0 GB</option>
   </select></dd>
+</dl>
+
+<dl id="row_max_memory">
+  <dt>Max Memory (hotplug):</dt>
+  <dd><select id="vm_max_memory" style="width:120px;">
+    <option value="256">256 MB</option>
+    <option value="512" selected>512 MB</option>
+    <option value="1024">1.0 GB</option>
+    <option value="2048">2.0 GB</option>
+    <option value="4096">4.0 GB</option>
+    <option value="8192">8.0 GB</option>
+    <option value="16384">16.0 GB</option>
+  </select>
+  <span style="opacity:0.6; font-size:0.85em; margin-left:8px;">Cloud Hypervisor only — enables live memory hotplug up to this limit</span>
+  </dd>
 </dl>
 
 <dl>
@@ -283,6 +298,7 @@ function submitForm() {
     engine: $('input[name="engine"]:checked').val(),
     cpus: document.getElementById('vm_cpus').value,
     memory: document.getElementById('vm_memory').value,
+    max_memory: document.getElementById('vm_max_memory').value,
     ip: document.getElementById('vm_ip').value,
     gateway: document.getElementById('vm_gateway').value,
     source: source,
@@ -361,8 +377,53 @@ $('input[name="engine"]').change(function() {
   $('#label_fc').css({'border-color': '#555', 'background': 'transparent'});
   if ($('#engine_ch').is(':checked')) {
     $('#label_ch').css({'border-color': '#4CAF50', 'background': '#1a2e1a'});
+    $('#row_max_memory').show();
   } else {
     $('#label_fc').css({'border-color': '#ff9800', 'background': '#2e2a1a'});
+    $('#row_max_memory').hide();
   }
 });
+
+// Show/hide max memory based on initial engine selection
+$(function() {
+  if ($('#engine_fc').is(':checked')) {
+    $('#row_max_memory').hide();
+  }
+  updateMaxMemory();
+});
+
+function updateMaxMemory() {
+  var memVal = parseInt(document.getElementById('vm_memory').value);
+  var maxSel = document.getElementById('vm_max_memory');
+  var allOptions = [
+    {value: 128, label: '128 MB'},
+    {value: 256, label: '256 MB'},
+    {value: 512, label: '512 MB'},
+    {value: 1024, label: '1.0 GB'},
+    {value: 2048, label: '2.0 GB'},
+    {value: 4096, label: '4.0 GB'},
+    {value: 8192, label: '8.0 GB'},
+    {value: 16384, label: '16.0 GB'},
+    {value: 32768, label: '32.0 GB'}
+  ];
+  var currentMax = parseInt(maxSel.value);
+  maxSel.innerHTML = '';
+  var defaultVal = memVal * 2;
+  var hasSelected = false;
+  for (var i = 0; i < allOptions.length; i++) {
+    if (allOptions[i].value >= memVal) {
+      var opt = document.createElement('option');
+      opt.value = allOptions[i].value;
+      opt.textContent = allOptions[i].label;
+      if (allOptions[i].value === currentMax && currentMax >= memVal) {
+        opt.selected = true;
+        hasSelected = true;
+      } else if (!hasSelected && allOptions[i].value >= defaultVal) {
+        opt.selected = true;
+        hasSelected = true;
+      }
+      maxSel.appendChild(opt);
+    }
+  }
+}
 </script>

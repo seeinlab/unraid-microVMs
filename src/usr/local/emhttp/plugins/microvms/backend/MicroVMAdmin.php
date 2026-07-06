@@ -230,6 +230,10 @@ switch ($cmd) {
 
         $cpus = intval($_POST['cpus'] ?? $cfg['DEFAULT_CPUS'] ?? 1);
         $memory = intval($_POST['memory'] ?? $cfg['DEFAULT_MEMORY'] ?? 256);
+        $max_memory = intval($_POST['max_memory'] ?? 0);
+        if ($max_memory <= 0 || $max_memory < $memory) {
+            $max_memory = $memory * 2;
+        }
         $ip = $_POST['ip'] ?? '';
         $gateway = $_POST['gateway'] ?? '192.168.50.1';
         $source = $_POST['source'] ?? 'oci';
@@ -717,6 +721,16 @@ INIT;
         }
         break;
 
+    case 'prune_images':
+        $sock = '/var/run/microvms/containerd.sock';
+        $output = [];
+        foreach (['cloud-hypervisor', 'firecracker'] as $ns) {
+            $out = shell_exec("ctr -a $sock -n $ns images prune 2>&1");
+            if ($out) $output[] = "$ns: $out";
+        }
+        echo json_encode(['success' => true, 'message' => implode("\n", $output) ?: 'No unused images to prune']);
+        break;
+
     case 'delete_rootfs':
         $rootfsPath = "$vmdir/$name";
         // Check VM is not running
@@ -823,11 +837,25 @@ INIT;
             'flintlockd' => '/var/log/microvms/flintlockd.log',
             'registry' => '/var/log/microvms/registry.log',
         ];
-        if (!isset($log_map[$service])) {
+
+        if (strpos($service, '/') !== false) {
+            // Per-VM log: validate vmm/name pattern (e.g. cloud-hypervisor/ch-nginx-test)
+            $parts = explode('/', $service, 2);
+            $vmm_part = $parts[0];
+            $name_part = $parts[1] ?? '';
+            $allowed_vmms = ['cloud-hypervisor', 'firecracker'];
+            if (!in_array($vmm_part, $allowed_vmms) || !preg_match('/^[a-z0-9\-]+$/', $name_part)) {
+                echo json_encode(['success' => false, 'error' => "Invalid VM log path: $service"]);
+                break;
+            }
+            $logfile = "/var/log/microvms/$vmm_part/$name_part.log";
+        } elseif (isset($log_map[$service])) {
+            $logfile = $log_map[$service];
+        } else {
             echo json_encode(['success' => false, 'error' => "Unknown service: $service"]);
             break;
         }
-        $logfile = $log_map[$service];
+
         if (file_exists($logfile)) {
             $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);

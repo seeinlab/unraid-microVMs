@@ -206,7 +206,7 @@ function addMicroVMContext(name, state, engine) {
     }});
     opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
       e.preventDefault();
-      vmLogs(name);
+      vmLogs(name, engine);
     }});
   } else {
     opts.push({text:'Start', icon:'fa-play', action:function(e){
@@ -224,7 +224,7 @@ function addMicroVMContext(name, state, engine) {
     }});
     opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
       e.preventDefault();
-      vmLogs(name);
+      vmLogs(name, engine);
     }});
     opts.push({divider:true});
     opts.push({text:'Delete microVM & rootFS', icon:'fa-trash', action:function(e){
@@ -342,14 +342,14 @@ function vmInfo(name) {
   });
 }
 
-function vmLogs(name) {
-  // Start a ttyd log viewer via backend, then open the logterminal URL
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'logs_terminal', name: name}, function(data) {
+function vmLogs(name, engine) {
+  var service = (engine || 'cloud-hypervisor') + '/' + name;
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', service: service}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-    if (data.success && data.url) {
-      window.open(data.url, 'microvm_log_' + name, 'width=900,height=600,resizable=yes,scrollbars=yes');
+    if (data && data.success) {
+      swal({title: name + ' log', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
     } else {
-      swal({title: 'Logs Error', text: data.error || 'Failed to open logs', type: 'error'});
+      swal({title: 'Logs Error', text: (data && data.error) || 'Failed to load logs', type: 'error'});
     }
   });
 }
