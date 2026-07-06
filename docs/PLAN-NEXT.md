@@ -1,27 +1,57 @@
 # Next Session Plan
 
-## ✅ COMPLETED
+## ✅ ALL MAJOR FEATURES COMPLETE
 
-- Thin pool: `ctr images mount --snapshotter devmapper --rw` (full OCI flow)
-- Init injection: OCI ENTRYPOINT/CMD via `crane config` + `escapeshellarg`
-- CH disk: `readonly=false` (prevents sector 0 write block)
-- Image ref normalization: `nginx:alpine` → `docker.io/library/nginx:alpine`
-- FC binary: v1.16.1 (correct non-debug binary)
-- VMM detection: by filename everywhere
-- Add form: hide Disk Size/rootFS Source for Thin Pool
-- Storage tab renamed from rootFS
-- Separate namespaces per VMM (matches flintlock design)
+### Verified Working
+- CH + FC: Create, Start, Stop, Delete (both Thin Pool and Raw rootFS)
+- Network: LAN reachable via TAP+bridge + kernel ip= + custom /init
+- OCI: Full containerd pull for thin, crane export for raw
+- Init: ENTRYPOINT/CMD from image config, properly shell-escaped
+- Settings: Sub-page tabs, status tree, service controls
+- Plugin: Install/Uninstall/Reboot lifecycle safe
+- Codebase docs: AGENTS.md + .agents/summary/ generated
 
-## Testing Needed
+## Remaining Tasks
 
-1. **Create CH VM with Thin Pool** → verify nginx reachable on LAN
-2. **Create FC VM with Thin Pool** → verify boots
-3. **Create CH VM with Raw rootFS** → verify still works
-4. **Delete thin pool VM** → verify snapshot cleanup
+### Priority 1: UI Polish
+- [ ] Per-VM Logs button in context menu (show /var/log/microvms/{vmm}/{name}.log)
+- [ ] Storage tab: image inventory, snapshot list, "Prune Unused Images"
+- [ ] Fix "macvtap" label (actually uses TAP+bridge)
+- [ ] Max Memory field (CH hotplug, default = initial×2)
 
-## Remaining
+### Priority 2: Robustness
+- [ ] FC thin pool + LAN connectivity verification
+- [ ] Handle `ctr images mount` failure gracefully (disk full, network timeout)
+- [ ] Containerd BoltDB recovery on stale locks
+- [ ] ACPI shutdown: auto-force-stop after timeout (instead of waiting 90s)
 
-1. **Per-VM Logs button** — show /var/log/microvms/{vmm}/{name}.log
-2. **TLS/auth for flintlockd** — deferred
-3. **Storage tab** — "Prune Unused Images" button
-4. **Update root README.md** — for GitHub
+### Priority 3: Future
+- [ ] TLS/auth for flintlockd
+- [ ] Update root README.md for GitHub
+- [ ] Community Applications submission
+- [ ] Multi-NIC support
+- [ ] VM migration between hosts
+
+## Development Notes
+
+### Deploy Pattern
+```bash
+# Single file:
+cat src/.../file | ssh -i ~/.ssh/mastervault root@192.168.50.6 'cat > /path'
+
+# Full rebuild:
+cd src && tar -czf ../plugin/microvms-2026.07.05.1.tgz usr/ && cd ..
+```
+
+### Testing Images
+| Image | Type | Test Case |
+|-------|------|-----------|
+| docker.io/library/nginx:alpine | Web server | LAN access, ENTRYPOINT |
+| docker.io/library/alpine:3.20 | Minimal | Shell-only, CMD |
+| docker.io/library/redis:alpine | Service | Non-HTTP entrypoint |
+| docker.io/library/httpd:alpine | Web server | Different entrypoint |
+
+### SSH
+```bash
+ssh -i ~/.ssh/mastervault root@192.168.50.6
+```
