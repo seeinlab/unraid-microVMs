@@ -373,21 +373,11 @@ switch ($cmd) {
             $enableConsole = ($_REQUEST['console'] ?? 'true') === 'true';
             $mountPath = "/tmp/microvm-mount-$name";
 
-            // Create /fly directory
-            @mkdir("$mountPath/fly", 0755, true);
-            @mkdir("$mountPath/sbin", 0755, true);
-
-            // Copy generic init script (same for all VMs)
-            copy('/usr/local/share/microvms/fly-init', "$mountPath/fly/init");
-            chmod("$mountPath/fly/init", 0755);
-
-            // Copy catatonit binary (PID 1 signal forwarding + zombie reaping)
-            copy('/usr/local/share/microvms/catatonit', "$mountPath/sbin/catatonit");
-            chmod("$mountPath/sbin/catatonit", 0755);
-
-            // Symlink /init → /fly/init (kernel boots to /init)
-            @unlink("$mountPath/init");
-            symlink('/fly/init', "$mountPath/init");
+            // Create directories and inject files (use shell — PHP copy fails on mount points)
+            exec("mkdir -p $mountPath/fly $mountPath/sbin");
+            exec("cp /usr/local/share/microvms/fly-init $mountPath/fly/init && chmod 755 $mountPath/fly/init");
+            exec("cp /usr/local/share/microvms/catatonit $mountPath/sbin/catatonit && chmod 755 $mountPath/sbin/catatonit");
+            exec("ln -sf /fly/init $mountPath/init");
 
             // Generate /fly/run.json (per-VM config)
             $runConfig = [
@@ -403,7 +393,8 @@ switch ($cmd) {
                 'console' => $enableConsole,
                 'tty' => true,
             ];
-            file_put_contents("$mountPath/fly/run.json", json_encode($runConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $runJson = json_encode($runConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exec("cat > $mountPath/fly/run.json << 'RUNJSON'\n$runJson\nRUNJSON");
 
             if ($storageType === 'thin') {
                 // Keep snapshot but unmount via containerd
