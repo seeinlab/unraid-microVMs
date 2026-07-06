@@ -263,11 +263,11 @@ function vmConsole(name) {
   // Console popup: output box (serial log) + terminal input box
   swal({
     title: name + ' — Console',
-    text: '<div style="text-align:left;">' +
-      '<pre id="console-output" style="max-height:350px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;min-height:200px;">Loading...</pre>' +
+    text: '<div style="text-align:left;width:100%;">' +
+      '<pre id="console-output" style="max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;min-height:250px;">Loading...</pre>' +
       '<div style="margin-top:8px;display:flex;align-items:center;">' +
-        '<span style="color:#0f0;font-family:monospace;margin-right:8px;">Terminal:</span>' +
-        '<input id="console-input" type="text" style="flex:1;background:#1a1a2e;color:#0f0;border:1px solid #444;padding:6px 10px;font-family:monospace;font-size:12px;border-radius:4px;" placeholder="Type command and press Enter..." autocomplete="off">' +
+        '<span style="color:#0f0;font-family:monospace;margin-right:8px;white-space:nowrap;">Terminal:</span>' +
+        '<input id="console-input" type="text" style="flex:1;background:#1a1a2e;color:#0f0;border:1px solid #444;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;" placeholder="Type command and press Enter..." autocomplete="off">' +
       '</div>' +
     '</div>',
     html: true,
@@ -275,6 +275,22 @@ function vmConsole(name) {
     confirmButtonText: 'Close',
     customClass: 'console-swal'
   });
+
+  // Make swal wider
+  setTimeout(function() {
+    var modal = document.querySelector('.sweet-alert.console-swal') || document.querySelector('.sweet-alert');
+    if (modal) {
+      modal.style.width = '80%';
+      modal.style.maxWidth = '900px';
+      modal.style.marginLeft = 'auto';
+      modal.style.marginRight = 'auto';
+      modal.style.left = '0';
+      modal.style.right = '0';
+    }
+    // Focus input
+    var input = document.getElementById('console-input');
+    if (input) input.focus();
+  }, 100);
 
   // Load output from serial log
   var refreshOutput = function() {
@@ -290,13 +306,12 @@ function vmConsole(name) {
     });
   };
   refreshOutput();
-  var refreshInterval = setInterval(refreshOutput, 3000);
+  var refreshInterval = setInterval(refreshOutput, 2000);
 
   // Terminal input: send command via FIFO
   setTimeout(function() {
     var input = document.getElementById('console-input');
     if (input) {
-      input.focus();
       input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && this.value.trim()) {
           var cmd = this.value;
@@ -307,7 +322,7 @@ function vmConsole(name) {
         }
       });
     }
-  }, 300);
+  }, 200);
 
   // Stop refresh when swal closes
   $(document).on('click', '.confirm, .cancel', function() { clearInterval(refreshInterval); });
