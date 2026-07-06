@@ -1,0 +1,4150 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "microvms_lifecycle_management",
+        "label": "MicroVM Lifecycle Management",
+        "nodes": [
+          "agents_microvmadmin_php",
+          "agents_rc_microvms",
+          "agents_event_array_started",
+          "agents_event_stopping_svcs"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php"
+      },
+      {
+        "id": "enterprise_patterns_error_handling",
+        "label": "Error Handling Patterns",
+        "nodes": [
+          "mastering_typescript_enterprise_patterns_resulttypepattern",
+          "mastering_typescript_enterprise_patterns_ok",
+          "mastering_typescript_enterprise_patterns_err",
+          "mastering_typescript_enterprise_patterns_parseemail",
+          "mastering_typescript_enterprise_patterns_apperror",
+          "mastering_typescript_enterprise_patterns_notfounderror",
+          "mastering_typescript_enterprise_patterns_validationerror_class",
+          "mastering_typescript_enterprise_patterns_unauthorizederror",
+          "mastering_typescript_enterprise_patterns_isapperror",
+          "mastering_typescript_enterprise_patterns_handleerror"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+      },
+      {
+        "id": "enterprise_patterns_validation_patterns",
+        "label": "Validation Patterns",
+        "nodes": [
+          "mastering_typescript_enterprise_patterns_userschema",
+          "mastering_typescript_enterprise_patterns_createuserschema",
+          "mastering_typescript_enterprise_patterns_updateuserschema",
+          "mastering_typescript_enterprise_patterns_validatecreateuser",
+          "mastering_typescript_enterprise_patterns_formatzoderror",
+          "mastering_typescript_enterprise_patterns_validateemail",
+          "mastering_typescript_enterprise_patterns_validateuserid"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+      },
+      {
+        "id": "enterprise_patterns_nestjs_users_module",
+        "label": "NestJS Users Module",
+        "nodes": [
+          "mastering_typescript_enterprise_patterns_users_userservice_nestjs",
+          "mastering_typescript_enterprise_patterns_users_userrepository_nestjs",
+          "mastering_typescript_enterprise_patterns_users_usercontroller",
+          "mastering_typescript_enterprise_patterns_users_createuserdto",
+          "mastering_typescript_enterprise_patterns_users_updateuserdto",
+          "mastering_typescript_enterprise_patterns_users_userschema_zod"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+      },
+      {
+        "id": "tdd_skill_development_cycle",
+        "label": "TDD Cycle for Skill Development and Testing",
+        "nodes": [
+          "kiro_skills_writing_skills_skill",
+          "kiro_skills_writing_skills_testing_skills_with_subagents",
+          "kiro_skills_writing_skills_persuasion_principles"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": ".kiro/skills/writing-skills/testing-skills-with-subagents.md"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "mcp.json",
+      "file_type": "code",
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_config_file"
+      },
+      "_origin": "ast",
+      "id": "kiro_mcp",
+      "community": 9,
+      "norm_label": "mcp.json"
+    },
+    {
+      "label": "chrome-devtools",
+      "file_type": "code",
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_server"
+      },
+      "_origin": "ast",
+      "id": "kiro_mcp_mcp_server_chrome_devtools",
+      "community": 9,
+      "norm_label": "chrome-devtools"
+    },
+    {
+      "label": "npx",
+      "file_type": "code",
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_command"
+      },
+      "_origin": "ast",
+      "id": "mcp_command_npx",
+      "community": 9,
+      "norm_label": "npx"
+    },
+    {
+      "label": "nightwatch",
+      "file_type": "code",
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_server"
+      },
+      "_origin": "ast",
+      "id": "kiro_mcp_mcp_server_nightwatch",
+      "community": 9,
+      "norm_label": "nightwatch"
+    },
+    {
+      "label": "mcp-remote",
+      "file_type": "code",
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_package"
+      },
+      "_origin": "ast",
+      "id": "mcp_package_mcp_remote",
+      "community": 9,
+      "norm_label": "mcp-remote"
+    },
+    {
+      "label": "helper.js",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/helper.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_helper",
+      "community": 14,
+      "norm_label": "helper.js"
+    },
+    {
+      "label": "connect()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/helper.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_helper_connect",
+      "community": 14,
+      "norm_label": "connect()"
+    },
+    {
+      "label": "sendEvent()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/helper.js",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_helper_sendevent",
+      "community": 14,
+      "norm_label": "sendevent()"
+    },
+    {
+      "label": "start-server.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/start-server.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_start_server",
+      "community": 23,
+      "norm_label": "start-server.sh"
+    },
+    {
+      "label": "start-server.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/start-server.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_start_server_sh__entry",
+      "community": 23,
+      "norm_label": "start-server.sh script"
+    },
+    {
+      "label": "stop-server.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/stop-server.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_stop_server",
+      "community": 24,
+      "norm_label": "stop-server.sh"
+    },
+    {
+      "label": "stop-server.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/brainstorming/scripts/stop-server.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_brainstorming_scripts_stop_server_sh__entry",
+      "community": 24,
+      "norm_label": "stop-server.sh script"
+    },
+    {
+      "label": "eslint-template.js",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/eslint-template.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_eslint_template",
+      "community": 40,
+      "norm_label": "eslint-template.js"
+    },
+    {
+      "label": "tsconfig-template.json",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "community": 11,
+      "norm_label": "tsconfig-template.json"
+    },
+    {
+      "label": "$schema",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L2",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_schema",
+      "community": 11,
+      "norm_label": "$schema"
+    },
+    {
+      "label": "compilerOptions",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "community": 0,
+      "norm_label": "compileroptions"
+    },
+    {
+      "label": "target",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_target",
+      "community": 0,
+      "norm_label": "target"
+    },
+    {
+      "label": "lib",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_lib",
+      "community": 0,
+      "norm_label": "lib"
+    },
+    {
+      "label": "module",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_module",
+      "community": 0,
+      "norm_label": "module"
+    },
+    {
+      "label": "moduleResolution",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_moduleresolution",
+      "community": 0,
+      "norm_label": "moduleresolution"
+    },
+    {
+      "label": "strict",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_strict",
+      "community": 0,
+      "norm_label": "strict"
+    },
+    {
+      "label": "noUncheckedIndexedAccess",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nouncheckedindexedaccess",
+      "community": 0,
+      "norm_label": "nouncheckedindexedaccess"
+    },
+    {
+      "label": "exactOptionalPropertyTypes",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_exactoptionalpropertytypes",
+      "community": 0,
+      "norm_label": "exactoptionalpropertytypes"
+    },
+    {
+      "label": "noImplicitOverride",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_noimplicitoverride",
+      "community": 0,
+      "norm_label": "noimplicitoverride"
+    },
+    {
+      "label": "noPropertyAccessFromIndexSignature",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L15",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nopropertyaccessfromindexsignature",
+      "community": 0,
+      "norm_label": "nopropertyaccessfromindexsignature"
+    },
+    {
+      "label": "noFallthroughCasesInSwitch",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L16",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nofallthroughcasesinswitch",
+      "community": 0,
+      "norm_label": "nofallthroughcasesinswitch"
+    },
+    {
+      "label": "forceConsistentCasingInFileNames",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_forceconsistentcasinginfilenames",
+      "community": 0,
+      "norm_label": "forceconsistentcasinginfilenames"
+    },
+    {
+      "label": "esModuleInterop",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_esmoduleinterop",
+      "community": 0,
+      "norm_label": "esmoduleinterop"
+    },
+    {
+      "label": "allowSyntheticDefaultImports",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_allowsyntheticdefaultimports",
+      "community": 0,
+      "norm_label": "allowsyntheticdefaultimports"
+    },
+    {
+      "label": "isolatedModules",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L22",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_isolatedmodules",
+      "community": 0,
+      "norm_label": "isolatedmodules"
+    },
+    {
+      "label": "verbatimModuleSyntax",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_verbatimmodulesyntax",
+      "community": 0,
+      "norm_label": "verbatimmodulesyntax"
+    },
+    {
+      "label": "declaration",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declaration",
+      "community": 0,
+      "norm_label": "declaration"
+    },
+    {
+      "label": "declarationMap",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declarationmap",
+      "community": 0,
+      "norm_label": "declarationmap"
+    },
+    {
+      "label": "sourceMap",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L28",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_sourcemap",
+      "community": 0,
+      "norm_label": "sourcemap"
+    },
+    {
+      "label": "outDir",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_outdir",
+      "community": 0,
+      "norm_label": "outdir"
+    },
+    {
+      "label": "rootDir",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_rootdir",
+      "community": 0,
+      "norm_label": "rootdir"
+    },
+    {
+      "label": "baseUrl",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L33",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_baseurl",
+      "community": 0,
+      "norm_label": "baseurl"
+    },
+    {
+      "label": "paths",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_paths",
+      "community": 0,
+      "norm_label": "paths"
+    },
+    {
+      "label": "@/*",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L35",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_paths",
+      "community": 0,
+      "norm_label": "@/*"
+    },
+    {
+      "label": "skipLibCheck",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L39",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_skiplibcheck",
+      "community": 0,
+      "norm_label": "skiplibcheck"
+    },
+    {
+      "label": "incremental",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L40",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_incremental",
+      "community": 0,
+      "norm_label": "incremental"
+    },
+    {
+      "label": "tsBuildInfoFile",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L41",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_tsbuildinfofile",
+      "community": 0,
+      "norm_label": "tsbuildinfofile"
+    },
+    {
+      "label": "include",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_include",
+      "community": 11,
+      "norm_label": "include"
+    },
+    {
+      "label": "exclude",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_exclude",
+      "community": 11,
+      "norm_label": "exclude"
+    },
+    {
+      "label": "validate-setup.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "community": 8,
+      "norm_label": "validate-setup.sh"
+    },
+    {
+      "label": "validate-setup.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "community": 8,
+      "norm_label": "validate-setup.sh script"
+    },
+    {
+      "label": "pass()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L23",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_pass",
+      "community": 8,
+      "norm_label": "pass()"
+    },
+    {
+      "label": "fail()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L24",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_fail",
+      "community": 8,
+      "norm_label": "fail()"
+    },
+    {
+      "label": "warn()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L25",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_warn",
+      "community": 8,
+      "norm_label": "warn()"
+    },
+    {
+      "label": "info()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L26",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_info",
+      "community": 8,
+      "norm_label": "info()"
+    },
+    {
+      "label": "apply_new_files.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files",
+      "community": 15,
+      "norm_label": "apply_new_files.sh"
+    },
+    {
+      "label": "apply_new_files.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_sh__entry",
+      "community": 15,
+      "norm_label": "apply_new_files.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L16",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_usage",
+      "community": 15,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "classify_feature.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_classify_feature",
+      "community": 16,
+      "norm_label": "classify_feature.sh"
+    },
+    {
+      "label": "classify_feature.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_sh__entry",
+      "community": 16,
+      "norm_label": "classify_feature.sh script"
+    },
+    {
+      "label": "classify()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L27",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_classify",
+      "community": 16,
+      "norm_label": "classify()"
+    },
+    {
+      "label": "fetch_kit.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit",
+      "community": 17,
+      "norm_label": "fetch_kit.sh"
+    },
+    {
+      "label": "fetch_kit.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_sh__entry",
+      "community": 17,
+      "norm_label": "fetch_kit.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L17",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_usage",
+      "community": 17,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "later_edits.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_later_edits",
+      "community": 18,
+      "norm_label": "later_edits.sh"
+    },
+    {
+      "label": "later_edits.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_later_edits_sh__entry",
+      "community": 18,
+      "norm_label": "later_edits.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L13",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_later_edits_usage",
+      "community": 18,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "preflight.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "community": 3,
+      "norm_label": "preflight.sh"
+    },
+    {
+      "label": "preflight.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "community": 3,
+      "norm_label": "preflight.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L23",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_usage",
+      "community": 3,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "fail()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L32",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "community": 3,
+      "norm_label": "fail()"
+    },
+    {
+      "label": "check_git_repo()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L41",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_git_repo",
+      "community": 3,
+      "norm_label": "check_git_repo()"
+    },
+    {
+      "label": "check_clean_tree()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L47",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_clean_tree",
+      "community": 3,
+      "norm_label": "check_clean_tree()"
+    },
+    {
+      "label": "check_gh_installed()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L57",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_installed",
+      "community": 3,
+      "norm_label": "check_gh_installed()"
+    },
+    {
+      "label": "check_gh_authenticated()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L63",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_authenticated",
+      "community": 3,
+      "norm_label": "check_gh_authenticated()"
+    },
+    {
+      "label": "check_jq_installed()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L69",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_jq_installed",
+      "community": 3,
+      "norm_label": "check_jq_installed()"
+    },
+    {
+      "label": "reconcile_manifests.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "community": 10,
+      "norm_label": "reconcile_manifests.sh"
+    },
+    {
+      "label": "reconcile_manifests.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_sh__entry",
+      "community": 10,
+      "norm_label": "reconcile_manifests.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L17",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_usage",
+      "community": 10,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "js_package_manager()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L30",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_package_manager",
+      "community": 10,
+      "norm_label": "js_package_manager()"
+    },
+    {
+      "label": "js_lockfile()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L40",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_lockfile",
+      "community": 10,
+      "norm_label": "js_lockfile()"
+    },
+    {
+      "label": "run_tests.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "community": 1,
+      "norm_label": "run_tests.sh"
+    },
+    {
+      "label": "run_tests.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_sh__entry",
+      "community": 1,
+      "norm_label": "run_tests.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L30",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_usage",
+      "community": 1,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "js_package_manager()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L52",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_js_package_manager",
+      "community": 1,
+      "norm_label": "js_package_manager()"
+    },
+    {
+      "label": "has_npm_script()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L61",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_has_npm_script",
+      "community": 1,
+      "norm_label": "has_npm_script()"
+    },
+    {
+      "label": "discover_php_tests()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L68",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_php_tests",
+      "community": 1,
+      "norm_label": "discover_php_tests()"
+    },
+    {
+      "label": "discover_js_typecheck()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L77",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_typecheck",
+      "community": 1,
+      "norm_label": "discover_js_typecheck()"
+    },
+    {
+      "label": "discover_js_build()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L85",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_build",
+      "community": 1,
+      "norm_label": "discover_js_build()"
+    },
+    {
+      "label": "run_check()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L93",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_run_check",
+      "community": 1,
+      "norm_label": "run_check()"
+    },
+    {
+      "label": "build_results()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L110",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_run_tests_build_results",
+      "community": 1,
+      "norm_label": "build_results()"
+    },
+    {
+      "label": "scan_transitive_imports.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports",
+      "community": 19,
+      "norm_label": "scan_transitive_imports.sh"
+    },
+    {
+      "label": "scan_transitive_imports.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_sh__entry",
+      "community": 19,
+      "norm_label": "scan_transitive_imports.sh script"
+    },
+    {
+      "label": "usage()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L17",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_usage",
+      "community": 19,
+      "norm_label": "usage()"
+    },
+    {
+      "label": "condition-based-waiting-example.ts",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_condition_based_waiting_example",
+      "community": 12,
+      "norm_label": "condition-based-waiting-example.ts"
+    },
+    {
+      "label": "waitForEvent()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforevent",
+      "community": 12,
+      "norm_label": "waitforevent()"
+    },
+    {
+      "label": "waitForEventCount()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L60",
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventcount",
+      "community": 12,
+      "norm_label": "waitforeventcount()"
+    },
+    {
+      "label": "waitForEventMatch()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L111",
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventmatch",
+      "community": 12,
+      "norm_label": "waitforeventmatch()"
+    },
+    {
+      "label": "find-polluter.sh",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/find-polluter.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_find_polluter",
+      "community": 25,
+      "norm_label": "find-polluter.sh"
+    },
+    {
+      "label": "find-polluter.sh script",
+      "file_type": "code",
+      "source_file": ".kiro/skills/systematic-debugging/find-polluter.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "kiro_skills_systematic_debugging_find_polluter_sh__entry",
+      "community": 25,
+      "norm_label": "find-polluter.sh script"
+    },
+    {
+      "label": "render-graphs.js",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs",
+      "community": 4,
+      "norm_label": "render-graphs.js"
+    },
+    {
+      "label": "fs",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L16",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_fs",
+      "community": 4,
+      "norm_label": "fs"
+    },
+    {
+      "label": "path",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_path",
+      "community": 4,
+      "norm_label": "path"
+    },
+    {
+      "label": "{ execSync }",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_execsync",
+      "community": 4,
+      "norm_label": "{ execsync }"
+    },
+    {
+      "label": "extractDotBlocks()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_extractdotblocks",
+      "community": 4,
+      "norm_label": "extractdotblocks()"
+    },
+    {
+      "label": "extractGraphBody()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L38",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_extractgraphbody",
+      "community": 4,
+      "norm_label": "extractgraphbody()"
+    },
+    {
+      "label": "combineGraphs()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L51",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_combinegraphs",
+      "community": 4,
+      "norm_label": "combinegraphs()"
+    },
+    {
+      "label": "renderToSvg()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L70",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_rendertosvg",
+      "community": 4,
+      "norm_label": "rendertosvg()"
+    },
+    {
+      "label": "main()",
+      "file_type": "code",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L84",
+      "_origin": "ast",
+      "id": "kiro_skills_writing_skills_render_graphs_main",
+      "community": 4,
+      "norm_label": "main()"
+    },
+    {
+      "label": "build.sh",
+      "file_type": "code",
+      "source_file": "build.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "build",
+      "community": 22,
+      "norm_label": "build.sh"
+    },
+    {
+      "label": "build.sh script",
+      "file_type": "code",
+      "source_file": "build.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "build_sh__entry",
+      "community": 22,
+      "norm_label": "build.sh script"
+    },
+    {
+      "label": "fetch_lm_svg.py",
+      "file_type": "code",
+      "source_file": "scripts/fetch_lm_svg.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_fetch_lm_svg",
+      "community": 56,
+      "norm_label": "fetch_lm_svg.py"
+    },
+    {
+      "label": "init-nginx.sh",
+      "file_type": "code",
+      "source_file": "scripts/init-nginx.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "scripts_init_nginx",
+      "community": 27,
+      "norm_label": "init-nginx.sh"
+    },
+    {
+      "label": "init-nginx.sh script",
+      "file_type": "code",
+      "source_file": "scripts/init-nginx.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "scripts_init_nginx_sh__entry",
+      "community": 27,
+      "norm_label": "init-nginx.sh script"
+    },
+    {
+      "label": "init-serial.sh",
+      "file_type": "code",
+      "source_file": "scripts/init-serial.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "scripts_init_serial",
+      "community": 28,
+      "norm_label": "init-serial.sh"
+    },
+    {
+      "label": "init-serial.sh script",
+      "file_type": "code",
+      "source_file": "scripts/init-serial.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "scripts_init_serial_sh__entry",
+      "community": 28,
+      "norm_label": "init-serial.sh script"
+    },
+    {
+      "label": "render_lm_icon.py",
+      "file_type": "code",
+      "source_file": "scripts/render_lm_icon.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_render_lm_icon",
+      "community": 57,
+      "norm_label": "render_lm_icon.py"
+    },
+    {
+      "label": "svg2png.py",
+      "file_type": "code",
+      "source_file": "scripts/svg2png.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_svg2png",
+      "community": 58,
+      "norm_label": "svg2png.py"
+    },
+    {
+      "label": "microvms-console",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/microvms-console",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "id": "src_usr_local_bin_microvms_console",
+      "community": 29,
+      "norm_label": "microvms-console"
+    },
+    {
+      "label": "microvms-console script",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/microvms-console",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "id": "src_usr_local_bin_microvms_console__entry",
+      "community": 29,
+      "norm_label": "microvms-console script"
+    },
+    {
+      "label": "MicroVMAdmin.php",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_microvmadmin_php",
+      "community": 6,
+      "norm_label": "microvmadmin.php"
+    },
+    {
+      "label": "common.php",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/include/common.php",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_common_php",
+      "community": 6,
+      "norm_label": "common.php"
+    },
+    {
+      "label": "rc.microvms",
+      "file_type": "code",
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_rc_microvms",
+      "community": 7,
+      "norm_label": "rc.microvms"
+    },
+    {
+      "label": "event/array_started",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/event/array_started",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_event_array_started",
+      "community": 7,
+      "norm_label": "event/array_started"
+    },
+    {
+      "label": "event/stopping_svcs",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/event/stopping_svcs",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "id": "agents_event_stopping_svcs",
+      "community": 7,
+      "norm_label": "event/stopping_svcs"
+    },
+    {
+      "label": "MicroVMsMachines.page",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/MicroVMsMachines.page",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_microvmsmachines_page",
+      "community": 6,
+      "norm_label": "microvmsmachines.page"
+    },
+    {
+      "label": "AddMicroVMs.page",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/AddMicroVMs.page",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "id": "agents_addmicrovms_page",
+      "community": 6,
+      "norm_label": "addmicrovms.page"
+    },
+    {
+      "label": "MicroVMsSettingsGeneral.page",
+      "file_type": "code",
+      "source_file": "src/usr/local/emhttp/plugins/microvms/MicroVMsSettingsGeneral.page",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "id": "agents_microvmssettingsgeneral_page",
+      "community": 6,
+      "norm_label": "microvmssettingsgeneral.page"
+    },
+    {
+      "label": "microvms.plg",
+      "file_type": "code",
+      "source_file": "plugin/microvms.plg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "id": "plugin_microvms_plg",
+      "community": 55,
+      "norm_label": "microvms.plg"
+    },
+    {
+      "label": "cloud-hypervisor",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/cloud-hypervisor",
+      "source_location": null,
+      "source_url": "https://github.com/cloud-hypervisor/cloud-hypervisor",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_cloud_hypervisor",
+      "community": 7,
+      "norm_label": "cloud-hypervisor"
+    },
+    {
+      "label": "ch-remote",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/ch-remote",
+      "source_location": null,
+      "source_url": "https://github.com/cloud-hypervisor/cloud-hypervisor",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_ch_remote",
+      "community": 6,
+      "norm_label": "ch-remote"
+    },
+    {
+      "label": "firecracker",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/firecracker",
+      "source_location": null,
+      "source_url": "https://github.com/firecracker-microvm/firecracker",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_firecracker",
+      "community": 7,
+      "norm_label": "firecracker"
+    },
+    {
+      "label": "microvms-containerd",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/microvms-containerd",
+      "source_location": null,
+      "source_url": "https://github.com/containerd/containerd",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_microvms_containerd",
+      "community": 7,
+      "norm_label": "microvms-containerd"
+    },
+    {
+      "label": "flintlockd",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/flintlockd",
+      "source_location": null,
+      "source_url": "https://github.com/liquidmetal-dev/flintlock",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_flintlockd",
+      "community": 7,
+      "norm_label": "flintlockd"
+    },
+    {
+      "label": "crane",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/crane",
+      "source_location": null,
+      "source_url": "https://github.com/google/go-containerregistry",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_crane",
+      "community": 6,
+      "norm_label": "crane"
+    },
+    {
+      "label": "grpcurl",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/grpcurl",
+      "source_location": null,
+      "source_url": "https://github.com/fullstorydev/grpcurl",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_grpcurl",
+      "community": 59,
+      "norm_label": "grpcurl"
+    },
+    {
+      "label": "ttyd",
+      "file_type": "code",
+      "source_file": "src/usr/local/bin/ttyd",
+      "source_location": null,
+      "source_url": "https://github.com/tsl0922/ttyd",
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "usr_local_bin_ttyd",
+      "community": 60,
+      "norm_label": "ttyd"
+    },
+    {
+      "label": "Result Type Pattern",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_resulttypepattern",
+      "community": 48,
+      "norm_label": "result type pattern"
+    },
+    {
+      "label": "ok",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_ok",
+      "community": 21,
+      "norm_label": "ok"
+    },
+    {
+      "label": "err",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_err",
+      "community": 21,
+      "norm_label": "err"
+    },
+    {
+      "label": "parseEmail",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_parseemail",
+      "community": 21,
+      "norm_label": "parseemail"
+    },
+    {
+      "label": "ValidationError (interface)",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_validationerror",
+      "community": 53,
+      "norm_label": "validationerror (interface)"
+    },
+    {
+      "label": "AppError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_apperror",
+      "community": 44,
+      "norm_label": "apperror"
+    },
+    {
+      "label": "NotFoundError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_notfounderror",
+      "community": 5,
+      "norm_label": "notfounderror"
+    },
+    {
+      "label": "ValidationError (class)",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_validationerror_class",
+      "community": 5,
+      "norm_label": "validationerror (class)"
+    },
+    {
+      "label": "UnauthorizedError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_unauthorizederror",
+      "community": 5,
+      "norm_label": "unauthorizederror"
+    },
+    {
+      "label": "isAppError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_isapperror",
+      "community": 5,
+      "norm_label": "isapperror"
+    },
+    {
+      "label": "handleError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_handleerror",
+      "community": 5,
+      "norm_label": "handleerror"
+    },
+    {
+      "label": "UserSchema",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_userschema",
+      "community": 52,
+      "norm_label": "userschema"
+    },
+    {
+      "label": "CreateUserSchema",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_createuserschema",
+      "community": 20,
+      "norm_label": "createuserschema"
+    },
+    {
+      "label": "UpdateUserSchema",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_updateuserschema",
+      "community": 49,
+      "norm_label": "updateuserschema"
+    },
+    {
+      "label": "validateCreateUser",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_validatecreateuser",
+      "community": 20,
+      "norm_label": "validatecreateuser"
+    },
+    {
+      "label": "formatZodError",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_formatzoderror",
+      "community": 20,
+      "norm_label": "formatzoderror"
+    },
+    {
+      "label": "validateEmail",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_validateemail",
+      "community": 5,
+      "norm_label": "validateemail"
+    },
+    {
+      "label": "validateUserId",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_validateuserid",
+      "community": 5,
+      "norm_label": "validateuserid"
+    },
+    {
+      "label": "sendEmail",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_sendemail",
+      "community": 5,
+      "norm_label": "sendemail"
+    },
+    {
+      "label": "getUser",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_getuser",
+      "community": 5,
+      "norm_label": "getuser"
+    },
+    {
+      "label": "features/users/index",
+      "file_type": "code",
+      "source_file": "src/features/users/index.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_index",
+      "community": 2,
+      "norm_label": "features/users/index"
+    },
+    {
+      "label": "features/users/user.types",
+      "file_type": "code",
+      "source_file": "src/features/users/user.types.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_usertypes",
+      "community": 2,
+      "norm_label": "features/users/user.types"
+    },
+    {
+      "label": "features/users/user.schema",
+      "file_type": "code",
+      "source_file": "src/features/users/user.schema.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userschema",
+      "community": 2,
+      "norm_label": "features/users/user.schema"
+    },
+    {
+      "label": "features/users/user.service",
+      "file_type": "code",
+      "source_file": "src/features/users/user.service.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userservice",
+      "community": 2,
+      "norm_label": "features/users/user.service"
+    },
+    {
+      "label": "features/users/user.repository",
+      "file_type": "code",
+      "source_file": "src/features/users/user.repository.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userrepository",
+      "community": 2,
+      "norm_label": "features/users/user.repository"
+    },
+    {
+      "label": "features/users/user.controller",
+      "file_type": "code",
+      "source_file": "src/features/users/user.controller.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "community": 2,
+      "norm_label": "features/users/user.controller"
+    },
+    {
+      "label": "modules/users/dto/createuserdto",
+      "file_type": "code",
+      "source_file": "src/modules/users/dto/create-user.dto.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_createuserdto",
+      "community": 2,
+      "norm_label": "modules/users/dto/createuserdto"
+    },
+    {
+      "label": "modules/users/dto/updateuserdto",
+      "file_type": "code",
+      "source_file": "src/modules/users/dto/update-user.dto.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_updateuserdto",
+      "community": 2,
+      "norm_label": "modules/users/dto/updateuserdto"
+    },
+    {
+      "label": "modules/users/dto/user.schema",
+      "file_type": "code",
+      "source_file": "src/modules/users/dto/user.schema.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userschema_zod",
+      "community": 50,
+      "norm_label": "modules/users/dto/user.schema"
+    },
+    {
+      "label": "modules/users/users.service",
+      "file_type": "code",
+      "source_file": "src/modules/users/users.service.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userservice_nestjs",
+      "community": 51,
+      "norm_label": "modules/users/users.service"
+    },
+    {
+      "label": "modules/users/users.repository",
+      "file_type": "code",
+      "source_file": "src/modules/users/users.repository.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_users_userrepository_nestjs",
+      "community": 2,
+      "norm_label": "modules/users/users.repository"
+    },
+    {
+      "label": "modules/auth/strategies/jwt.strategy",
+      "file_type": "code",
+      "source_file": "src/modules/auth/strategies/jwt.strategy.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_auth_jwtstrategy",
+      "community": 2,
+      "norm_label": "modules/auth/strategies/jwt.strategy"
+    },
+    {
+      "label": "common/decorators/roles.decorator",
+      "file_type": "code",
+      "source_file": "src/common/decorators/roles.decorator.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_common_decorators_roles",
+      "community": 26,
+      "norm_label": "common/decorators/roles.decorator"
+    },
+    {
+      "label": "common/guards/roles.guard",
+      "file_type": "code",
+      "source_file": "src/common/guards/roles.guard.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_common_guards_rolesguard",
+      "community": 26,
+      "norm_label": "common/guards/roles.guard"
+    },
+    {
+      "label": "common/filters/http-exception.filter",
+      "file_type": "code",
+      "source_file": "src/common/filters/http-exception.filter.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_common_filters_allexceptionsfilter",
+      "community": 46,
+      "norm_label": "common/filters/http-exception.filter"
+    },
+    {
+      "label": "common/exceptions/business.exception",
+      "file_type": "code",
+      "source_file": "src/common/exceptions/business.exception.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_common_exceptions_businessexception",
+      "community": 45,
+      "norm_label": "common/exceptions/business.exception"
+    },
+    {
+      "label": "dompurify",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_dompurify",
+      "community": 47,
+      "norm_label": "dompurify"
+    },
+    {
+      "label": "zod",
+      "file_type": "code",
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "mastering_typescript_enterprise_patterns_zod",
+      "community": 54,
+      "norm_label": "zod"
+    },
+    {
+      "label": "Skill Creation Checklist (TDD Adapted)",
+      "file_type": "document",
+      "source_file": ".kiro/skills/writing-skills/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_skills_writing_skills_skill",
+      "community": 13,
+      "norm_label": "skill creation checklist (tdd adapted)"
+    },
+    {
+      "label": "Skill authoring best practices",
+      "file_type": "document",
+      "source_file": ".kiro/skills/writing-skills/anthropic-best-practices.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_skills_writing_skills_anthropic_best_practices",
+      "community": 13,
+      "norm_label": "skill authoring best practices"
+    },
+    {
+      "label": "Persuasion Principles for Skill Design",
+      "file_type": "document",
+      "source_file": ".kiro/skills/writing-skills/persuasion-principles.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_skills_writing_skills_persuasion_principles",
+      "community": 13,
+      "norm_label": "persuasion principles for skill design"
+    },
+    {
+      "label": "Testing Skills With Subagents",
+      "file_type": "document",
+      "source_file": ".kiro/skills/writing-skills/testing-skills-with-subagents.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_skills_writing_skills_testing_skills_with_subagents",
+      "community": 13,
+      "norm_label": "testing skills with subagents"
+    },
+    {
+      "label": "Next Session Plan",
+      "file_type": "document",
+      "source_file": "docs/PLAN-NEXT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_plan_next",
+      "community": 36,
+      "norm_label": "next session plan"
+    },
+    {
+      "label": "Thin Pool \u2014 Containerd OCI Flow (IMPLEMENTED)",
+      "file_type": "document",
+      "source_file": "docs/PLAN-thinpool-oci.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_plan_thinpool_oci",
+      "community": 37,
+      "norm_label": "thin pool \u2014 containerd oci flow (implemented)"
+    },
+    {
+      "label": "Progress Log \u2014 microVMs Plugin for Unraid",
+      "file_type": "document",
+      "source_file": "docs/PROGRESS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_progress",
+      "community": 38,
+      "norm_label": "progress log \u2014 microvms plugin for unraid"
+    },
+    {
+      "label": "microVMs Plugin Documentation",
+      "file_type": "document",
+      "source_file": "docs/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_readme",
+      "community": 39,
+      "norm_label": "microvms plugin documentation"
+    },
+    {
+      "label": "Cloud Hypervisor API Reference (v52.0)",
+      "file_type": "document",
+      "source_file": "docs/cloud-hypervisor-api.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_cloud_hypervisor_api",
+      "community": 30,
+      "norm_label": "cloud hypervisor api reference (v52.0)"
+    },
+    {
+      "label": "Firecracker API Reference (v1.16.0+)",
+      "file_type": "document",
+      "source_file": "docs/firecracker-api.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_firecracker_api",
+      "community": 33,
+      "norm_label": "firecracker api reference (v1.16.0+)"
+    },
+    {
+      "label": "Flintlockd gRPC API Reference",
+      "file_type": "document",
+      "source_file": "docs/flintlockd-grpc-api.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_flintlockd_grpc_api",
+      "community": 34,
+      "norm_label": "flintlockd grpc api reference"
+    },
+    {
+      "label": "Kata Containers Research \u2014 Potential Flintlockd Replacement",
+      "file_type": "document",
+      "source_file": "docs/kata-containers-research.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_kata_containers_research",
+      "community": 35,
+      "norm_label": "kata containers research \u2014 potential flintlockd replacement"
+    },
+    {
+      "label": "Code Style Guide \u2014 microVMs Plugin",
+      "file_type": "document",
+      "source_file": "docs/code-style-guide.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_code_style_guide",
+      "community": 31,
+      "norm_label": "code style guide \u2014 microvms plugin"
+    },
+    {
+      "label": "microVMs Plugin \u2014 Design Patterns",
+      "file_type": "document",
+      "source_file": "docs/design-patterns.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "docs_design_patterns",
+      "community": 32,
+      "norm_label": "microvms plugin \u2014 design patterns"
+    },
+    {
+      "label": "Always Steering",
+      "file_type": "document",
+      "source_file": ".kiro/steering/always.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_steering_always",
+      "community": 42,
+      "norm_label": "always steering"
+    },
+    {
+      "label": "Graphify Steering",
+      "file_type": "document",
+      "source_file": ".kiro/steering/graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_steering_graphify",
+      "community": 43,
+      "norm_label": "graphify steering"
+    },
+    {
+      "label": "Testing CLAUDE.md Skills Documentation",
+      "file_type": "document",
+      "source_file": ".kiro/skills/writing-skills/examples/CLAUDE_MD_TESTING.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "kiro_skills_writing_skills_examples_claude_md_testing",
+      "community": 41,
+      "norm_label": "testing claude.md skills documentation"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_mcp",
+      "target": "kiro_mcp_mcp_server_chrome_devtools"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_mcp",
+      "target": "kiro_mcp_mcp_server_nightwatch"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "context": "command",
+      "source": "kiro_mcp_mcp_server_chrome_devtools",
+      "target": "mcp_command_npx"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "context": "command",
+      "source": "kiro_mcp_mcp_server_nightwatch",
+      "target": "mcp_command_npx"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "context": "package",
+      "source": "kiro_mcp_mcp_server_nightwatch",
+      "target": "mcp_package_mcp_remote"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/brainstorming/scripts/helper.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "kiro_skills_brainstorming_scripts_helper",
+      "target": "kiro_skills_brainstorming_scripts_helper_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/brainstorming/scripts/helper.js",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "kiro_skills_brainstorming_scripts_helper",
+      "target": "kiro_skills_brainstorming_scripts_helper_sendevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/brainstorming/scripts/start-server.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_brainstorming_scripts_start_server",
+      "target": "kiro_skills_brainstorming_scripts_start_server_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/brainstorming/scripts/stop-server.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_brainstorming_scripts_stop_server",
+      "target": "kiro_skills_brainstorming_scripts_stop_server_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_exclude",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_include",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_schema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_allowsyntheticdefaultimports",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_baseurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declaration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declarationmap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_esmoduleinterop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_exactoptionalpropertytypes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_forceconsistentcasinginfilenames",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_incremental",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_isolatedmodules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_lib",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_module",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_moduleresolution",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nofallthroughcasesinswitch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_noimplicitoverride",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nopropertyaccessfromindexsignature",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nouncheckedindexedaccess",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_outdir",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_paths",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_rootdir",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_skiplibcheck",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_sourcemap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_strict",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_target",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_tsbuildinfofile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_verbatimmodulesyntax",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/assets/tsconfig-template.json",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_paths",
+      "target": "kiro_skills_mastering_typescript_assets_tsconfig_template_paths",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_info",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_pass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_warn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L44",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L96",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_info",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L39",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_pass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/mastering-typescript/scripts/validate-setup.sh",
+      "source_location": "L41",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "target": "kiro_skills_mastering_typescript_scripts_validate_setup_warn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh",
+      "source_location": "L21",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_classify_feature",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_classify",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_classify_feature",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh",
+      "source_location": "L68",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_classify_feature_classify",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh",
+      "source_location": "L22",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_later_edits",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_later_edits_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_later_edits",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_later_edits_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh",
+      "source_location": "L18",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_later_edits_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_later_edits_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_clean_tree",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_authenticated",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_installed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_git_repo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_jq_installed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L76",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_clean_tree",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L78",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_authenticated",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L77",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_installed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L75",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_git_repo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L79",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_jq_installed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L28",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L65",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_authenticated",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L59",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_installed",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L43",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_git_repo",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh",
+      "source_location": "L71",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_preflight_check_jq_installed",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_lockfile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_package_manager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh",
+      "source_location": "L22",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L110",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_build_results",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L85",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_build",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_typecheck",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_php_tests",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_has_npm_script",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_js_package_manager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_run_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L140",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_build_results",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L35",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L88",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_build",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_has_npm_script",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L81",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_typecheck",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_has_npm_script",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh",
+      "source_location": "L119",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_run_tests_build_results",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_run_tests_run_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh",
+      "source_location": "L22",
+      "weight": 1.0,
+      "context": "call",
+      "source": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_sh__entry",
+      "target": "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_usage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "kiro_skills_systematic_debugging_condition_based_waiting_example",
+      "target": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "kiro_skills_systematic_debugging_condition_based_waiting_example",
+      "target": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventcount",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "kiro_skills_systematic_debugging_condition_based_waiting_example",
+      "target": "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventmatch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/systematic-debugging/find-polluter.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "kiro_skills_systematic_debugging_find_polluter",
+      "target": "kiro_skills_systematic_debugging_find_polluter_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_combinegraphs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_execsync",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_extractdotblocks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_extractgraphbody",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_fs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_path",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs",
+      "target": "kiro_skills_writing_skills_render_graphs_rendertosvg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L121",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs_main",
+      "target": "kiro_skills_writing_skills_render_graphs_extractdotblocks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs_combinegraphs",
+      "target": "kiro_skills_writing_skills_render_graphs_extractgraphbody",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs_main",
+      "target": "kiro_skills_writing_skills_render_graphs_combinegraphs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": ".kiro/skills/writing-skills/render-graphs.js",
+      "source_location": "L138",
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_render_graphs_main",
+      "target": "kiro_skills_writing_skills_render_graphs_rendertosvg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "build.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "build",
+      "target": "build_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/init-nginx.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "scripts_init_nginx",
+      "target": "scripts_init_nginx_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/init-serial.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "scripts_init_serial",
+      "target": "scripts_init_serial_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/usr/local/bin/microvms-console",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_usr_local_bin_microvms_console",
+      "target": "src_usr_local_bin_microvms_console__entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/AddMicroVMs.page",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_addmicrovms_page",
+      "target": "agents_microvmadmin_php"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_microvmadmin_php",
+      "target": "agents_common_php"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_microvmadmin_php",
+      "target": "usr_local_bin_ch_remote"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_microvmadmin_php",
+      "target": "usr_local_bin_crane"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/MicroVMsMachines.page",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_microvmsmachines_page",
+      "target": "agents_microvmadmin_php"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/MicroVMsSettingsGeneral.page",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_microvmssettingsgeneral_page",
+      "target": "agents_microvmadmin_php"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_rc_microvms",
+      "target": "agents_event_array_started"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/event/stopping_svcs",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_event_stopping_svcs",
+      "target": "agents_rc_microvms"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_rc_microvms",
+      "target": "usr_local_bin_cloud_hypervisor"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_rc_microvms",
+      "target": "usr_local_bin_firecracker"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_rc_microvms",
+      "target": "usr_local_bin_flintlockd"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/etc/rc.d/rc.microvms",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_rc_microvms",
+      "target": "usr_local_bin_microvms_containerd"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_parseemail",
+      "target": "mastering_typescript_enterprise_patterns_ok"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_parseemail",
+      "target": "mastering_typescript_enterprise_patterns_err"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_handleerror",
+      "target": "mastering_typescript_enterprise_patterns_notfounderror"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_handleerror",
+      "target": "mastering_typescript_enterprise_patterns_validationerror_class"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_validateemail",
+      "target": "mastering_typescript_enterprise_patterns_validationerror_class"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_validateuserid",
+      "target": "mastering_typescript_enterprise_patterns_validationerror_class"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_handleerror",
+      "target": "mastering_typescript_enterprise_patterns_unauthorizederror"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_handleerror",
+      "target": "mastering_typescript_enterprise_patterns_isapperror"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_validatecreateuser",
+      "target": "mastering_typescript_enterprise_patterns_createuserschema"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_formatzoderror",
+      "target": "mastering_typescript_enterprise_patterns_validatecreateuser"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_sendemail",
+      "target": "mastering_typescript_enterprise_patterns_validateemail"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_getuser",
+      "target": "mastering_typescript_enterprise_patterns_validateuserid"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/index.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_index",
+      "target": "mastering_typescript_enterprise_patterns_users_usercontroller"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/index.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_index",
+      "target": "mastering_typescript_enterprise_patterns_users_userschema"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/index.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_index",
+      "target": "mastering_typescript_enterprise_patterns_users_userservice"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/index.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_index",
+      "target": "mastering_typescript_enterprise_patterns_users_usertypes"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/modules/auth/strategies/jwt.strategy.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_auth_jwtstrategy",
+      "target": "mastering_typescript_enterprise_patterns_users_userservice"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/user.controller.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "target": "mastering_typescript_enterprise_patterns_users_userservice"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.6,
+      "source_file": "src/modules/users/users.repository.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_userrepository_nestjs",
+      "target": "mastering_typescript_enterprise_patterns_users_userservice"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/modules/users/users.service.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_userservice",
+      "target": "mastering_typescript_enterprise_patterns_users_createuserdto"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/modules/users/users.service.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_userservice",
+      "target": "mastering_typescript_enterprise_patterns_users_updateuserdto"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/user.service.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_userservice",
+      "target": "mastering_typescript_enterprise_patterns_users_userrepository"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/user.controller.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "target": "mastering_typescript_enterprise_patterns_users_createuserdto"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/features/users/user.controller.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "target": "mastering_typescript_enterprise_patterns_users_updateuserdto"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/common/guards/roles.guard.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "mastering_typescript_enterprise_patterns_common_guards_rolesguard",
+      "target": "mastering_typescript_enterprise_patterns_common_decorators_roles"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/writing-skills/anthropic-best-practices.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_anthropic_best_practices",
+      "target": "kiro_skills_writing_skills_skill"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/writing-skills/testing-skills-with-subagents.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_testing_skills_with_subagents",
+      "target": "kiro_skills_writing_skills_skill"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/writing-skills/anthropic-best-practices.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_anthropic_best_practices",
+      "target": "kiro_skills_writing_skills_testing_skills_with_subagents"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/writing-skills/testing-skills-with-subagents.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "kiro_skills_writing_skills_testing_skills_with_subagents",
+      "target": "kiro_skills_writing_skills_persuasion_principles"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "microvms_lifecycle_management",
+      "label": "MicroVM Lifecycle Management",
+      "nodes": [
+        "agents_microvmadmin_php",
+        "agents_rc_microvms",
+        "agents_event_array_started",
+        "agents_event_stopping_svcs"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php"
+    },
+    {
+      "id": "enterprise_patterns_error_handling",
+      "label": "Error Handling Patterns",
+      "nodes": [
+        "mastering_typescript_enterprise_patterns_resulttypepattern",
+        "mastering_typescript_enterprise_patterns_ok",
+        "mastering_typescript_enterprise_patterns_err",
+        "mastering_typescript_enterprise_patterns_parseemail",
+        "mastering_typescript_enterprise_patterns_apperror",
+        "mastering_typescript_enterprise_patterns_notfounderror",
+        "mastering_typescript_enterprise_patterns_validationerror_class",
+        "mastering_typescript_enterprise_patterns_unauthorizederror",
+        "mastering_typescript_enterprise_patterns_isapperror",
+        "mastering_typescript_enterprise_patterns_handleerror"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+    },
+    {
+      "id": "enterprise_patterns_validation_patterns",
+      "label": "Validation Patterns",
+      "nodes": [
+        "mastering_typescript_enterprise_patterns_userschema",
+        "mastering_typescript_enterprise_patterns_createuserschema",
+        "mastering_typescript_enterprise_patterns_updateuserschema",
+        "mastering_typescript_enterprise_patterns_validatecreateuser",
+        "mastering_typescript_enterprise_patterns_formatzoderror",
+        "mastering_typescript_enterprise_patterns_validateemail",
+        "mastering_typescript_enterprise_patterns_validateuserid"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+    },
+    {
+      "id": "enterprise_patterns_nestjs_users_module",
+      "label": "NestJS Users Module",
+      "nodes": [
+        "mastering_typescript_enterprise_patterns_users_userservice_nestjs",
+        "mastering_typescript_enterprise_patterns_users_userrepository_nestjs",
+        "mastering_typescript_enterprise_patterns_users_usercontroller",
+        "mastering_typescript_enterprise_patterns_users_createuserdto",
+        "mastering_typescript_enterprise_patterns_users_updateuserdto",
+        "mastering_typescript_enterprise_patterns_users_userschema_zod"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/mastering-typescript/references/enterprise-patterns.md"
+    },
+    {
+      "id": "tdd_skill_development_cycle",
+      "label": "TDD Cycle for Skill Development and Testing",
+      "nodes": [
+        "kiro_skills_writing_skills_skill",
+        "kiro_skills_writing_skills_testing_skills_with_subagents",
+        "kiro_skills_writing_skills_persuasion_principles"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".kiro/skills/writing-skills/testing-skills-with-subagents.md"
+    }
+  ],
+  "built_at_commit": "336fd6adeaf9791d1bc95964a9f77a5ff7dc07e2"
+}

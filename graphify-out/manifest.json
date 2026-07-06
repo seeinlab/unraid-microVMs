@@ -1,0 +1,132 @@
+{
+  ".kiro/mcp.json": {
+    "mtime": 1783149074.5970442,
+    "ast_hash": "ee9615f2027bdeafae5521d75c11ea8d",
+    "semantic_hash": "ee9615f2027bdeafae5521d75c11ea8d"
+  },
+  ".kiro/skills/brainstorming/scripts/helper.js": {
+    "mtime": 1783078579.547084,
+    "ast_hash": "cef288b6b4543910ffc7826c3a036a55",
+    "semantic_hash": "cef288b6b4543910ffc7826c3a036a55"
+  },
+  ".kiro/skills/brainstorming/scripts/start-server.sh": {
+    "mtime": 1783078579.609191,
+    "ast_hash": "386ba065fd00d2f3d8d5303c26d413f5",
+    "semantic_hash": "386ba065fd00d2f3d8d5303c26d413f5"
+  },
+  ".kiro/skills/brainstorming/scripts/stop-server.sh": {
+    "mtime": 1783078579.6256468,
+    "ast_hash": "3d59796ec5ca347c5eb95adbc4914bb8",
+    "semantic_hash": "3d59796ec5ca347c5eb95adbc4914bb8"
+  },
+  ".kiro/skills/mastering-typescript/assets/eslint-template.js": {
+    "mtime": 1783078579.2544425,
+    "ast_hash": "bc4406d5d18f29b7311da665cbc05efd",
+    "semantic_hash": "bc4406d5d18f29b7311da665cbc05efd"
+  },
+  ".kiro/skills/mastering-typescript/assets/tsconfig-template.json": {
+    "mtime": 1783078579.2708564,
+    "ast_hash": "b2b6bd9fce9d538bb78512668104c316",
+    "semantic_hash": "b2b6bd9fce9d538bb78512668104c316"
+  },
+  ".kiro/skills/mastering-typescript/scripts/validate-setup.sh": {
+    "mtime": 1783078579.4403071,
+    "ast_hash": "ae2163c8961b30709798df6e9b4ffd50",
+    "semantic_hash": "ae2163c8961b30709798df6e9b4ffd50"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/apply_new_files.sh": {
+    "mtime": 1783149054.7316144,
+    "ast_hash": "83555bea4edf4a1b2703ca20da9f6bd3",
+    "semantic_hash": "83555bea4edf4a1b2703ca20da9f6bd3"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/classify_feature.sh": {
+    "mtime": 1783149054.7295916,
+    "ast_hash": "2171a86e9b6360354399d6e771c92ffb",
+    "semantic_hash": "2171a86e9b6360354399d6e771c92ffb"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/fetch_kit.sh": {
+    "mtime": 1783149054.7290795,
+    "ast_hash": "8d34b83ef93a83e8bc8b90663a805913",
+    "semantic_hash": "8d34b83ef93a83e8bc8b90663a805913"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/later_edits.sh": {
+    "mtime": 1783149054.7240796,
+    "ast_hash": "93dd3c27bf8eafd9cc12b4e65b438e5d",
+    "semantic_hash": "93dd3c27bf8eafd9cc12b4e65b438e5d"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/preflight.sh": {
+    "mtime": 1783149054.7270775,
+    "ast_hash": "23f2eeff782cdf46e3fe4fddde40eb88",
+    "semantic_hash": "23f2eeff782cdf46e3fe4fddde40eb88"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/reconcile_manifests.sh": {
+    "mtime": 1783149054.7280784,
+    "ast_hash": "444c66de279036611ca828a029b66e9c",
+    "semantic_hash": "444c66de279036611ca828a029b66e9c"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/run_tests.sh": {
+    "mtime": 1783149054.726081,
+    "ast_hash": "a480f944e0b3f2a731c4070b07e3bac3",
+    "semantic_hash": "a480f944e0b3f2a731c4070b07e3bac3"
+  },
+  ".kiro/skills/starter-kit-upgrade/scripts/scan_transitive_imports.sh": {
+    "mtime": 1783149054.725079,
+    "ast_hash": "8baf779b310d2bf010ee640150caa484",
+    "semantic_hash": "8baf779b310d2bf010ee640150caa484"
+  },
+  ".kiro/skills/systematic-debugging/condition-based-waiting-example.ts": {
+    "mtime": 1783078579.8644056,
+    "ast_hash": "8e502a8c1e9c7de15967202615d241d5",
+    "semantic_hash": "8e502a8c1e9c7de15967202615d241d5"
+  },
+  ".kiro/skills/systematic-debugging/find-polluter.sh": {
+    "mtime": 1783078579.9163353,
+    "ast_hash": "2ae1144fa5a66aa26c13d644a12ad0bf",
+    "semantic_hash": "2ae1144fa5a66aa26c13d644a12ad0bf"
+  },
+  ".kiro/skills/writing-skills/render-graphs.js": {
+    "mtime": 1783078580.323827,
+    "ast_hash": "e9d8be9caa34d327cac6f746f947cee0",
+    "semantic_hash": "e9d8be9caa34d327cac6f746f947cee0"
+  },
+  "build.sh": {
+    "mtime": 1783045004.6806316,
+    "ast_hash": "af922a335a2ea2be1adcd6bc02c4cd44",
+    "semantic_hash": "af922a335a2ea2be1adcd6bc02c4cd44"
+  },
+  "docs/vm-config-schema.json": {
+    "mtime": 1783213445.7448616,
+    "ast_hash": "e262e33c49e58b79eeae928b141008b2",
+    "semantic_hash": "e262e33c49e58b79eeae928b141008b2"
+  },
+  "scripts/fetch_lm_svg.py": {
+    "mtime": 1783085719.4156134,
+    "ast_hash": "b52d4b1ff103a4ed4e172035b6e4d9ee",
+    "semantic_hash": "b52d4b1ff103a4ed4e172035b6e4d9ee"
+  },
+  "scripts/init-nginx.sh": {
+    "mtime": 1783092331.7775638,
+    "ast_hash": "189b8c100129f3e20276a7dc554101ba",
+    "semantic_hash": "189b8c100129f3e20276a7dc554101ba"
+  },
+  "scripts/init-serial.sh": {
+    "mtime": 1783094052.0541708,
+    "ast_hash": "b4794ecae1517b592cfdb30ecf3a86e8",
+    "semantic_hash": "b4794ecae1517b592cfdb30ecf3a86e8"
+  },
+  "scripts/render_lm_icon.py": {
+    "mtime": 1783085967.3434467,
+    "ast_hash": "1034668a08a1bca2b95847b39d8ba624",
+    "semantic_hash": "1034668a08a1bca2b95847b39d8ba624"
+  },
+  "scripts/svg2png.py": {
+    "mtime": 1783084741.325982,
+    "ast_hash": "4502f884f168f91481852dcc132fbe93",
+    "semantic_hash": "4502f884f168f91481852dcc132fbe93"
+  },
+  "src/usr/local/bin/microvms-console": {
+    "mtime": 1783218385.1503067,
+    "ast_hash": "1992e68199881c0f94be00c75c6134ae",
+    "semantic_hash": "1992e68199881c0f94be00c75c6134ae"
+  }
+}
