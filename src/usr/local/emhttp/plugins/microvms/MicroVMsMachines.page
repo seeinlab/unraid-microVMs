@@ -173,10 +173,6 @@ function addMicroVMContext(name, state, engine) {
   context.settings({right:false, above:false});
 
   if (state == 'running') {
-    opts.push({text:'Console', icon:'fa-terminal', action:function(e){
-      e.preventDefault();
-      vmConsole(name);
-    }});
     opts.push({text:'Stop', icon:'fa-stop', action:function(e){
       e.preventDefault();
       vmAction('stop', name);
@@ -186,53 +182,49 @@ function addMicroVMContext(name, state, engine) {
       vmAction('force_stop', name);
     }});
     if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Console', icon:'fa-terminal', action:function(e){
+        e.preventDefault();
+        vmConsole(name);
+      }});
       opts.push({text:'Resize', icon:'fa-expand', action:function(e){
         e.preventDefault();
         vmResize(name, engine);
       }});
+      opts.push({text:'Snapshot', icon:'fa-camera', action:function(e){
+        e.preventDefault();
+        vmAction('snapshot', name);
+      }});
+      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+        e.preventDefault();
+        vmSnapshots(name);
+      }});
     }
-    opts.push({text:'Snapshot', icon:'fa-camera', action:function(e){
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
       e.preventDefault();
-      vmAction('snapshot', name);
+      vmVmmLogs(name, engine);
     }});
-    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
-      e.preventDefault();
-      vmSnapshots(name);
-    }});
-    opts.push({divider:true});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
-    }});
-    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
-      e.preventDefault();
-      vmLogs(name, engine);
-    }});
-    opts.push({text:'VMM Logs', icon:'fa-cogs', action:function(e){
-      e.preventDefault();
-      vmVmmLogs(name, engine);
     }});
   } else {
     opts.push({text:'Start', icon:'fa-play', action:function(e){
       e.preventDefault();
       vmAction('start', name);
     }});
-    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+    if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+        e.preventDefault();
+        vmSnapshots(name);
+      }});
+    }
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
       e.preventDefault();
-      vmSnapshots(name);
+      vmVmmLogs(name, engine);
     }});
-    opts.push({divider:true});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
-    }});
-    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
-      e.preventDefault();
-      vmLogs(name, engine);
-    }});
-    opts.push({text:'VMM Logs', icon:'fa-cogs', action:function(e){
-      e.preventDefault();
-      vmVmmLogs(name, engine);
     }});
     opts.push({divider:true});
     opts.push({text:'Delete microVM & rootFS', icon:'fa-trash', action:function(e){
@@ -350,23 +342,12 @@ function vmInfo(name) {
   });
 }
 
-function vmLogs(name, engine) {
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'vm_log', name: name, engine: engine}, function(data) {
-    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-    if (data && data.success) {
-      swal({title: name + ' — VM Output', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
-    } else {
-      swal({title: 'Logs Error', text: (data && data.error) || 'Failed to load logs', type: 'error'});
-    }
-  });
-}
-
 function vmVmmLogs(name, engine) {
   var service = (engine || 'cloud-hypervisor') + '/' + name;
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', service: service}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
     if (data && data.success) {
-      swal({title: name + ' — VMM Process Log', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
+      swal({title: name + ' — Logs', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
     } else {
       swal({title: 'VMM Logs Error', text: (data && data.error) || 'Failed to load VMM logs', type: 'error'});
     }
