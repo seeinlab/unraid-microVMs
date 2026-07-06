@@ -77,6 +77,12 @@ mkdir -p /boot/config/plugins/microvms/tmp
 <URL>https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz</URL>
 </FILE>
 
+<!-- catatonit v0.2.1 (container init - signal forwarding + zombie reaping) -->
+<FILE Name="/boot/config/plugins/microvms/catatonit">
+<URL>https://github.com/openSUSE/catatonit/releases/download/v0.2.1/catatonit.x86_64</URL>
+<MODE>0755</MODE>
+</FILE>
+
 <!-- ============================================================ -->
 <!-- EXTRACT TARBALLS                                               -->
 <!-- ============================================================ -->
@@ -163,7 +169,7 @@ rm -rf /usr/local/emhttp/plugins/${PLUGIN}
 tar -xf /boot/config/plugins/${PLUGIN}/${PLUGIN}-${VERSION}.tgz -C / 2>/dev/null
 
 # Install binaries
-for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd crane ttyd grpcurl; do
+for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd crane ttyd grpcurl catatonit; do
   [ -f "/boot/config/plugins/${PLUGIN}/$bin" ] && cp "/boot/config/plugins/${PLUGIN}/$bin" "/usr/local/bin/$bin" && chmod +x "/usr/local/bin/$bin"
 done
 
@@ -173,6 +179,12 @@ chmod +x /usr/local/etc/rc.d/rc.microvms 2>/dev/null
 
 # Console helper already at /usr/local/bin/microvms-console from tgz
 chmod +x /usr/local/bin/microvms-console 2>/dev/null
+chmod +x /usr/local/bin/microvms-console-fc 2>/dev/null
+
+# Install generic microVM init files (injected into rootfs at create time)
+mkdir -p /usr/local/share/microvms
+cp /usr/local/bin/catatonit /usr/local/share/microvms/catatonit 2>/dev/null
+chmod +x /usr/local/share/microvms/fly-init 2>/dev/null
 
 # Create default config if not exists
 if [ ! -f /boot/config/plugins/${PLUGIN}/${PLUGIN}.controlplane.cfg ]; then

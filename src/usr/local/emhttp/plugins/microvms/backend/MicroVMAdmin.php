@@ -369,97 +369,41 @@ switch ($cmd) {
             $execCmd = trim("$entrypoint $cmd");
             if (empty($execCmd)) $execCmd = '/bin/sh';
 
-            // Inject init script
+            // Inject generic init + /fly/run.json (Fly.io pattern)
             $enableConsole = ($_REQUEST['console'] ?? 'true') === 'true';
-            if ($enableConsole) {
-                // Console mode: app runs in background, shell in foreground
-                $initScript = <<<INIT
-#!/bin/sh
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t devtmpfs devtmpfs /dev 2>/dev/null
-mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+            $mountPath = "/tmp/microvm-mount-$name";
 
-# Network config from kernel cmdline
-for d in /sys/class/net/*; do n=\$(basename \$d); [ "\$n" != "lo" ] && IFACE=\$n && break; done
-IFACE=\${IFACE:-eth0}
-CMDLINE=\$(cat /proc/cmdline)
-IP=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
-GW=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
-if [ -n "\$IP" ]; then
-  ip link set lo up 2>/dev/null
-  ip link set \$IFACE up 2>/dev/null
-  ip addr add \${IP}/24 dev \$IFACE 2>/dev/null
-  [ -n "\$GW" ] && ip route add default via \$GW dev \$IFACE 2>/dev/null
-fi
-echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
-echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export HOME=/root
-export TERM=dumb
-export COLUMNS=200
-export LINES=50
-stty columns 200 rows 50 2>/dev/null
+            // Create /fly directory
+            @mkdir("$mountPath/fly", 0755, true);
+            @mkdir("$mountPath/sbin", 0755, true);
 
-# Find available shell
-SHELL=""
-for s in /bin/bash /bin/ash /bin/sh /usr/bin/sh; do
-  [ -x "\$s" ] && SHELL="\$s" && break
-done
+            // Copy generic init script (same for all VMs)
+            copy('/usr/local/share/microvms/fly-init', "$mountPath/fly/init");
+            chmod("$mountPath/fly/init", 0755);
 
-# Start app in background
-$execCmd &
-APP_PID=\$!
+            // Copy catatonit binary (PID 1 signal forwarding + zombie reaping)
+            copy('/usr/local/share/microvms/catatonit', "$mountPath/sbin/catatonit");
+            chmod("$mountPath/sbin/catatonit", 0755);
 
-# Interactive shell (if available)
-if [ -n "\$SHELL" ]; then
-  # Spawn shell with controlling TTY (try BusyBox -c, then util-linux --ctty, then plain)
-  if setsid -c true 2>/dev/null; then
-    setsid -c \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
-  elif setsid --ctty true 2>/dev/null; then
-    setsid --ctty \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
-  else
-    \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
-  fi
-  # PID 1 must never exit — wait for app
-  wait \$APP_PID 2>/dev/null
-  # If app dies, keep init alive
-  while true; do sleep 3600; done
-else
-  echo "No shell available. Console disabled."
-  exec $execCmd
-fi
-INIT;
-            } else {
-                // No console: just exec the app directly
-                $initScript = <<<INIT
-#!/bin/sh
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t devtmpfs devtmpfs /dev 2>/dev/null
-mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+            // Symlink /init → /fly/init (kernel boots to /init)
+            @unlink("$mountPath/init");
+            symlink('/fly/init', "$mountPath/init");
 
-# Network config from kernel cmdline
-for d in /sys/class/net/*; do n=\$(basename \$d); [ "\$n" != "lo" ] && IFACE=\$n && break; done
-IFACE=\${IFACE:-eth0}
-CMDLINE=\$(cat /proc/cmdline)
-IP=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
-GW=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
-if [ -n "\$IP" ]; then
-  ip link set lo up 2>/dev/null
-  ip link set \$IFACE up 2>/dev/null
-  ip addr add \${IP}/24 dev \$IFACE 2>/dev/null
-  [ -n "\$GW" ] && ip route add default via \$GW dev \$IFACE 2>/dev/null
-fi
-echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
-echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
-
-# Run OCI entrypoint + cmd (no console)
-exec $execCmd
-INIT;
-            }
-            file_put_contents("/tmp/microvm-mount-$name/init", $initScript);
-            chmod("/tmp/microvm-mount-$name/init", 0755);
+            // Generate /fly/run.json (per-VM config)
+            $runConfig = [
+                'entrypoint' => $entrypoint ? array_map('trim', explode("' '", trim($entrypoint, "'"))) : [],
+                'cmd' => $cmd ? array_map('trim', explode("' '", trim($cmd, "'"))) : [],
+                'hostname' => $name,
+                'network' => [
+                    'ip' => $_REQUEST['ip'] ?? '',
+                    'gateway' => $_REQUEST['gateway'] ?? '',
+                    'mask' => '255.255.255.0',
+                    'dns' => ['8.8.8.8', '1.1.1.1'],
+                ],
+                'console' => $enableConsole,
+                'tty' => true,
+            ];
+            file_put_contents("$mountPath/fly/run.json", json_encode($runConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
             if ($storageType === 'thin') {
                 // Keep snapshot but unmount via containerd
@@ -500,7 +444,7 @@ INIT;
                 'ref' => ($source === 'oci') ? $ociImage : ($rootfsPath ?: ''),
             ],
             'kernel' => [
-                'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/init',
+                'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/fly/init',
             ],
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
             'console' => $enableConsole,

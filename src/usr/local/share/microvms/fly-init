@@ -1,0 +1,101 @@
+#!/bin/sh
+# /fly/init — Generic microVM init (reads /fly/run.json)
+# Injected by microvms plugin. Same binary for ALL VMs.
+# Only /fly/run.json differs per VM.
+
+# 1. Mount virtual filesystems
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+
+# 2. Read /fly/run.json
+CONFIG="/fly/run.json"
+if [ ! -f "$CONFIG" ]; then
+  echo "FATAL: /fly/run.json not found"
+  sleep 5
+  poweroff -f 2>/dev/null
+  exit 1
+fi
+
+# Simple JSON field extractor (no jq needed)
+json_val() {
+  grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$CONFIG" | head -1 | sed 's/.*:.*"\([^"]*\)".*/\1/'
+}
+json_bool() {
+  grep -o "\"$1\"[[:space:]]*:[[:space:]]*[a-z]*" "$CONFIG" | head -1 | sed 's/.*:[[:space:]]*//'
+}
+json_array() {
+  grep -o "\"$1\"[[:space:]]*:[[:space:]]*\[[^]]*\]" "$CONFIG" | head -1 | sed 's/.*\[//;s/\]//;s/"//g;s/,/ /g'
+}
+
+# 3. Set hostname
+HOSTNAME=$(json_val hostname)
+[ -n "$HOSTNAME" ] && hostname "$HOSTNAME" 2>/dev/null
+
+# 4. Configure network
+IP=$(json_val ip)
+GW=$(json_val gateway)
+DNS=$(json_array dns)
+
+# Find first non-lo interface
+for d in /sys/class/net/*; do
+  n=$(basename $d)
+  [ "$n" != "lo" ] && IFACE=$n && break
+done
+IFACE=${IFACE:-eth0}
+
+if [ -n "$IP" ]; then
+  ip link set lo up 2>/dev/null
+  ip link set $IFACE up 2>/dev/null
+  ip addr add ${IP}/24 dev $IFACE 2>/dev/null
+  [ -n "$GW" ] && ip route add default via $GW dev $IFACE 2>/dev/null
+fi
+
+# DNS
+: > /etc/resolv.conf 2>/dev/null
+for ns in $DNS; do
+  echo "nameserver $ns" >> /etc/resolv.conf
+done
+[ ! -s /etc/resolv.conf ] && echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
+# 5. Set environment
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+export TERM=dumb
+export COLUMNS=200
+export LINES=50
+
+# 6. Build exec command from entrypoint + cmd
+ENTRYPOINT=$(json_array entrypoint)
+CMD=$(json_array cmd)
+EXEC_CMD="${ENTRYPOINT:+$ENTRYPOINT }${CMD}"
+[ -z "$EXEC_CMD" ] && EXEC_CMD="/bin/sh"
+
+# 7. Console mode
+CONSOLE=$(json_bool console)
+SHELL=""
+for s in /bin/bash /bin/ash /bin/sh /usr/bin/sh; do
+  [ -x "$s" ] && SHELL="$s" && break
+done
+
+if [ "$CONSOLE" = "true" ] && [ -n "$SHELL" ]; then
+  # Run app via catatonit in background (proper signal handling)
+  /sbin/catatonit -- sh -c "$EXEC_CMD" &
+  APP_PID=$!
+
+  # Spawn interactive shell on serial console
+  if setsid -c true 2>/dev/null; then
+    setsid -c $SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
+  else
+    $SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
+  fi
+
+  # PID 1 must never exit — wait for app
+  wait $APP_PID 2>/dev/null
+  # If app dies, keep init alive (prevent kernel panic)
+  while true; do sleep 3600; done
+else
+  # No console: exec through catatonit as PID 1
+  exec /sbin/catatonit -- sh -c "$EXEC_CMD"
+fi
