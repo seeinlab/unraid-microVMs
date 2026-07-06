@@ -821,7 +821,7 @@ FCEOF
     "$CH_BIN" \
       --api-socket "$sock" \
       --kernel "$kernel" \
-      --disk "path=$disk,readonly=false" \
+      --disk "path=$disk,readonly=false,image_type=raw" \
       --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
