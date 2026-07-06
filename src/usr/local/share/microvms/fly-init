@@ -68,22 +68,21 @@ export COLUMNS=200
 export LINES=50
 
 # 6. Build exec command from entrypoint + cmd
-# Write command to helper script (preserves args with spaces/semicolons)
+# Generate /fly/run.sh with properly quoted args
 RUNCMD="/fly/run.sh"
-{
-  echo "#!/bin/sh"
-  # Build command from JSON arrays, quoting each element
-  printf 'exec'
-  sed -n '/"entrypoint".*\[/,/\]/p' "$CONFIG" | grep -v '"entrypoint"' | sed 's/[][]//g;s/,//g;s/^[[:space:]]*//' | grep -v '^$' | while IFS= read -r arg; do
-    arg=$(echo "$arg" | sed 's/^"//;s/"$//')
-    printf ' "%s"' "$arg"
-  done
-  sed -n '/"cmd".*\[/,/\]/p' "$CONFIG" | grep -v '"cmd"' | sed 's/[][]//g;s/,//g;s/^[[:space:]]*//' | grep -v '^$' | while IFS= read -r arg; do
-    arg=$(echo "$arg" | sed 's/^"//;s/"$//')
-    printf ' "%s"' "$arg"
-  done
-  echo ""
-} > "$RUNCMD"
+echo '#!/bin/sh' > "$RUNCMD"
+printf 'exec' >> "$RUNCMD"
+# Extract entrypoint args
+sed -n '/"entrypoint".*\[/,/\]/p' "$CONFIG" | grep -v '"entrypoint"' | grep -v '[][]' | sed 's/,//g;s/^[[:space:]]*//' | while IFS= read -r line; do
+  arg=$(echo "$line" | sed 's/^"//;s/"$//')
+  [ -n "$arg" ] && printf ' "%s"' "$arg" >> "$RUNCMD"
+done
+# Extract cmd args
+sed -n '/"cmd".*\[/,/\]/p' "$CONFIG" | grep -v '"cmd"' | grep -v '[][]' | sed 's/,//g;s/^[[:space:]]*//' | while IFS= read -r line; do
+  arg=$(echo "$line" | sed 's/^"//;s/"$//')
+  [ -n "$arg" ] && printf ' "%s"' "$arg" >> "$RUNCMD"
+done
+echo "" >> "$RUNCMD"
 chmod 755 "$RUNCMD"
 
 # 7. Console mode
