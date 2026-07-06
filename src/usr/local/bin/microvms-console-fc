@@ -1,16 +1,21 @@
 #!/bin/bash
-# /usr/local/bin/microvms-console-fc - bidirectional FC serial console
+# /usr/local/bin/microvms-console-fc - bidirectional serial console (CH + FC)
 # Args: $1 = VM name
 NAME=$1
 FIFO="/tmp/microvms-${NAME}.fifo"
-LOG="/var/log/microvms/firecracker/${NAME}.log"
+
+# Find the serial log (CH uses serial.log, FC uses .log)
+if [ -f "/var/log/microvms/cloud-hypervisor/${NAME}.serial.log" ]; then
+  LOG="/var/log/microvms/cloud-hypervisor/${NAME}.serial.log"
+elif [ -f "/var/log/microvms/firecracker/${NAME}.log" ]; then
+  LOG="/var/log/microvms/firecracker/${NAME}.log"
+else
+  echo "Error: No log file found for VM '$NAME'"
+  exit 1
+fi
 
 if [ ! -p "$FIFO" ]; then
   echo "Error: FIFO $FIFO does not exist"
-  exit 1
-fi
-if [ ! -f "$LOG" ]; then
-  echo "Error: Log $LOG does not exist"
   exit 1
 fi
 
@@ -21,7 +26,7 @@ TAIL_PID=$!
 # Send a newline to trigger prompt display
 printf '\n' > "$FIFO"
 
-# Read stdin and write to FIFO (sends to FC serial)
+# Read stdin and write to FIFO (sends to VM serial)
 while IFS= read -r line; do
   printf '%s\n' "$line" > "$FIFO"
 done

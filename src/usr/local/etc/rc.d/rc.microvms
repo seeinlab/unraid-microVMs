@@ -856,17 +856,24 @@ FCEOF
   local vm_pid=$!
   log "Started VM '$name' (vmm=$vmm, PID=$vm_pid)"
 
-  # For Cloud Hypervisor: capture serial PTY output to a separate file
+  # For Cloud Hypervisor: capture serial PTY output and create FIFO for input
   if [ "$vmm" = "cloud-hypervisor" ]; then
     local serial_log="/var/log/microvms/cloud-hypervisor/${name}.serial.log"
+    local ch_fifo="/tmp/microvms-${name}.fifo"
     # Wait briefly for CH to report PTY path in its log
     sleep 1
     local pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" | tail -1)
     if [ -n "$pty_path" ] && [ -e "$pty_path" ]; then
+      # Capture serial output from PTY to log file
       cat "$pty_path" >> "$serial_log" 2>/dev/null &
       local serial_pid=$!
       echo "$serial_pid" > "/var/tmp/microvms-${name}-serial.pid"
-      log "Capturing serial output from $pty_path (PID $serial_pid)"
+      # Create FIFO for console input and bridge to PTY
+      rm -f "$ch_fifo"
+      mkfifo "$ch_fifo"
+      tail -f "$ch_fifo" > "$pty_path" 2>/dev/null &
+      echo "$ch_fifo" > "/var/tmp/microvms-${name}.fifo"
+      log "Capturing serial from $pty_path, console FIFO: $ch_fifo"
     else
       log "WARNING: Could not find PTY for serial capture on '$name'"
     fi

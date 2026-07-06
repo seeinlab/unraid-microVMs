@@ -625,73 +625,59 @@ INIT;
             echo json_encode(['success' => false, 'error' => "Console not supported for this VMM."]);
             break;
         } else {
-            // Cloud Hypervisor: parse PTY path from CH log (LAST match)
-            $ptyPath = null;
-            $logFile = "/var/log/microvms/cloud-hypervisor/{$name}.log";
-            if (file_exists($logFile)) {
-                $logContent = file_get_contents($logFile);
-                if (preg_match_all('/\/dev\/pts\/\d+/', $logContent, $allMatches)) {
-                    $ptyPath = end($allMatches[0]);
+            // Cloud Hypervisor: use FIFO approach (same as FC)
+            $fifoPath = "/tmp/microvms-{$name}.fifo";
+            if (!file_exists($fifoPath)) {
+                echo json_encode(['success' => false, 'error' => "No console FIFO available. Restart the VM to enable console."]);
+                break;
+            }
+
+            // Check ttyd
+            $ttydBin = '/usr/local/bin/ttyd';
+            if (!is_executable($ttydBin)) {
+                echo json_encode(['success' => false, 'error' => 'ttyd not installed.']);
+                break;
+            }
+
+            $sockName = "microvm-{$name}.console";
+            $sockPath = "/var/tmp/{$sockName}.sock";
+            $pidFile = "/var/tmp/ttyd-microvms-{$name}.pid";
+
+            // Kill existing ttyd
+            if (file_exists($pidFile)) {
+                $oldPid = trim(file_get_contents($pidFile));
+                if ($oldPid && file_exists("/proc/$oldPid")) {
+                    exec("kill $oldPid 2>/dev/null");
+                    usleep(500000);
                 }
+                @unlink($pidFile);
             }
-        }
+            @unlink($sockPath);
 
-        if (empty($ptyPath) || !file_exists($ptyPath)) {
-            echo json_encode([
-                'success' => false,
-                'error' => "No serial PTY found. Stop and Start the VM to enable serial console.",
-            ]);
-            break;
-        }
-
-        // Check ttyd
-        $ttydBin = '/usr/local/bin/ttyd';
-        if (!is_executable($ttydBin)) {
-            echo json_encode(['success' => false, 'error' => 'ttyd not installed. Run: wget -qO /usr/local/bin/ttyd https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 && chmod +x /usr/local/bin/ttyd']);
-            break;
-        }
-
-        // Use unix socket proxied by Unraid's nginx at /logterminal/SOCKNAME/
-        $sockName = "microvm-{$name}.console";
-        $sockPath = "/var/tmp/{$sockName}.sock";
-        $pidFile = "/var/tmp/ttyd-microvms-{$name}.pid";
-
-        // Kill existing ttyd for this VM
-        if (file_exists($pidFile)) {
-            $oldPid = trim(file_get_contents($pidFile));
-            if ($oldPid && file_exists("/proc/$oldPid")) {
-                exec("kill $oldPid 2>/dev/null");
-                usleep(500000);
+            $cmd = sprintf(
+                'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
+                "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
+                '-i %s /usr/local/bin/microvms-console-fc %s > /dev/null 2>&1 & echo $!',
+                $ttydBin,
+                escapeshellarg($sockPath),
+                escapeshellarg($name)
+            );
+            $pid = trim(shell_exec($cmd));
+            if ($pid) {
+                file_put_contents($pidFile, $pid);
             }
-            @unlink($pidFile);
-        }
-        @unlink($sockPath);
+            usleep(500000);
 
-        // Start ttyd on unix socket (Unraid's nginx proxies /logterminal/SOCK_NAME/ to it)
-        $cmd = sprintf(
-            'nohup %s -d0 -W -t rendererType=canvas -t closeOnDisconnect=true -t disableLeaveAlert=true ' .
-            "-t 'theme={\"background\":\"black\"}' -t fontSize=15 -t fontFamily=monospace " .
-            '-i %s /usr/local/bin/microvms-console %s > /dev/null 2>&1 & echo $!',
-            $ttydBin,
-            escapeshellarg($sockPath),
-            escapeshellarg($ptyPath)
-        );
-        $pid = trim(shell_exec($cmd));
-        if ($pid) {
-            file_put_contents($pidFile, $pid);
-        }
-
-        usleep(500000); // wait for socket
-
-        if (file_exists($sockPath)) {
-            $url = "/logterminal/{$sockName}/";
-            echo json_encode([
-                'success' => true,
-                'url' => $url,
-                'pty' => $ptyPath,
-            ]);
-        } else {
-            echo json_encode(['success' => false, 'error' => "ttyd failed to create socket at $sockPath"]);
+            if (file_exists($sockPath)) {
+                echo json_encode([
+                    'success' => true,
+                    'url' => "/logterminal/{$sockName}/",
+                    'name' => $name,
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'error' => "Failed to start console (ttyd socket not created)"]);
+            }
+            break;
         }
         break;
 
