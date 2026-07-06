@@ -414,10 +414,21 @@ echo "App started (PID \$APP_PID)"
 
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
-  exec setsid -c \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0
+  # Spawn shell with controlling TTY (try BusyBox -c, then util-linux --ctty, then plain)
+  if setsid -c true 2>/dev/null; then
+    setsid -c \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
+  elif setsid --ctty true 2>/dev/null; then
+    setsid --ctty \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
+  else
+    \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
+  fi
+  # PID 1 must never exit — wait for app
+  wait \$APP_PID 2>/dev/null
+  # If app dies, keep init alive
+  while true; do sleep 3600; done
 else
   echo "No shell available. Console disabled."
-  wait \$APP_PID
+  exec $execCmd
 fi
 INIT;
             } else {
