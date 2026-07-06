@@ -98,6 +98,14 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 
 <dl>
+  <dt>Storage Type:</dt>
+  <dd><select id="vm_storage_type" onchange="toggleStorageFields()" style="width:200px;">
+    <option value="thin">Thin Pool</option>
+    <option value="raw">Raw rootFS</option>
+  </select></dd>
+</dl>
+
+<dl id="row_rootfs_source">
   <dt>rootFS Source:</dt>
   <dd>
     <select id="rootfs_source" onchange="toggleSource(this.value)" style="width:320px;">
@@ -112,7 +120,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dt>OCI/Docker Image:</dt>
   <dd><input type="text" id="vm_oci_image" placeholder="docker.io/nginx:alpine" style="width:300px;"></dd>
 </dl>
-<dl>
+<dl id="row_disk_size">
   <dt>Disk Size:</dt>
   <dd><select id="vm_disk_size" style="width:120px;">
     <option value="200">200 MB</option>
@@ -120,13 +128,6 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
     <option value="1024">1.0 GB</option>
     <option value="2048">2.0 GB</option>
     <option value="5120">5.0 GB</option>
-  </select></dd>
-</dl>
-<dl>
-  <dt>Storage Type:</dt>
-  <dd><select id="vm_storage_type" style="width:200px;">
-    <option value="thin">Thin Pool (block device)</option>
-    <option value="raw">Raw File (rootfs.raw)</option>
   </select></dd>
 </dl>
 </div>
@@ -163,6 +164,24 @@ function toggleSource(val) {
   document.getElementById('section_oci').style.display = val === 'oci' ? '' : 'none';
   document.getElementById('section_existing').style.display = val === 'existing' ? '' : 'none';
 }
+
+function toggleStorageFields() {
+  var type = document.getElementById('vm_storage_type').value;
+  var sourceRow = document.getElementById('row_rootfs_source');
+  var diskSizeRow = document.getElementById('row_disk_size');
+  if (type === 'thin') {
+    sourceRow.style.display = 'none';
+    diskSizeRow.style.display = 'none';
+    document.getElementById('section_oci').style.display = 'none';
+    document.getElementById('section_existing').style.display = 'none';
+  } else {
+    sourceRow.style.display = '';
+    diskSizeRow.style.display = '';
+    toggleSource(document.getElementById('rootfs_source').value);
+  }
+}
+
+toggleStorageFields();
 
 function buildConfig() {
   var name = document.getElementById('vm_name').value;
