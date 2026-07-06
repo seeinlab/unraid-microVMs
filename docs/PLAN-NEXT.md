@@ -70,3 +70,11 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **TODO**: Pre-check if image already exists before pulling
 - **TODO**: Add a "Cancel" button to the create progress UI
 
+
+
+### Storage Tab: Prune button not working
+- **Symptom**: "Clean dangling images" button shows "Done" but containerd says "No images pruned. `image prune` requires --all to be specified."
+- **Cause**: `ctr images prune` without `--all` flag only removes dangling (untagged) images, and containerd's definition of "dangling" may differ from Docker's
+- **Fix**: Add `--all` flag to the prune command, or provide separate buttons for "Prune unused" vs "Prune all"
+- **Also**: The "Not valid!" error suggests a validation issue in the response handling
+
