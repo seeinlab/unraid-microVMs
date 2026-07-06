@@ -926,6 +926,13 @@ stop_vm() {
     esac
   fi
 
+  # Delete TAP interface for reuse
+  local tap_id=$(grep -oP '"tap_id"\s*:\s*\K[0-9]+' "$config_file" 2>/dev/null)
+  if [ -n "$tap_id" ]; then
+    ip link del "tap${tap_id}" 2>/dev/null
+    log "Deleted tap${tap_id}"
+  fi
+
   if [ "$vmm" = "firecracker" ]; then
     local pid=$(pgrep -f "microvms-${name}" 2>/dev/null | head -1)
     if [ -n "$pid" ]; then

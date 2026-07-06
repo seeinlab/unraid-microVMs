@@ -941,8 +941,11 @@ INIT;
         }
 
         if (file_exists($logfile)) {
-            // Show full log (kernel boot + app output) like docker logs
-            $log = shell_exec("tail -200 " . escapeshellarg($logfile) . " 2>/dev/null");
+            // Show boot + app output up to console marker (exclude interactive shell)
+            $log = shell_exec("sed -n '1,/--- console ---/p' " . escapeshellarg($logfile) . " 2>/dev/null");
+            if (empty(trim($log))) {
+                $log = shell_exec("tail -200 " . escapeshellarg($logfile) . " 2>/dev/null");
+            }
             // Strip ANSI escape sequences (colors, cursor queries)
             $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);

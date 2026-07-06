@@ -81,6 +81,7 @@ if [ "$CONSOLE" = "true" ] && [ -n "$SHELL" ]; then
   APP_PID=$!
 
   # Spawn interactive shell on serial console
+  echo '--- console ---'
   if setsid -c true 2>/dev/null; then
     setsid -c $SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0 &
   else
