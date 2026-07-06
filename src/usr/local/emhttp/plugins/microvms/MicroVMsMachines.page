@@ -260,14 +260,9 @@ function vmAction(action, name) {
 }
 
 function vmConsole(name) {
-  // Build console HTML
   var html = '<div id="console-wrap" style="text-align:left;width:100%;">' +
     '<pre id="console-output" style="height:400px;overflow-y:scroll;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#0d1117;padding:12px;border-radius:4px;color:#c9d1d9;border:1px solid #30363d;"></pre>' +
-    '<div style="margin-top:8px;display:flex;gap:8px;">' +
-      '<span style="color:#3fb950;font-family:monospace;line-height:32px;">$</span>' +
-      '<input id="console-input" type="text" style="flex:1;background:#0d1117;color:#3fb950;border:1px solid #30363d;padding:6px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;" placeholder="command...">' +
-      '<button id="console-send" style="background:#238636;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12px;">Send</button>' +
-    '</div>' +
+    '<div id="console-input-row" style="margin-top:8px;display:flex;gap:8px;align-items:center;"></div>' +
   '</div>';
 
   swal({
@@ -279,61 +274,67 @@ function vmConsole(name) {
     allowOutsideClick: true
   });
 
-  // Widen the modal after render
   setTimeout(function() {
+    // Center and widen modal
     var modal = document.querySelector('.sweet-alert');
     if (modal) {
       modal.style.width = '85%';
       modal.style.maxWidth = '960px';
+      modal.style.position = 'fixed';
+      modal.style.top = '50%';
       modal.style.left = '50%';
-      modal.style.marginLeft = '-480px';
+      modal.style.transform = 'translate(-50%, -50%)';
+      modal.style.margin = '0';
     }
 
-    var output = document.getElementById('console-output');
-    var input = document.getElementById('console-input');
-    var sendBtn = document.getElementById('console-send');
-    if (!input || !output) return;
+    // Inject input via DOM (swal strips <input> from HTML)
+    var row = document.getElementById('console-input-row');
+    if (row) {
+      row.innerHTML = '<span style="color:#3fb950;font-family:monospace;font-size:14px;">$</span>';
+      var inp = document.createElement('input');
+      inp.id = 'console-input';
+      inp.type = 'text';
+      inp.placeholder = 'command...';
+      inp.style.cssText = 'flex:1;background:#0d1117;color:#3fb950;border:1px solid #30363d;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;';
+      row.appendChild(inp);
+      var btn = document.createElement('button');
+      btn.textContent = 'Send';
+      btn.style.cssText = 'background:#238636;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;';
+      row.appendChild(btn);
+      inp.focus();
 
-    input.focus();
+      // Refresh output
+      var output = document.getElementById('console-output');
+      var refreshOutput = function() {
+        $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_output', name: name}, function(data) {
+          if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+          if (data && data.success && output) {
+            output.textContent = data.log || '';
+            output.scrollTop = output.scrollHeight;
+          }
+        });
+      };
 
-    // Refresh output and scroll to bottom
-    var refreshOutput = function() {
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_output', name: name}, function(data) {
-        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-        if (data && data.success && output) {
-          output.textContent = data.log || '';
-          output.scrollTop = output.scrollHeight;
-        }
-      });
-    };
+      // Send command
+      var sendCommand = function() {
+        var cmd = inp.value.trim();
+        if (!cmd) return;
+        inp.value = '';
+        inp.focus();
+        $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_input', name: name, input: cmd}, function() {
+          setTimeout(refreshOutput, 400);
+          setTimeout(refreshOutput, 1200);
+        });
+      };
 
-    // Send command
-    var sendCommand = function() {
-      var cmd = input.value.trim();
-      if (!cmd) return;
-      input.value = '';
-      input.focus();
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_input', name: name, input: cmd}, function() {
-        setTimeout(refreshOutput, 300);
-        setTimeout(refreshOutput, 1000);
-      });
-    };
+      inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); sendCommand(); } });
+      btn.addEventListener('click', sendCommand);
 
-    // Enter key sends
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); sendCommand(); }
-    });
-    // Send button
-    if (sendBtn) sendBtn.addEventListener('click', sendCommand);
-
-    // Initial load + auto refresh
-    refreshOutput();
-    var interval = setInterval(refreshOutput, 2000);
-
-    // Cleanup on close
-    var cleanup = function() { clearInterval(interval); };
-    document.querySelector('.sweet-alert .confirm').addEventListener('click', cleanup);
-  }, 200);
+      refreshOutput();
+      var interval = setInterval(refreshOutput, 2000);
+      document.querySelector('.sweet-alert .confirm').addEventListener('click', function() { clearInterval(interval); });
+    }
+  }, 250);
 }
 
 function vmResize(name, engine) {
