@@ -396,6 +396,13 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HOME=/root
+
+# Find available shell
+SHELL=""
+for s in /bin/bash /bin/ash /bin/sh /usr/bin/sh; do
+  [ -x "\$s" ] && SHELL="\$s" && break
+done
+
 echo "=== MicroVM Console ==="
 echo "App: $execCmd"
 echo ""
@@ -405,8 +412,13 @@ $execCmd &
 APP_PID=\$!
 echo "App started (PID \$APP_PID)"
 
-# Interactive shell
-exec /bin/sh
+# Interactive shell (if available)
+if [ -n "\$SHELL" ]; then
+  exec \$SHELL
+else
+  echo "No shell available. Console disabled."
+  wait \$APP_PID
+fi
 INIT;
             } else {
                 // No console: just exec the app directly
