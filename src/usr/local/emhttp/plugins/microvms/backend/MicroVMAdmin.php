@@ -341,70 +341,51 @@ switch ($cmd) {
                 exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
             }
 
+            // Get OCI image entrypoint and cmd
+            $entrypoint = '';
+            $cmd = '';
+            if (!empty($ociImage)) {
+                $imageConfig = shell_exec("crane config " . escapeshellarg($ociImage) . " 2>/dev/null");
+                if ($imageConfig) {
+                    $imgCfg = json_decode($imageConfig, true);
+                    $ep = $imgCfg['config']['Entrypoint'] ?? [];
+                    $cm = $imgCfg['config']['Cmd'] ?? [];
+                    $entrypoint = implode(' ', $ep);
+                    $cmd = implode(' ', $cm);
+                }
+            }
+            $execCmd = trim("$entrypoint $cmd");
+            if (empty($execCmd)) $execCmd = '/bin/sh';
+
             // Inject init script that:
             // 1. Mounts virtual filesystems (proc, sys, dev)
             // 2. Parses kernel cmdline ip=A::G:M:::off to configure eth0
-            // 3. Launches the appropriate service (nginx, httpd, or netcat fallback)
-            $initScript = <<<'INIT'
+            // 3. Launches the OCI ENTRYPOINT + CMD
+            $initScript = <<<INIT
 #!/bin/sh
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev 2>/dev/null
 mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
 
-# Find first non-loopback network interface
-for d in /sys/class/net/*; do n=$(basename $d); [ "$n" != "lo" ] && IFACE=$n && break; done
-IFACE=${IFACE:-eth0}
-
-# Parse kernel cmdline ip= parameter (format: ip=A::G:M:::off)
-CMDLINE=$(cat /proc/cmdline)
-IP=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
-GW=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
-MASK=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f4)
-
-# Configure network interface with parsed IP
-if [ -n "$IP" ]; then
-  if command -v ip >/dev/null 2>&1; then
-    ip link set lo up
-    ip link set $IFACE up
-    ip addr add ${IP}/24 dev $IFACE
-    [ -n "$GW" ] && ip route add default via $GW dev $IFACE
-  elif command -v ifconfig >/dev/null 2>&1; then
-    ifconfig lo up
-    ifconfig $IFACE ${IP} netmask ${MASK:-255.255.255.0} up
-    [ -n "$GW" ] && route add default gw $GW
-  fi
-  echo "Network: $IFACE -> $IP gw $GW"
+# Network config from kernel cmdline
+for d in /sys/class/net/*; do n=\$(basename \$d); [ "\$n" != "lo" ] && IFACE=\$n && break; done
+IFACE=\${IFACE:-eth0}
+CMDLINE=\$(cat /proc/cmdline)
+IP=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
+GW=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
+if [ -n "\$IP" ]; then
+  ip link set lo up 2>/dev/null
+  ip link set \$IFACE up 2>/dev/null
+  ip addr add \${IP}/24 dev \$IFACE 2>/dev/null
+  [ -n "\$GW" ] && ip route add default via \$GW dev \$IFACE 2>/dev/null
 fi
+echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
 
-# DNS
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-
-# Prepare directories
-mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp /tmp
-
-# Launch service
-if [ -f /usr/sbin/nginx ]; then
-  nginx -g 'daemon off;' &
-elif [ -f /usr/bin/httpd ] || command -v httpd > /dev/null 2>&1; then
-  mkdir -p /var/www/html
-  echo "<h1>MicroVM: HOSTNAME</h1>" > /var/www/html/index.html
-  httpd -p 80 -h /var/www/html
-elif [ -x /docker-entrypoint.sh ]; then
-  exec /docker-entrypoint.sh nginx -g 'daemon off;'
-elif [ -x /sbin/init ]; then
-  exec /sbin/init
-else
-  mkdir -p /var/www/html
-  echo "<h1>MicroVM: HOSTNAME</h1>" > /var/www/html/index.html
-  while true; do echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n$(cat /var/www/html/index.html)" | nc -l -p 80 -q1; done &
-fi
-trap 'kill $(jobs -p) 2>/dev/null; poweroff -f' TERM INT
-echo "=== MicroVM Ready ($IFACE: $IP) ==="
-while true; do sleep 3600 & wait; done
+# Run OCI entrypoint + cmd
+exec $execCmd
 INIT;
-            $initScript = str_replace('HOSTNAME', $name, $initScript);
             file_put_contents("/tmp/microvm-mount-$name/init", $initScript);
             chmod("/tmp/microvm-mount-$name/init", 0755);
 
@@ -770,40 +751,46 @@ INIT;
         exec("mount $rootfs /tmp/microvm-mount-$pullName");
         exec("tar -xf $tmpTar -C /tmp/microvm-mount-$pullName 2>&1");
 
-        // Inject init script with network configuration (parses kernel ip= param)
-        $pullInitScript = <<<'INIT'
+        // Get OCI image entrypoint and cmd
+        $entrypoint = '';
+        $cmd = '';
+        $imageConfig = shell_exec("crane config " . escapeshellarg($image) . " 2>/dev/null");
+        if ($imageConfig) {
+            $imgCfg = json_decode($imageConfig, true);
+            $ep = $imgCfg['config']['Entrypoint'] ?? [];
+            $cm = $imgCfg['config']['Cmd'] ?? [];
+            $entrypoint = implode(' ', $ep);
+            $cmd = implode(' ', $cm);
+        }
+        $execCmd = trim("$entrypoint $cmd");
+        if (empty($execCmd)) $execCmd = '/bin/sh';
+
+        // Inject init script with network configuration and OCI entrypoint
+        $pullInitScript = <<<INIT
 #!/bin/sh
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev 2>/dev/null
 mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
-for d in /sys/class/net/*; do n=$(basename $d); [ "$n" != "lo" ] && IFACE=$n && break; done
-IFACE=${IFACE:-eth0}
-CMDLINE=$(cat /proc/cmdline)
-IP=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
-GW=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
-MASK=$(echo "$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f4)
-if [ -n "$IP" ]; then
-  if command -v ip >/dev/null 2>&1; then
-    ip link set lo up; ip link set $IFACE up
-    ip addr add ${IP}/24 dev $IFACE
-    [ -n "$GW" ] && ip route add default via $GW dev $IFACE
-  elif command -v ifconfig >/dev/null 2>&1; then
-    ifconfig lo up; ifconfig $IFACE ${IP} netmask ${MASK:-255.255.255.0} up
-    [ -n "$GW" ] && route add default gw $GW
-  fi
+
+# Network config from kernel cmdline
+for d in /sys/class/net/*; do n=\$(basename \$d); [ "\$n" != "lo" ] && IFACE=\$n && break; done
+IFACE=\${IFACE:-eth0}
+CMDLINE=\$(cat /proc/cmdline)
+IP=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f1)
+GW=\$(echo "\$CMDLINE" | grep -o 'ip=[^ ]*' | head -1 | sed 's/ip=//' | cut -d: -f3)
+if [ -n "\$IP" ]; then
+  ip link set lo up 2>/dev/null
+  ip link set \$IFACE up 2>/dev/null
+  ip addr add \${IP}/24 dev \$IFACE 2>/dev/null
+  [ -n "\$GW" ] && ip route add default via \$GW dev \$IFACE 2>/dev/null
 fi
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp /tmp
-if [ -f /usr/sbin/nginx ]; then nginx -g 'daemon off;' &
-elif [ -x /docker-entrypoint.sh ]; then exec /docker-entrypoint.sh nginx -g 'daemon off;'
-elif [ -x /sbin/init ]; then exec /sbin/init
-else exec /bin/sh; fi
-trap 'kill $(jobs -p) 2>/dev/null; poweroff -f' TERM INT
-echo "=== MicroVM Ready ($IFACE: $IP) ==="
-while true; do sleep 3600 & wait; done
+echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null
+
+# Run OCI entrypoint + cmd
+exec $execCmd
 INIT;
-        $pullInitScript = str_replace('HOSTNAME', $pullName, $pullInitScript);
         file_put_contents("/tmp/microvm-mount-$pullName/init", $pullInitScript);
         chmod("/tmp/microvm-mount-$pullName/init", 0755);
 
