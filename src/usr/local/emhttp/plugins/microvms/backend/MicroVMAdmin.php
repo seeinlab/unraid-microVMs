@@ -387,6 +387,15 @@ switch ($cmd) {
 #!/bin/bash
 set -e
 MOUNT="$mountPath"
+
+# Cleanup stale mount from previous failed attempt
+umount \$MOUNT 2>/dev/null || true
+rmdir \$MOUNT 2>/dev/null || true
+
+# Cleanup function on failure
+cleanup() { umount \$MOUNT 2>/dev/null; rmdir \$MOUNT 2>/dev/null; }
+trap cleanup EXIT
+
 mkdir -p \$MOUNT
 mount $mountDev \$MOUNT
 $tarCmd
@@ -400,6 +409,7 @@ cat > \$MOUNT/fly/run.json << 'RUNJSONEOF'
 $runJson
 RUNJSONEOF
 $umountCmd
+trap - EXIT
 rmdir \$MOUNT 2>/dev/null
 SCRIPT;
             $scriptPath = "/tmp/microvm-create-$name.sh";
