@@ -814,8 +814,22 @@ start_vm() {
   }
 }
 FCEOF
-    "$FC_BIN" --api-sock "$sock" --config-file "$fc_cfg" \
-      >> "/var/log/microvms/firecracker/${name}.log" 2>&1 &
+    # Launch FC via script to allocate PTY (enables interactive console)
+    local fc_log="/var/log/microvms/firecracker/${name}.log"
+    : > "$fc_log"
+    setsid script -qfc "$FC_BIN --api-sock $sock --config-file $fc_cfg" "$fc_log" </dev/null &>/dev/null &
+    local script_pid=$!
+    sleep 1
+    # Find the PTY allocated by script
+    local fc_pty=""
+    for fd in /proc/$script_pid/fd/*; do
+      local target=$(readlink "$fd" 2>/dev/null)
+      case "$target" in /dev/pts/*) fc_pty="$target"; break;; esac
+    done
+    if [ -n "$fc_pty" ]; then
+      echo "$fc_pty" > "/var/tmp/microvms-${name}.pty"
+      log "FC console PTY: $fc_pty"
+    fi
   else
     # Cloud Hypervisor
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')

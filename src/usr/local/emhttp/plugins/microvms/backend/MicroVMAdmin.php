@@ -498,24 +498,33 @@ INIT;
         // Detect engine
         $configFile = microvm_find_config_file("$vmdir/$name");
         $vmConfig = $configFile ? json_decode(file_get_contents($configFile), true) : [];
-        $engine = microvm_get_vmm($vmConfig);
+        $engine = microvm_get_vmm($configFile);
 
-        if ($engine !== 'cloud-hypervisor') {
-            echo json_encode(['success' => false, 'error' => "Serial console not supported for Firecracker. Use Logs instead."]);
+        if ($engine === 'firecracker') {
+            // FC: PTY path saved by rc.microvms on start
+            $ptyFile = "/var/tmp/microvms-{$name}.pty";
+            $ptyPath = file_exists($ptyFile) ? trim(file_get_contents($ptyFile)) : '';
+            if (empty($ptyPath) || !file_exists($ptyPath)) {
+                echo json_encode(['success' => false, 'error' => "No console PTY available. Restart the VM to enable console."]);
+                break;
+            }
+            // $ptyPath is set for FC, fall through to ttyd setup
+        } elseif ($engine !== 'cloud-hypervisor') {
+            echo json_encode(['success' => false, 'error' => "Console not supported for this VMM."]);
             break;
-        }
-
-        // Parse PTY path from CH log (use LAST match — log accumulates across restarts)
-        $ptyPath = null;
-        if (file_exists($logFile)) {
-            $logContent = file_get_contents($logFile);
-            // Find all PTY paths and take the last one (most recent boot)
-            if (preg_match_all('/\/dev\/pts\/\d+/', $logContent, $allMatches)) {
-                $ptyPath = end($allMatches[0]);
+        } else {
+            // Cloud Hypervisor: parse PTY path from CH log (LAST match)
+            $ptyPath = null;
+            $logFile = "/var/log/microvms/cloud-hypervisor/{$name}.log";
+            if (file_exists($logFile)) {
+                $logContent = file_get_contents($logFile);
+                if (preg_match_all('/\/dev\/pts\/\d+/', $logContent, $allMatches)) {
+                    $ptyPath = end($allMatches[0]);
+                }
             }
         }
 
-        if (!$ptyPath || !file_exists($ptyPath)) {
+        if (empty($ptyPath) || !file_exists($ptyPath)) {
             echo json_encode([
                 'success' => false,
                 'error' => "No serial PTY found. Stop and Start the VM to enable serial console.",

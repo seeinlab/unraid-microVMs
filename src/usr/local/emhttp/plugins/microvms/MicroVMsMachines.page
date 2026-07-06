@@ -181,11 +181,11 @@ function addMicroVMContext(name, state, engine) {
       e.preventDefault();
       vmAction('force_stop', name);
     }});
+    opts.push({text:'Console', icon:'fa-terminal', action:function(e){
+      e.preventDefault();
+      vmConsole(name);
+    }});
     if (engine == 'cloud-hypervisor') {
-      opts.push({text:'Console', icon:'fa-terminal', action:function(e){
-        e.preventDefault();
-        vmConsole(name);
-      }});
       opts.push({text:'Resize', icon:'fa-expand', action:function(e){
         e.preventDefault();
         vmResize(name, engine);
