@@ -710,9 +710,12 @@ start_vm() {
 
   # Read common fields
   local memory=$(grep -oP '"memory_mb"\s*:\s*\K[0-9]+' "$config")
+  local max_memory=$(grep -oP '"max_memory_mb"\s*:\s*\K[0-9]+' "$config")
   local mac=$(grep -oP '"mac"\s*:\s*"\K[^"]+' "$config")
   local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$config")
   memory=${memory:-$DEFAULT_MEMORY}
+  # Default max_memory to memory×2 if not set
+  max_memory=${max_memory:-$((memory * 2))}
 
   if true; then
     # --- Config format (always new) ---
@@ -818,13 +821,17 @@ FCEOF
     local ch_cmdline=$(echo "$cmdline" | sed 's/console=hvc0/console=ttyS0/g')
     [ -z "$ch_cmdline" ] && ch_cmdline="$cmdline"
 
+    # Calculate hotplug size (max_memory - memory)
+    local hotplug_size=$((max_memory - memory))
+    [ $hotplug_size -lt 0 ] && hotplug_size=$memory
+
     "$CH_BIN" \
       --api-socket "$sock" \
       --kernel "$kernel" \
       --disk "path=$disk,readonly=false,image_type=raw" \
       --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
-      --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \
+      --memory "size=${memory}M,hotplug_size=${hotplug_size}M" \
       --net "tap=$tap_name,mac=$mac" \
       --serial pty --console off \
       -v >> "/var/log/microvms/cloud-hypervisor/${name}.log" 2>&1 &

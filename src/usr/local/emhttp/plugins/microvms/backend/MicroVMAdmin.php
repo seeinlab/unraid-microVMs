@@ -426,6 +426,7 @@ INIT;
             'name' => $name,
             'vcpus' => $cpus,
             'memory_mb' => $memory,
+            'max_memory_mb' => $max_memory,
             'storage' => $storageConfig,
             'network' => [
                 'ip' => $ip,
