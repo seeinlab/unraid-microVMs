@@ -906,6 +906,11 @@ stop_vm() {
     log "Stopped serial capture for: $name"
   fi
 
+  # Clean up FIFO and PTY files
+  rm -f "/tmp/microvms-${name}.fifo"
+  rm -f "/var/tmp/microvms-${name}.fifo"
+  rm -f "/var/tmp/microvms-${name}.pty"
+
   # Detect VMM from config (new or legacy format)
   local vmm="$DEFAULT_VMM"
   local config_file=""
