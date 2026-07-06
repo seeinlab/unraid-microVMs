@@ -290,7 +290,7 @@ function vmConsole(name) {
     // Inject input via DOM (swal strips <input> from HTML)
     var row = document.getElementById('console-input-row');
     if (row) {
-      row.innerHTML = '<span style="color:#3fb950;font-family:monospace;font-size:14px;">$</span>';
+      row.innerHTML = '';
       var inp = document.createElement('input');
       inp.id = 'console-input';
       inp.type = 'text';
