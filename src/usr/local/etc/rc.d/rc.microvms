@@ -642,18 +642,27 @@ delete_thin_rootfs() {
 activate_thin_rootfs() {
   local name="$1"
   local vmm="${2:-$DEFAULT_VMM}"
-  local snapshot_key="vm-${name}"
   local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
+  local device_path=""
+
+  # Try mount-path based key first (new format from ctr images mount)
+  local snapshot_key="/tmp/microvm-mount-${name}"
   local mounts=$($ctr_cmd snapshots --snapshotter devmapper mounts /tmp "$snapshot_key" 2>/dev/null)
-  local device_path=$(echo "$mounts" | grep -oP '/dev/mapper/\S+')
+  device_path=$(echo "$mounts" | grep -oP '/dev/mapper/\S+')
+
+  # Fallback: try vm-{name} key (legacy format)
+  if [ -z "$device_path" ]; then
+    snapshot_key="vm-${name}"
+    mounts=$($ctr_cmd snapshots --snapshotter devmapper mounts /tmp "$snapshot_key" 2>/dev/null)
+    device_path=$(echo "$mounts" | grep -oP '/dev/mapper/\S+')
+  fi
 
   if [ -n "$device_path" ] && [ -e "$device_path" ]; then
     echo "$device_path"
     return 0
   fi
 
-  # Snapshot exists in DB but device not active - this shouldn't happen normally
-  log "WARNING: Snapshot $snapshot_key exists but device not active (namespace: $vmm)"
+  log "WARNING: No thin snapshot found for $name (namespace: $vmm)"
   return 1
 }
 
@@ -812,7 +821,7 @@ FCEOF
     "$CH_BIN" \
       --api-socket "$sock" \
       --kernel "$kernel" \
-      --disk "path=$disk" \
+      --disk "path=$disk,readonly=false" \
       --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
       --memory "size=${memory}M,hotplug_size=$((memory * 2))M" \

@@ -298,35 +298,24 @@ switch ($cmd) {
                     break;
                 }
 
-                // 2. Get parent committed snapshot (image's top layer)
-                $parent = trim(shell_exec("$ctr snapshots --snapshotter devmapper list 2>/dev/null | grep Committed | tail -1 | awk '{print \$1}'"));
-                if (empty($parent)) {
-                    echo json_encode(['success' => false, 'error' => 'No image layers found after pull. Is devmapper active?']);
-                    break;
-                }
+                // 2. Mount image as writable devmapper snapshot (handles unpack automatically)
+                $mountPoint = "/tmp/microvm-mount-$name";
+                exec("mkdir -p $mountPoint");
+                // Remove stale snapshot if exists (re-create)
+                exec("$ctr images unmount " . escapeshellarg($mountPoint) . " 2>/dev/null");
+                exec("$ctr snapshots --snapshotter devmapper remove " . escapeshellarg($mountPoint) . " 2>/dev/null");
 
-                // 3. Remove stale snapshot if exists (re-create case)
-                exec("$ctr snapshots --snapshotter devmapper remove " . escapeshellarg($snapshotKey) . " 2>/dev/null");
-
-                // 4. Prepare active snapshot from image layer
-                exec("$ctr snapshots --snapshotter devmapper prepare " . escapeshellarg($snapshotKey) . " " . escapeshellarg($parent) . " 2>&1", $prepOut, $prepRet);
-                if ($prepRet !== 0) {
-                    echo json_encode(['success' => false, 'error' => 'Failed to prepare snapshot: ' . implode("\n", $prepOut)]);
-                    break;
-                }
-
-                // 4. Get device path
-                $rootfs = trim(shell_exec("$ctr snapshots --snapshotter devmapper mounts /tmp " . escapeshellarg($snapshotKey) . " 2>/dev/null | grep -oP '/dev/mapper/\\S+'"));
-                if (empty($rootfs)) {
-                    echo json_encode(['success' => false, 'error' => 'Failed to get device path for snapshot']);
-                    break;
-                }
-
-                // 5. Mount device for init injection
-                exec("mkdir -p /tmp/microvm-mount-$name");
-                exec("mount $rootfs /tmp/microvm-mount-$name 2>&1", $mountOut, $mountRet);
+                exec("$ctr images mount --snapshotter devmapper --rw --platform linux/amd64 " . escapeshellarg($pullImage) . " " . escapeshellarg($mountPoint) . " 2>&1", $mountOut, $mountRet);
                 if ($mountRet !== 0) {
-                    echo json_encode(['success' => false, 'error' => 'Failed to mount thin device']);
+                    echo json_encode(['success' => false, 'error' => 'Failed to mount image to devmapper: ' . implode("\n", $mountOut)]);
+                    break;
+                }
+
+                // 3. Get device path from mount
+                $rootfs = trim(shell_exec("mount | grep " . escapeshellarg($mountPoint) . " | awk '{print \$1}'"));
+                if (empty($rootfs)) {
+                    echo json_encode(['success' => false, 'error' => 'Cannot determine device path after mount']);
+                    exec("$ctr images unmount " . escapeshellarg($mountPoint) . " 2>/dev/null");
                     break;
                 }
             } else {
@@ -368,8 +357,9 @@ switch ($cmd) {
                     $imgCfg = json_decode($imageConfig, true);
                     $ep = $imgCfg['config']['Entrypoint'] ?? [];
                     $cm = $imgCfg['config']['Cmd'] ?? [];
-                    $entrypoint = implode(' ', $ep);
-                    $cmd = implode(' ', $cm);
+                    // Shell-escape each arg to preserve spaces/semicolons
+                    $entrypoint = implode(' ', array_map('escapeshellarg', $ep));
+                    $cmd = implode(' ', array_map('escapeshellarg', $cm));
                 }
             }
             $execCmd = trim("$entrypoint $cmd");
@@ -407,8 +397,13 @@ INIT;
             file_put_contents("/tmp/microvm-mount-$name/init", $initScript);
             chmod("/tmp/microvm-mount-$name/init", 0755);
 
-            exec("umount /tmp/microvm-mount-$name");
-            exec("rmdir /tmp/microvm-mount-$name");
+            if ($storageType === 'thin') {
+                // Keep snapshot but unmount via containerd
+                exec("$ctr images unmount /tmp/microvm-mount-$name 2>/dev/null");
+            } else {
+                exec("umount /tmp/microvm-mount-$name");
+            }
+            exec("rmdir /tmp/microvm-mount-$name 2>/dev/null");
             if ($storageType !== 'thin' && isset($tmpTar)) @unlink($tmpTar);
 
         } elseif ($source === 'existing' && !empty($rootfsPath)) {
