@@ -167,6 +167,31 @@ function microvm_list_vms() {
 
     if (!is_dir($vmdir)) return $vms;
 
+    // Check which VMMs are enabled in settings
+    $ch_enabled = !isset($cfg['CH_ENABLED']) || $cfg['CH_ENABLED'] === 'yes'; // default enabled
+    $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
+
+    // Build set of running VM names via pidof + /proc/PID/cmdline (fast, accurate)
+    $running_vms = [];
+    $ch_pids = trim(shell_exec("pidof cloud-hypervisor 2>/dev/null"));
+    if ($ch_pids) {
+        foreach (explode(' ', $ch_pids) as $pid) {
+            $cmdline = @file_get_contents("/proc/$pid/cmdline");
+            if ($cmdline && preg_match('/microvms-([a-z0-9\-]+)\.sock/', $cmdline, $m)) {
+                $running_vms[$m[1]] = 'cloud-hypervisor';
+            }
+        }
+    }
+    $fc_pids = trim(shell_exec("pidof firecracker 2>/dev/null"));
+    if ($fc_pids) {
+        foreach (explode(' ', $fc_pids) as $pid) {
+            $cmdline = @file_get_contents("/proc/$pid/cmdline");
+            if ($cmdline && preg_match('/microvms-([a-z0-9\-]+)\.sock/', $cmdline, $m)) {
+                $running_vms[$m[1]] = 'firecracker';
+            }
+        }
+    }
+
     foreach (glob("$vmdir/*/") as $vmPath) {
         $vmPath = rtrim($vmPath, '/');
         $name = basename($vmPath);
@@ -176,28 +201,18 @@ function microvm_list_vms() {
         $config = json_decode(file_get_contents($configFile), true);
         if (!$config) continue;
 
-        $sock = "/tmp/microvms-{$name}.sock";
         $vmm = microvm_get_vmm($configFile);
-        
-        // Check if VM is running
-        $running = false;
-        if (file_exists($sock)) {
-            if ($vmm === 'firecracker') {
-                // FC: check if process with this VM name is alive
-                $running = !empty(trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null")));
-            } else {
-                // CH: use ch-remote ping
-                exec("ch-remote --api-socket $sock ping 2>/dev/null", $output, $ret);
-                $running = ($ret === 0);
-            }
-        }
+
+        // Skip VMs whose VMM is disabled in settings
+        if ($vmm === 'cloud-hypervisor' && !$ch_enabled) continue;
+        if ($vmm === 'firecracker' && !$fc_enabled) continue;
 
         $vms[] = [
             'name' => $name,
             'vmm' => $vmm,
             'config' => $config,
-            'state' => $running ? 'running' : 'stopped',
-            'socket' => $sock,
+            'state' => isset($running_vms[$name]) ? 'running' : 'stopped',
+            'socket' => "/tmp/microvms-{$name}.sock",
         ];
     }
 
