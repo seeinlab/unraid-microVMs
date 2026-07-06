@@ -173,10 +173,12 @@ function addMicroVMContext(name, state, engine) {
   context.settings({right:false, above:false});
 
   if (state == 'running') {
-    opts.push({text:'Stop', icon:'fa-stop', action:function(e){
-      e.preventDefault();
-      vmAction('stop', name);
-    }});
+    if (engine == 'cloud-hypervisor') {
+      opts.push({text:'Stop', icon:'fa-stop', action:function(e){
+        e.preventDefault();
+        vmAction('stop', name);
+      }});
+    }
     opts.push({text:'Force Stop', icon:'fa-power-off', action:function(e){
       e.preventDefault();
       vmAction('force_stop', name);

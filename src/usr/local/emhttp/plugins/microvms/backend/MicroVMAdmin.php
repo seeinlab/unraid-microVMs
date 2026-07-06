@@ -414,7 +414,7 @@ echo "App started (PID \$APP_PID)"
 
 # Interactive shell (if available)
 if [ -n "\$SHELL" ]; then
-  exec \$SHELL
+  exec setsid --ctty \$SHELL </dev/ttyS0 >/dev/ttyS0 2>/dev/ttyS0
 else
   echo "No shell available. Console disabled."
   wait \$APP_PID
@@ -930,7 +930,12 @@ INIT;
                 echo json_encode(['success' => false, 'error' => "Invalid VM log path: $service"]);
                 break;
             }
-            $logfile = "/var/log/microvms/$vmm_part/$name_part.log";
+            // CH: serial.log has kernel+boot output; FC: .log IS kernel+boot
+            if ($vmm_part === 'cloud-hypervisor') {
+                $logfile = "/var/log/microvms/$vmm_part/$name_part.serial.log";
+            } else {
+                $logfile = "/var/log/microvms/$vmm_part/$name_part.log";
+            }
         } elseif (isset($log_map[$service])) {
             $logfile = $log_map[$service];
         } else {
