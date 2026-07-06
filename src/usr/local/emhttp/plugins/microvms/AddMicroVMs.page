@@ -57,7 +57,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 
 <dl>
   <dt>Autostart:</dt>
-  <dd><input class="autostart-add" type="checkbox" id="vm_autostart"></dd>
+  <dd><input class="autostart-add" type="checkbox" id="vm_autostart" checked></dd>
 </dl>
 
 <dl>
@@ -129,7 +129,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dt>rootFS Source:</dt>
   <dd>
     <select id="rootfs_source" onchange="toggleSource(this.value)" style="width:320px;">
-      <option value="oci">Pull OCI/Docker Image (via crane)</option>
+      <option value="oci">Pull Container Image (via crane)</option>
       <option value="existing">Use Existing rootfs</option>
     </select>
   </dd>
@@ -137,7 +137,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 
 <div id="section_oci">
 <dl>
-  <dt>OCI/Docker Image:</dt>
+  <dt>Container Image:</dt>
   <dd><input type="text" id="vm_oci_image" placeholder="docker.io/nginx:alpine" style="width:300px;"></dd>
 </dl>
 <dl id="row_disk_size">
