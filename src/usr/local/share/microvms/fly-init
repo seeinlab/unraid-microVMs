@@ -34,26 +34,9 @@ json_array() {
 HOSTNAME=$(json_val hostname)
 [ -n "$HOSTNAME" ] && hostname "$HOSTNAME" 2>/dev/null
 
-# 4. Configure network
-IP=$(json_val ip)
-GW=$(json_val gateway)
+# 4. Network: configured by kernel ip= parameter (works without iproute2)
+# DNS only (kernel doesn't handle this)
 DNS=$(json_array dns)
-
-# Find first non-lo interface
-for d in /sys/class/net/*; do
-  n=$(basename $d)
-  [ "$n" != "lo" ] && IFACE=$n && break
-done
-IFACE=${IFACE:-eth0}
-
-if [ -n "$IP" ]; then
-  ip link set lo up 2>/dev/null
-  ip link set $IFACE up 2>/dev/null
-  ip addr add ${IP}/24 dev $IFACE 2>/dev/null
-  [ -n "$GW" ] && ip route add default via $GW dev $IFACE 2>/dev/null
-fi
-
-# DNS
 : > /etc/resolv.conf 2>/dev/null
 for ns in $DNS; do
   echo "nameserver $ns" >> /etc/resolv.conf
