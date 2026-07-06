@@ -267,28 +267,61 @@ switch ($cmd) {
 
         // Create rootfs
         if ($source === 'oci' && !empty($ociImage)) {
-            // Pull OCI image
-            microvm_log("Pulling OCI: $ociImage");
-            $tmpTar = "/tmp/microvm-$name.tar";
-            exec("crane export " . escapeshellarg($ociImage) . " " . escapeshellarg($tmpTar) . " 2>&1", $pullOutput, $pullRet);
-            microvm_log("crane exit: $pullRet, output: " . implode(" ", $pullOutput));
-            if ($pullRet !== 0) {
-                echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
-                break;
-            }
 
             if ($storageType === 'thin') {
-                // Thin: ctr snapshots prepare → creates thin device → mkfs.ext4 on /dev/mapper/...
-                // → mount device → extract tar → inject init → umount → VM uses block device path
-                $rootfs = trim(shell_exec("/etc/rc.d/rc.microvms create_thin_rootfs " . escapeshellarg($name) . " " . escapeshellarg($diskSize) . " " . escapeshellarg($vmm) . " 2>&1 | tail -1"));
+                // Thin Pool: containerd pulls image → devmapper snapshot → mount → inject init
+                $sock = '/var/run/microvms/containerd.sock';
+                $snapshotKey = "vm-$name";
+                $ctr = "ctr -a $sock -n $vmm";
 
-                if (empty($rootfs) || !file_exists($rootfs)) {
-                    echo json_encode(['success' => false, 'error' => "Failed to create thin device. Is thin pool active?"]);
+                // 1. Pull image into containerd
+                microvm_log("Pulling OCI via containerd: $ociImage");
+                exec("$ctr images pull --platform linux/amd64 " . escapeshellarg($ociImage) . " 2>&1", $pullOutput, $pullRet);
+                microvm_log("ctr pull exit: $pullRet");
+                if ($pullRet !== 0) {
+                    echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
                     break;
                 }
+
+                // 2. Get parent committed snapshot (image's top layer)
+                $parent = trim(shell_exec("$ctr snapshots --snapshotter devmapper list 2>/dev/null | grep Committed | tail -1 | awk '{print \$1}'"));
+                if (empty($parent)) {
+                    echo json_encode(['success' => false, 'error' => 'No image layers found after pull. Is devmapper active?']);
+                    break;
+                }
+
+                // 3. Prepare active snapshot from image layer
+                exec("$ctr snapshots --snapshotter devmapper prepare " . escapeshellarg($snapshotKey) . " " . escapeshellarg($parent) . " 2>&1", $prepOut, $prepRet);
+                if ($prepRet !== 0) {
+                    echo json_encode(['success' => false, 'error' => 'Failed to prepare snapshot: ' . implode("\n", $prepOut)]);
+                    break;
+                }
+
+                // 4. Get device path
+                $rootfs = trim(shell_exec("$ctr snapshots --snapshotter devmapper mounts /tmp " . escapeshellarg($snapshotKey) . " 2>/dev/null | grep -oP '/dev/mapper/\\S+'"));
+                if (empty($rootfs)) {
+                    echo json_encode(['success' => false, 'error' => 'Failed to get device path for snapshot']);
+                    break;
+                }
+
+                // 5. Mount device for init injection
                 exec("mkdir -p /tmp/microvm-mount-$name");
-                exec("mount $rootfs /tmp/microvm-mount-$name");
+                exec("mount $rootfs /tmp/microvm-mount-$name 2>&1", $mountOut, $mountRet);
+                if ($mountRet !== 0) {
+                    echo json_encode(['success' => false, 'error' => 'Failed to mount thin device']);
+                    break;
+                }
             } else {
+                // Raw rootFS: crane export → dd → mkfs → mount → extract tar → inject init
+                microvm_log("Pulling OCI via crane: $ociImage");
+                $tmpTar = "/tmp/microvm-$name.tar";
+                exec("crane export " . escapeshellarg($ociImage) . " " . escapeshellarg($tmpTar) . " 2>&1", $pullOutput, $pullRet);
+                microvm_log("crane exit: $pullRet, output: " . implode(" ", $pullOutput));
+                if ($pullRet !== 0) {
+                    echo json_encode(['success' => false, 'error' => 'Failed to pull image: ' . implode("\n", $pullOutput)]);
+                    break;
+                }
+
                 // Raw: dd creates sparse file → mkfs.ext4 → mount file → extract tar
                 // → inject init → umount → VM uses file directly (resolved via resolve_path)
                 $rootfs = "$vmPath/rootfs.raw";
@@ -303,7 +336,10 @@ switch ($cmd) {
                 exec("mount $mountDev /tmp/microvm-mount-$name");
             }
 
-            exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
+            // Extract tar only for raw rootFS (thin pool already has image content from containerd)
+            if ($storageType !== 'thin') {
+                exec("tar -xf $tmpTar -C /tmp/microvm-mount-$name 2>&1");
+            }
 
             // Inject init script that:
             // 1. Mounts virtual filesystems (proc, sys, dev)
@@ -374,21 +410,25 @@ INIT;
 
             exec("umount /tmp/microvm-mount-$name");
             exec("rmdir /tmp/microvm-mount-$name");
-            @unlink($tmpTar);
+            if ($storageType !== 'thin' && isset($tmpTar)) @unlink($tmpTar);
 
         } elseif ($source === 'existing' && !empty($rootfsPath)) {
             // Existing rootfs — no storage creation needed
         }
 
         // Build new config format
+        $storageConfig = ['type' => $storageType];
+        if ($storageType === 'thin') {
+            $storageConfig['image_ref'] = $ociImage;
+        } else {
+            $storageConfig['size_mb'] = $diskSize;
+        }
+
         $config = [
             'name' => $name,
             'vcpus' => $cpus,
             'memory_mb' => $memory,
-            'storage' => [
-                'type' => $storageType,
-                'size_mb' => $diskSize,
-            ],
+            'storage' => $storageConfig,
             'network' => [
                 'ip' => $ip,
                 'gateway' => $gateway,
