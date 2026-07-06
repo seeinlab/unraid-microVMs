@@ -132,3 +132,14 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
 - **Snapshot list**: Should show devmapper snapshots with their associated VMs
 - **"Not valid!" error**: Fix response validation in the frontend after prune action
 
+
+
+### TAP Reuse — Priority Fix
+- **Current**: tap25, tap26 allocated even though lower TAPs were freed by destroyed VMs
+- **Root cause**: TAP allocation scans ALL system TAPs (including libvirt/other), never reuses
+- **Fix approach**: Only count TAPs that belong to microvms plugin:
+  - Option A: Track plugin-owned TAPs in a registry file (`/var/tmp/microvms-taps.json`)
+  - Option B: Only count TAPs where `ip link show tapN` has `master br0` AND no other process uses it
+  - Option C: On VM destroy, explicitly delete the TAP interface (`ip link del tapN`)
+- **Also**: Clean up orphaned TAPs on service restart (leftover from crashed VMs)
+
