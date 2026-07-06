@@ -262,7 +262,7 @@ function vmAction(action, name) {
 function vmConsole(name) {
   var html = '<div id="console-wrap" style="text-align:left;width:100%;">' +
     '<pre id="console-output" style="height:400px;overflow-y:scroll;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#0d1117;padding:12px;border-radius:4px;color:#c9d1d9;border:1px solid #30363d;"></pre>' +
-    '<div id="console-input-row" style="margin-top:8px;display:flex;gap:8px;align-items:center;"></div>' +
+    '<div id="console-input-row" style="margin-top:8px;display:flex;gap:8px;align-items:center;width:100%;"></div>' +
   '</div>';
 
   swal({
@@ -295,7 +295,7 @@ function vmConsole(name) {
       inp.id = 'console-input';
       inp.type = 'text';
       inp.placeholder = 'command...';
-      inp.style.cssText = 'width:70%;background:#0d1117;color:#3fb950;border:1px solid #3fb950;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;display:inline-block;';
+      inp.style.cssText = 'flex:1;background:#0d1117;color:#3fb950;border:1px solid #3fb950;padding:8px 12px;font-family:monospace;font-size:13px;border-radius:4px;outline:none;min-width:0;';
       row.appendChild(inp);
       var btn = document.createElement('button');
       btn.textContent = 'Send';
