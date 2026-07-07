@@ -192,15 +192,15 @@ function addMicroVMContext(name, state, engine) {
         e.preventDefault();
         vmResize(name, engine);
       }});
-      opts.push({text:'Create Snapshot', icon:'fa-camera', action:function(e){
-        e.preventDefault();
-        vmAction('snapshot', name);
-      }});
-      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
-        e.preventDefault();
-        vmSnapshots(name);
-      }});
     }
+    opts.push({text:'Create Snapshot', icon:'fa-camera', action:function(e){
+      e.preventDefault();
+      vmAction('snapshot', name);
+    }});
+    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+      e.preventDefault();
+      vmSnapshots(name);
+    }});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
@@ -210,12 +210,10 @@ function addMicroVMContext(name, state, engine) {
       e.preventDefault();
       vmAction('start', name);
     }});
-    if (engine == 'cloud-hypervisor') {
-      opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
-        e.preventDefault();
-        vmSnapshots(name);
-      }});
-    }
+    opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
+      e.preventDefault();
+      vmSnapshots(name);
+    }});
     opts.push({text:'Info', icon:'fa-info-circle', action:function(e){
       e.preventDefault();
       vmInfo(name);
