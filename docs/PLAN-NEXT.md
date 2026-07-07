@@ -19,11 +19,16 @@
 ## Remaining
 
 ### Priority 1: Bugs
+- [ ] VM list should detect running processes (not just config files)
+  - Scan pidof + /proc/PID/cmdline for running VMs without config = show as "orphan"
+  - Allow Force Stop on orphans from UI
+  - Prevents devmapper lock-up from invisible processes
 - [ ] Thin pool create hangs sometimes (devmapper error snapshots block ctr mount)
   - Add timeout (60s) to pull/mount step
   - Pre-check if image already exists
   - Add "Cancel" button to create progress UI
   - Clean error snapshots on service start
+  - Kill orphan VMM processes on service start
 - [ ] IP address collision (no check for used IPs on create)
   - Scan configs for used IPs before allocating
 
