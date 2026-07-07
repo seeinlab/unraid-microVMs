@@ -1056,8 +1056,15 @@ microvm_start() {
     log "[4-5/7] Liquidmetal disabled, skipping flintlockd services"
   fi
 
-  # Step 6: Create TAP interfaces
-  log "[6/7] Creating TAP interfaces..."
+  # Step 6: Clean orphan TAPs and create needed interfaces
+  log "[6/7] Cleaning orphan TAPs and creating interfaces..."
+  # Delete TAPs not used by any running VM
+  local used_taps=$(for pid in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
+    tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null | grep -oP 'tap\d+' | head -1
+  done)
+  for tap in $(ip link show type tun 2>/dev/null | grep -oP 'tap\d+'); do
+    echo "$used_taps" | grep -q "$tap" || { ip link del "$tap" 2>/dev/null; log "Deleted orphan TAP: $tap"; }
+  done
   create_taps
 
   # Step 7: Autostart VMs
