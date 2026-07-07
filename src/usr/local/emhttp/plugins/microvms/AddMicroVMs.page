@@ -79,7 +79,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   </select></dd>
 </dl>
 
-<dl>
+<dl id="row_max_cpus">
   <dt>Max vCPUs (hotplug):</dt>
   <dd><select id="vm_max_cpus" style="width:80px;">
     <?php for ($i = 1; $i <= $nproc; $i++): ?>
@@ -404,9 +404,11 @@ $('input[name="engine"]').change(function() {
   if ($('#engine_ch').is(':checked')) {
     $('#label_ch').css({'border-color': '#4CAF50', 'background': '#1a2e1a'});
     $('#row_max_memory').show();
+    $('#row_max_cpus').show();
   } else {
     $('#label_fc').css({'border-color': '#ff9800', 'background': '#2e2a1a'});
     $('#row_max_memory').hide();
+    $('#row_max_cpus').hide();
   }
 });
 
