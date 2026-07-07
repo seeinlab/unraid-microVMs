@@ -534,10 +534,17 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
 
     // Start a new firecracker process (no boot config — we'll load from snapshot)
     $logFile = "/var/log/microvms/firecracker/{$name}.log";
-    $cmd = "nohup firecracker --api-sock " . escapeshellarg($sock)
+    $fifo = "/tmp/microvms-{$name}.fifo";
+    // Clean up old FIFO
+    @unlink($fifo);
+    exec("mkfifo " . escapeshellarg($fifo));
+    // Start FC with FIFO for console input
+    $cmd = "(tail -f " . escapeshellarg($fifo) . " | nohup firecracker --api-sock " . escapeshellarg($sock)
         . " --id " . escapeshellarg($name)
-        . " > " . escapeshellarg($logFile) . " 2>&1 &";
+        . ") >> " . escapeshellarg($logFile) . " 2>&1 &";
     exec($cmd);
+    // Save FIFO path
+    file_put_contents("/var/tmp/microvms-{$name}.fifo", $fifo);
 
     // Wait for socket to appear
     $waited = 0;
