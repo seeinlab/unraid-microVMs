@@ -145,6 +145,10 @@ switch ($cmd) {
             } else {
                 $vmConfig['boot_vcpus'] = intval($cpus);
             }
+            // Ensure max_vcpus exists (legacy configs may not have it)
+            if (!isset($vmConfig['max_vcpus'])) {
+                $vmConfig['max_vcpus'] = max(intval($cpus) * 2, 4);
+            }
         }
         if (!empty($result['memory']) && $memory) {
             $vmConfig['memory_mb'] = intval($memory) / 1048576; // bytes to MB
@@ -450,6 +454,7 @@ SCRIPT;
         $config = [
             'name' => $name,
             'vcpus' => $cpus,
+            'max_vcpus' => $cpus * 2,
             'memory_mb' => $memory,
             'max_memory_mb' => $max_memory,
             'storage' => $storageConfig,
