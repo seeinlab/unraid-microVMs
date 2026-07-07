@@ -82,3 +82,17 @@ Host:
   kernel cmdline: console=ttyS0 root=/dev/vda rw init=/fly/init ip=A::G:M:::off
   /fly/run.json network section: DNS only (kernel handles IP)
 ```
+
+
+### Containerd Namespace Merge
+- **Current**: separate namespaces per VMM (`cloud-hypervisor`, `firecracker`) — matches old flintlock design
+- **Proposed**: merge to `default` namespace, add "Namespace" column to VM list
+- **Why**: simpler management, single `ctr -n default images ls` shows all, no confusion
+- **Display**: add "Namespace" column in VM list (user can group/filter by it)
+- **Future**: user-defined namespaces (e.g. "production", "dev", "test") instead of VMM-based
+- **TODO**: 
+  - Change containerd namespace from per-VMM to `default`
+  - Add namespace field to VM config JSON
+  - Add Namespace column to MicroVMsMachines.page
+  - Update ctr commands throughout (remove `-n firecracker` / `-n cloud-hypervisor`)
+
