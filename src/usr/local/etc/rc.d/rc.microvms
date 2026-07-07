@@ -1217,6 +1217,13 @@ case "$1" in
   reset_thinpool)
     echo "=== RESET THIN POOL (destructive) ==="
     echo "This will DESTROY all thin pool VM rootfs data!"
+    echo ""
+    read -p "Are you sure? Type 'yes' to confirm: " confirm
+    if [ "$confirm" != "yes" ]; then
+      echo "Aborted."
+      exit 0
+    fi
+    echo ""
     echo "Killing all VMs using thin pool..."
     for p in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
       kill -9 "$p" 2>/dev/null
