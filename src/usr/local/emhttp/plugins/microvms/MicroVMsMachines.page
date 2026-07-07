@@ -188,11 +188,11 @@ function addMicroVMContext(name, state, engine) {
       vmConsole(name);
     }});
     if (engine == 'cloud-hypervisor') {
-      opts.push({text:'Resize', icon:'fa-expand', action:function(e){
+      opts.push({text:'Edit', icon:'fa-pencil', action:function(e){
         e.preventDefault();
         vmResize(name, engine);
       }});
-      opts.push({text:'Snapshot', icon:'fa-camera', action:function(e){
+      opts.push({text:'Create Snapshot', icon:'fa-camera', action:function(e){
         e.preventDefault();
         vmAction('snapshot', name);
       }});
@@ -221,7 +221,7 @@ function addMicroVMContext(name, state, engine) {
       vmInfo(name);
     }});
     opts.push({divider:true});
-    opts.push({text:'Delete microVM & rootFS', icon:'fa-trash', action:function(e){
+    opts.push({text:'Remove microVM', icon:'fa-trash', action:function(e){
       e.preventDefault();
       vmDelete(name, state);
     }});
@@ -341,39 +341,38 @@ function vmConsole(name) {
 
 function vmResize(name, engine) {
   if (engine === 'firecracker') {
-    swal({title: 'Not Supported', text: 'Live resize is not supported for Firecracker. Recreate the VM with new settings.', type: 'error'});
+    swal({title: 'Not Supported', text: 'Live edit is not supported for Firecracker.', type: 'error'});
     return;
   }
+  var html = '<div style="text-align:left;">' +
+    '<div style="margin-bottom:12px;"><label style="display:block;font-weight:bold;margin-bottom:4px;">vCPUs:</label>' +
+    '<span id="edit-cpus-val" style="display:inline-block;width:30px;text-align:center;font-weight:bold;">2</span>' +
+    '<input id="edit-cpus" type="range" min="1" max="8" value="2" style="width:80%;vertical-align:middle;" oninput="document.getElementById(\'edit-cpus-val\').textContent=this.value"></div>' +
+    '<div><label style="display:block;font-weight:bold;margin-bottom:4px;">Memory (MB):</label>' +
+    '<span id="edit-mem-val" style="display:inline-block;width:50px;text-align:center;font-weight:bold;">512</span>' +
+    '<input id="edit-mem" type="range" min="128" max="4096" step="128" value="512" style="width:75%;vertical-align:middle;" oninput="document.getElementById(\'edit-mem-val\').textContent=this.value"></div>' +
+  '</div>';
   swal({
-    title: 'Resize ' + name,
-    text: 'Enter new CPU count:',
-    type: 'input',
-    inputValue: '2',
+    title: 'Edit ' + name,
+    text: html,
+    html: true,
     showCancelButton: true,
+    confirmButtonText: 'Apply',
     closeOnConfirm: false
-  }, function(cpus) {
-    if (!cpus) return;
-    swal({
-      title: 'Resize ' + name,
-      text: 'Enter new memory (MB):',
-      type: 'input',
-      inputValue: '512',
-      showCancelButton: true,
-      closeOnConfirm: false
-    }, function(memMB) {
-      if (!memMB) return;
-      var memBytes = parseInt(memMB) * 1048576;
-      swal({title: 'Resizing...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
-        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-        if (data.cpus || data.memory) {
-          swal({title: 'Resized!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
-            location.reload();
-          });
-        } else {
-          swal({title: 'Resize Failed', text: JSON.stringify(data), type: 'error'});
-        }
-      });
+  }, function() {
+    var cpus = document.getElementById('edit-cpus').value;
+    var memMB = document.getElementById('edit-mem').value;
+    var memBytes = parseInt(memMB) * 1048576;
+    swal({title: 'Applying...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
+      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+      if (data.cpus || data.memory) {
+        swal({title: 'Applied!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
+          location.reload();
+        });
+      } else {
+        swal({title: 'Edit Failed', text: JSON.stringify(data), type: 'error'});
+      }
     });
   });
 }

@@ -143,3 +143,30 @@ ssh -i ~/.ssh/mastervault root@192.168.50.6
   - Option C: On VM destroy, explicitly delete the TAP interface (`ip link del tapN`)
 - **Also**: Clean up orphaned TAPs on service restart (leftover from crashed VMs)
 
+
+
+### CH virtiofs (host path access / shared folders)
+- **Requires**: `virtiofsd` daemon running on host (Rust binary from gitlab.com/virtio-fs/virtiofsd)
+- **CH flag**: `--fs tag=myfs,socket=/tmp/virtiofs,num_queues=1,queue_size=512`
+- **Memory**: Requires `--memory shared=on` (shared memory between host and guest)
+- **Guest mount**: `mount -t virtiofs myfs /mnt/shared`
+- **How it works**:
+  1. `virtiofsd --socket-path=/tmp/virtiofs --shared-dir=/path/on/host`
+  2. CH connects via vhost-user socket
+  3. Guest sees it as a virtio-fs device, mounts with tag
+- **Use cases**: Share appdata, configs, media from Unraid array into microVM
+- **TODO**: Download static virtiofsd binary, add to PLG, integrate into VM config
+- **Note**: FC does NOT support virtiofs (no vhost-user)
+
+### FC Snapshots (create/load API)
+- **Create**: `PUT /snapshot/create` with body `{"snapshot_path": "/path/vmstate", "mem_file_path": "/path/mem"}`
+- **Load**: New FC instance + `PUT /snapshot/load` with body `{"snapshot_path": "...", "mem_backend": {"backend_path": "...", "backend_type": "File"}}`
+- **Resume**: `PATCH /vm` with body `{"state": "Resumed"}`
+- **What's captured**: Memory state, CPU registers, device state, disk state
+- **What Lambda does**: Runs app → captures snapshot → restores from snapshot on subsequent starts (sub-second)
+- **Our implementation plan**:
+  1. "Create Snapshot" button → calls FC API `/snapshot/create` → saves to vmdir/snapshots/
+  2. "Snapshots" list → shows available snapshots
+  3. "Restore" → starts new FC instance with `/snapshot/load` + resume
+- **Note**: Snapshot only works if disk hasn't changed since snapshot was taken
+
