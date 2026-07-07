@@ -100,6 +100,7 @@ img.vm-icon-stopped { opacity:0.4; }
 <thead><tr>
   <th>Name</th>
   <th>VMM</th>
+  <th>Namespace</th>
   <th>vCPUs</th>
   <th>Memory</th>
   <th>IP Address</th>
@@ -145,6 +146,7 @@ img.vm-icon-stopped { opacity:0.4; }
       </span>
     </td>
     <td><?=$engine_display?></td>
+    <td><?=htmlspecialchars($vmConfig['namespace'] ?? 'default')?></td>
     <td><?=$cpus?></td>
     <td><?=$mem_display?></td>
     <td><?=$ip?></td>

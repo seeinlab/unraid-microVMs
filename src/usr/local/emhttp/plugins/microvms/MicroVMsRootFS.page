@@ -19,33 +19,21 @@ $containerd_running = file_exists($sock);
 $ch_images = [];
 $fc_images = [];
 if ($containerd_running) {
-    $ch_out = shell_exec("ctr -a $sock -n cloud-hypervisor images list -q 2>/dev/null");
-    if ($ch_out) $ch_images = array_filter(explode("\n", trim($ch_out)));
-
-    $fc_out = shell_exec("ctr -a $sock -n firecracker images list -q 2>/dev/null");
-    if ($fc_out) $fc_images = array_filter(explode("\n", trim($fc_out)));
+    $img_out = shell_exec("ctr -a $sock -n default images list -q 2>/dev/null");
+    if ($img_out) $ch_images = array_filter(explode("\n", trim($img_out)));
+    $fc_images = []; // All in default namespace now
 }
 
 // Active snapshots
 $ch_snapshots = [];
 $fc_snapshots = [];
 if ($containerd_running) {
-    $ch_snap_out = shell_exec("ctr -a $sock -n cloud-hypervisor snapshots --snapshotter devmapper list 2>/dev/null");
-    if ($ch_snap_out) {
-        $lines = array_filter(explode("\n", trim($ch_snap_out)));
-        // First line is header, skip it
+    $snap_out = shell_exec("ctr -a $sock -n default snapshots --snapshotter devmapper list 2>/dev/null");
+    if ($snap_out) {
+        $lines = array_filter(explode("\n", trim($snap_out)));
         if (count($lines) > 1) {
             array_shift($lines);
             $ch_snapshots = $lines;
-        }
-    }
-
-    $fc_snap_out = shell_exec("ctr -a $sock -n firecracker snapshots --snapshotter devmapper list 2>/dev/null");
-    if ($fc_snap_out) {
-        $lines = array_filter(explode("\n", trim($fc_snap_out)));
-        if (count($lines) > 1) {
-            array_shift($lines);
-            $fc_snapshots = $lines;
         }
     }
 }
