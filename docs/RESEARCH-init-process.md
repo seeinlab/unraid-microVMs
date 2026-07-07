@@ -172,3 +172,45 @@ Guest rootfs (injected at create time):
 - Lambda MicroVMs: https://docs.aws.amazon.com/lambda/latest/dg/lambda-microvms-guide.html
 - PID 1 problem: https://sumguy.com/tini-vs-dumb-init-vs-docker-init
 - Fly init discussion: https://community.fly.io/t/fly-io-init-override-documentation/26020
+
+
+## Why Flintlockd Orchestration Mode Was Dropped
+
+### History (from git archaeology)
+- `f1eff58` — Orchestrated mode launched (all VMs through flintlockd gRPC)
+- `fa82160` — "WebGUI+flintlockd tested working" (it DID work initially)
+- `15df287` — Researched kata-containers as flintlockd replacement (signals dissatisfaction)
+- `961d565` — Built direct mode thin pool (parallel path)
+- `efc77b3` — Full rewrite: `FLINTLOCKD=disable` by default
+- `d9baceb` — Decision documented: "UI direct mode only"
+
+### The Critical Issues
+
+1. **Kernel must be OCI image** (dealbreaker)
+   - Flintlockd requires kernel packaged as OCI container image in a registry
+   - Need `D:\github\image-builder` (liquidmetal-dev/image-builder) to build kernels
+   - Only supports old versions: FC 5.10.x/4.19.x, CH 5.12
+   - Every kernel update = rebuild Docker image + push to registry
+   - **Direct mode**: just put `vmlinux` file on disk. Any version. Instant.
+
+2. **Requires local OCI registry running**
+   - `crane serve --disk` on localhost:5050
+   - Just to serve the kernel to containerd
+   - Another daemon to manage, another failure point
+
+3. **PHP ↔ gRPC gap**
+   - Unraid WebGUI is PHP — no native gRPC support
+   - Had to use `grpcurl` CLI as middleware
+   - Every UI action: PHP → exec grpcurl → parse JSON → display
+   - Slow, fragile, hard to debug
+
+4. **Limited abstraction**
+   - Can't add custom features (FIFO console, /fly/init, snapshots) through flintlockd API
+   - Flintlockd has its own VM spec format that doesn't match our infra-as-code JSON
+   - Would need to fork flintlockd to add our customizations
+
+### Verdict
+Flintlockd is correct for **Kubernetes orchestration** (many hosts, API-driven). 
+Wrong for **single-host WebGUI plugin** (needs full control, fast iteration, simple stack).
+
+Keep as optional remote API for automation. Never as the primary UI path.
