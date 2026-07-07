@@ -1067,6 +1067,17 @@ microvm_start() {
     fi
   else
     log "[4-5/7] Liquidmetal disabled, skipping flintlockd services"
+    # Kill flintlockd/registry if they were left running from a previous enable
+    local fl_pid=$(pidof flintlockd 2>/dev/null)
+    if [ -n "$fl_pid" ]; then
+      kill "$fl_pid" 2>/dev/null
+      log "  Stopped leftover flintlockd (PID $fl_pid)"
+    fi
+    local reg_pid=$(pgrep -f 'crane.*registry' 2>/dev/null)
+    if [ -n "$reg_pid" ]; then
+      kill "$reg_pid" 2>/dev/null
+      log "  Stopped leftover registry (PID $reg_pid)"
+    fi
   fi
 
   # Step 6: Clean orphan TAPs and create needed interfaces
