@@ -342,35 +342,44 @@ function vmResize(name, engine) {
     swal({title: 'Not Supported', text: 'Live edit is not supported for Firecracker.', type: 'error'});
     return;
   }
-  var html = '<div style="text-align:left;">' +
-    '<div style="margin-bottom:12px;"><label style="display:block;font-weight:bold;margin-bottom:4px;">vCPUs:</label>' +
-    '<span id="edit-cpus-val" style="display:inline-block;width:30px;text-align:center;font-weight:bold;">2</span>' +
-    '<input id="edit-cpus" type="range" min="1" max="8" value="2" style="width:80%;vertical-align:middle;" oninput="document.getElementById(\'edit-cpus-val\').textContent=this.value"></div>' +
-    '<div><label style="display:block;font-weight:bold;margin-bottom:4px;">Memory (MB):</label>' +
-    '<span id="edit-mem-val" style="display:inline-block;width:50px;text-align:center;font-weight:bold;">512</span>' +
-    '<input id="edit-mem" type="range" min="128" max="4096" step="128" value="512" style="width:75%;vertical-align:middle;" oninput="document.getElementById(\'edit-mem-val\').textContent=this.value"></div>' +
-  '</div>';
-  swal({
-    title: 'Edit ' + name,
-    text: html,
-    html: true,
-    showCancelButton: true,
-    confirmButtonText: 'Apply',
-    closeOnConfirm: false
-  }, function() {
-    var cpus = document.getElementById('edit-cpus').value;
-    var memMB = document.getElementById('edit-mem').value;
-    var memBytes = parseInt(memMB) * 1048576;
-    swal({title: 'Applying...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
-      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-      if (data.cpus || data.memory) {
-        swal({title: 'Applied!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
-          location.reload();
-        });
-      } else {
-        swal({title: 'Edit Failed', text: JSON.stringify(data), type: 'error'});
-      }
+  // Load current config to get limits
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    var curCpus = data.vcpus || data.boot_vcpus || 1;
+    var maxCpus = data.max_vcpus || (curCpus * 2) || 4;
+    var curMem = data.memory_mb || 256;
+    var maxMem = data.max_memory_mb || (curMem * 2) || 1024;
+
+    var html = '<div style="text-align:left;">' +
+      '<div style="margin-bottom:12px;"><label style="display:block;font-weight:bold;margin-bottom:4px;">vCPUs (current: ' + curCpus + ', max: ' + maxCpus + '):</label>' +
+      '<span id="edit-cpus-val" style="display:inline-block;width:30px;text-align:center;font-weight:bold;">' + curCpus + '</span>' +
+      '<input id="edit-cpus" type="range" min="1" max="' + maxCpus + '" value="' + curCpus + '" style="width:80%;vertical-align:middle;" oninput="document.getElementById(\'edit-cpus-val\').textContent=this.value"></div>' +
+      '<div><label style="display:block;font-weight:bold;margin-bottom:4px;">Memory MB (current: ' + curMem + ', max: ' + maxMem + '):</label>' +
+      '<span id="edit-mem-val" style="display:inline-block;width:50px;text-align:center;font-weight:bold;">' + curMem + '</span>' +
+      '<input id="edit-mem" type="range" min="128" max="' + maxMem + '" step="128" value="' + curMem + '" style="width:75%;vertical-align:middle;" oninput="document.getElementById(\'edit-mem-val\').textContent=this.value"></div>' +
+    '</div>';
+    swal({
+      title: 'Edit ' + name,
+      text: html,
+      html: true,
+      showCancelButton: true,
+      confirmButtonText: 'Apply',
+      closeOnConfirm: false
+    }, function() {
+      var cpus = document.getElementById('edit-cpus').value;
+      var memMB = document.getElementById('edit-mem').value;
+      var memBytes = parseInt(memMB) * 1048576;
+      swal({title: 'Applying...', text: cpus + ' CPUs, ' + memMB + ' MB', showConfirmButton: false});
+      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'resize', name:name, cpus:cpus, memory:memBytes}, function(data) {
+        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+        if (data.cpus || data.memory) {
+          swal({title: 'Applied!', text: 'CPUs: ' + (data.cpus ? 'OK' : 'failed') + ', Memory: ' + (data.memory ? 'OK' : 'failed'), type: 'success'}, function() {
+            location.reload();
+          });
+        } else {
+          swal({title: 'Edit Failed', text: JSON.stringify(data), type: 'error'});
+        }
+      });
     });
   });
 }

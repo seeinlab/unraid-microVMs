@@ -272,7 +272,7 @@ function microvm_snapshot_vm($name, $tag = null) {
     $engine = 'cloud-hypervisor';
     if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true);
-        $engine = microvm_get_vmm($vmConfig);
+        $engine = microvm_get_vmm($configFile);
     }
 
     mkdir($snapdir, 0755, true);
@@ -427,7 +427,7 @@ function microvm_restore_snapshot($name, $tag) {
     if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true) ?: [];
     }
-    $engine = microvm_get_vmm($vmConfig);
+    $engine = microvm_get_vmm($configFile ?: $vmConfig);
 
     if ($engine === 'firecracker') {
         return microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $cfg);
