@@ -202,3 +202,41 @@ Existing VMs keep working (their `/init` is baked). New VMs get the new pattern.
 4. Update kernel cmdline to `init=/fly/init` (remove `ip=...`)
 5. Test with both CH and FC
 6. Remove old per-VM init generation code
+
+
+## VM Create Flow (verified)
+
+### Raw Storage (works for any image, any size):
+```
+1. PHP: dd → mkfs.ext4 → resolve mount device path
+2. Script: mount device → tar extract OCI → inject /fly/{init,run.json} + /sbin/catatonit → umount
+3. PHP: write config JSON
+```
+
+### Thin Pool Storage (space-efficient, uses devmapper):
+```
+1. PHP: ctr images pull (containerd pulls OCI layers)
+2. PHP: ctr images mount --snapshotter devmapper --rw (containerd mounts at /tmp/microvm-mount-$name)
+3. Script: inject /fly/{init,run.json} + /sbin/catatonit (mount already done, NO mount command)
+4. PHP: ctr images unmount (containerd unmounts)
+5. PHP: write config JSON (stores devmapper device path)
+```
+
+### Key difference:
+- **Raw**: Script handles mount+unmount (loop device)
+- **Thin**: Containerd handles mount+unmount (devmapper snapshot), script only injects files
+
+### Files injected into rootfs:
+| File | Source | Purpose |
+|------|--------|---------|
+| `/fly/init` | `/usr/local/share/microvms/fly-init` | Generic init script (reads run.json) |
+| `/fly/run.json` | Generated per VM | Entrypoint, cmd, hostname, dns, console |
+| `/sbin/catatonit` | `/usr/local/share/microvms/catatonit` | PID 1 (signals + zombies) |
+| `/init` → `/fly/init` | Symlink | Kernel entry point |
+
+### Dependencies:
+- `catatonit` v0.2.1 (downloaded in PLG from openSUSE releases)
+- `virtiofsd` v1.13.1 (already on Unraid, for future host path sharing)
+- `microvms-containerd` (started by rc.microvms, manages devmapper snapshots)
+- `crane` (OCI image export for raw storage)
+
