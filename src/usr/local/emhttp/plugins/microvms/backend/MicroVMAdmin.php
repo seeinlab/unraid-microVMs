@@ -391,27 +391,29 @@ switch ($cmd) {
             ];
             $runJson = json_encode($runConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-            // Single script: mount → extract → inject → run.json → unmount
-            // (Unraid pattern: all mount ops in one process to ensure namespace consistency)
+            // Single script: inject init files into already-mounted rootfs
+            // For thin pool: containerd already mounted at $mountPath
+            // For raw: script handles mount → extract → inject → unmount
             $mountPath = "/tmp/microvm-mount-$name";
             $tarCmd = ($storageType !== 'thin' && isset($tmpTar)) ? "tar -xf $tmpTar -C $mountPath" : "true";
             $umountCmd = ($storageType === 'thin') ? "$ctr images unmount $mountPath 2>/dev/null" : "umount $mountPath";
+            $mountCmd = ($storageType === 'thin') ? "true" : "mount $mountDev \$MOUNT";
+            $precleanCmd = ($storageType === 'thin') ? "true" : "umount \$MOUNT 2>/dev/null || true";
 
             $createScript = <<<SCRIPT
 #!/bin/bash
 set -e
 MOUNT="$mountPath"
 
-# Cleanup stale mount from previous failed attempt
-umount \$MOUNT 2>/dev/null || true
-rmdir \$MOUNT 2>/dev/null || true
+# Cleanup stale mount from previous failed attempt (raw only)
+$precleanCmd
+mkdir -p \$MOUNT
 
 # Cleanup function on failure
-cleanup() { umount \$MOUNT 2>/dev/null; rmdir \$MOUNT 2>/dev/null; }
+cleanup() { $umountCmd; rmdir \$MOUNT 2>/dev/null; }
 trap cleanup EXIT
 
-mkdir -p \$MOUNT
-mount $mountDev \$MOUNT
+$mountCmd
 $tarCmd
 mkdir -p \$MOUNT/fly \$MOUNT/sbin
 cp /usr/local/share/microvms/fly-init \$MOUNT/fly/init
