@@ -72,8 +72,17 @@ switch ($cmd) {
             if ($tpid) exec("kill $tpid 2>/dev/null");
             @unlink($ttydPid);
         }
-        // Kill the process
-        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
+        // Find the VM's PID via pidof + cmdline (reliable, no pgrep false positives)
+        $pid = '';
+        $allPids = trim(shell_exec("pidof cloud-hypervisor 2>/dev/null")) . ' ' . trim(shell_exec("pidof firecracker 2>/dev/null"));
+        foreach (explode(' ', trim($allPids)) as $p) {
+            if (empty($p)) continue;
+            $cmdline = @file_get_contents("/proc/$p/cmdline");
+            if ($cmdline && strpos($cmdline, "microvms-{$name}.sock") !== false) {
+                $pid = $p;
+                break;
+            }
+        }
         if ($pid) {
             exec("kill -9 $pid 2>&1");
             sleep(1);
@@ -206,9 +215,16 @@ switch ($cmd) {
         // Stop VM if running
         microvm_stop_vm($name);
         sleep(2);
-        // Force kill if still running
-        $pid = trim(shell_exec("pgrep -f 'microvms-{$name}' 2>/dev/null | head -1"));
-        if ($pid) exec("kill -9 $pid 2>/dev/null");
+        // Force kill if still running (use pidof + cmdline)
+        $allPids = trim(shell_exec("pidof cloud-hypervisor 2>/dev/null")) . ' ' . trim(shell_exec("pidof firecracker 2>/dev/null"));
+        foreach (explode(' ', trim($allPids)) as $p) {
+            if (empty($p)) continue;
+            $cmdline = @file_get_contents("/proc/$p/cmdline");
+            if ($cmdline && strpos($cmdline, "microvms-{$name}.sock") !== false) {
+                exec("kill -9 $p 2>/dev/null");
+                break;
+            }
+        }
         @unlink("/tmp/microvms-{$name}.sock");
 
         // Delete thin device if VM uses one
