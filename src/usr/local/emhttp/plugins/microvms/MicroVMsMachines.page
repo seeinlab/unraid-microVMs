@@ -343,12 +343,12 @@ function vmResize(name, engine) {
     return;
   }
   // Load current config to get limits
-  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'info', name: name}, function(data) {
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'vm_config', name: name}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-    var curCpus = data.vcpus || data.boot_vcpus || 1;
-    var maxCpus = data.max_vcpus || (curCpus * 2) || 4;
+    var curCpus = data.vcpus || 1;
+    var maxCpus = data.max_vcpus || (curCpus * 2);
     var curMem = data.memory_mb || 256;
-    var maxMem = data.max_memory_mb || (curMem * 2) || 1024;
+    var maxMem = data.max_memory_mb || (curMem * 2);
 
     var html = '<div style="text-align:left;">' +
       '<div style="margin-bottom:12px;"><label style="display:block;font-weight:bold;margin-bottom:4px;">vCPUs (current: ' + curCpus + ', max: ' + maxCpus + '):</label>' +

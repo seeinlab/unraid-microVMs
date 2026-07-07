@@ -85,6 +85,16 @@ switch ($cmd) {
         }
         break;
 
+    case 'vm_config':
+        // Return VM config JSON (for Edit form — always from file, not live state)
+        $configFile = microvm_find_config_file("$vmdir/$name");
+        if ($configFile) {
+            echo file_get_contents($configFile);
+        } else {
+            echo json_encode(['error' => 'Config not found']);
+        }
+        break;
+
     case 'info':
         $info = microvm_get_vm_info($name);
         if ($info) {
