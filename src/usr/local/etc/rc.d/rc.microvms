@@ -1214,6 +1214,34 @@ case "$1" in
   stop_flintlockd)   stop_flintlockd ;;
   setup_thinpool)    setup_thinpool ;;
   teardown_thinpool) teardown_thinpool ;;
+  reset_thinpool)
+    echo "=== RESET THIN POOL (destructive) ==="
+    echo "This will DESTROY all thin pool VM rootfs data!"
+    echo "Killing all VMs using thin pool..."
+    for p in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
+      kill -9 "$p" 2>/dev/null
+    done
+    sleep 1
+    echo "Stopping containerd..."
+    stop_containerd
+    sleep 1
+    echo "Removing all dm snapshots..."
+    for snap in $(dmsetup ls | grep microvms-thinpool-snap | awk '{print $1}'); do
+      dmsetup remove --force "$snap" 2>/dev/null && echo "  removed $snap"
+    done
+    echo "Removing thin pool..."
+    dmsetup remove --force microvms-thinpool 2>/dev/null
+    echo "Detaching loop devices..."
+    for loop in $(losetup -j "$VMDIR/thinpool/data" 2>/dev/null | cut -d: -f1); do
+      losetup -d "$loop" 2>/dev/null
+    done
+    for loop in $(losetup -j "$VMDIR/thinpool/meta" 2>/dev/null | cut -d: -f1); do
+      losetup -d "$loop" 2>/dev/null
+    done
+    echo "Deleting data files..."
+    rm -f "$VMDIR/thinpool/data" "$VMDIR/thinpool/meta"
+    echo "=== Thin pool reset complete. Run 'rc.microvms start' to recreate. ==="
+    ;;
   *)
     echo "Usage: $0 {start|stop|restart|status|start_vm|stop_vm|create_thin_rootfs|delete_thin_rootfs|...}"
     exit 1
