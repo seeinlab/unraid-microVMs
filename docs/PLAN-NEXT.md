@@ -41,7 +41,6 @@
 - [ ] Update root README.md for GitHub
 
 ### Priority 3: Future
-- [ ] Custom Rust init (replace shell script, inspired by superfly/init-snapshot)
 - [ ] Multi-container per VM (Fly.io rate-limiter-demo pattern)
 - [ ] TLS/auth for flintlockd
 - [ ] Community Applications submission
