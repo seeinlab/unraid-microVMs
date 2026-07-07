@@ -949,7 +949,7 @@ stop_vm() {
       log "Sent ACPI power-button to: $name"
 
       # Wait for graceful shutdown (max 90s)
-      local timeout=90
+      local timeout=10
       local elapsed=0
       while [ -S "$sock" ] && [ $elapsed -lt $timeout ]; do
         sleep 1
@@ -957,8 +957,21 @@ stop_vm() {
       done
 
       if [ -S "$sock" ]; then
-        log "ACPI timeout ($timeout s): $name did not respond"
-        echo "ACPI_TIMEOUT"
+        log "ACPI timeout ($timeout s): $name did not respond, force killing"
+        # Force kill the VM process
+        local vm_pid=$(cat /proc/*/cmdline 2>/dev/null | tr '\0' '\n' | grep -l "microvms-${name}.sock" /proc/*/cmdline 2>/dev/null | head -1 | grep -oP '\d+')
+        if [ -z "$vm_pid" ]; then
+          for p in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
+            if tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -q "microvms-${name}.sock"; then
+              vm_pid=$p; break
+            fi
+          done
+        fi
+        if [ -n "$vm_pid" ]; then
+          kill -9 "$vm_pid" 2>/dev/null
+          log "Force killed $name (PID $vm_pid)"
+        fi
+        rm -f "$sock"
       else
         log "VM stopped gracefully: $name"
       fi
