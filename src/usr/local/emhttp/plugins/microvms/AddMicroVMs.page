@@ -80,6 +80,15 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 
 <dl>
+  <dt>Max vCPUs (hotplug):</dt>
+  <dd><select id="vm_max_cpus" style="width:80px;">
+    <?php for ($i = 1; $i <= $nproc; $i++): ?>
+    <option value="<?=$i?>" <?=($i == min($default_cpus * 2, $nproc)) ? 'selected' : ''?>><?=$i?></option>
+    <?php endfor; ?>
+  </select></dd>
+</dl>
+
+<dl>
   <dt>Initial Memory:</dt>
   <dd><select id="vm_memory" style="width:120px;" onchange="updateMaxMemory()">
     <option value="128">128 MB</option>
@@ -224,7 +233,7 @@ function buildConfig() {
     disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
     cmdline: "console=ttyS0 root=/dev/vda rw init=/init ip=" + document.getElementById('vm_ip').value + "::" + document.getElementById('vm_gateway').value + ":255.255.255.0:::off",
     boot_vcpus: parseInt(document.getElementById('vm_cpus').value),
-    max_vcpus: parseInt(document.getElementById('vm_cpus').value) * 2,
+    max_vcpus: parseInt(document.getElementById('vm_max_cpus').value),
     memory_mb: parseInt(document.getElementById('vm_memory').value),
     mac: mac,
     ip: document.getElementById('vm_ip').value,
@@ -312,6 +321,7 @@ function submitForm() {
     name: name,
     engine: $('input[name="engine"]:checked').val(),
     cpus: document.getElementById('vm_cpus').value,
+    max_cpus: document.getElementById('vm_max_cpus').value,
     memory: document.getElementById('vm_memory').value,
     max_memory: document.getElementById('vm_max_memory').value,
     ip: document.getElementById('vm_ip').value,

@@ -454,7 +454,7 @@ SCRIPT;
         $config = [
             'name' => $name,
             'vcpus' => $cpus,
-            'max_vcpus' => $cpus * 2,
+            'max_vcpus' => intval($_REQUEST['max_cpus'] ?? ($cpus * 2)),
             'memory_mb' => $memory,
             'max_memory_mb' => $max_memory,
             'storage' => $storageConfig,
