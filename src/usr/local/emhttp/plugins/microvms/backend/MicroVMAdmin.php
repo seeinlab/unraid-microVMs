@@ -238,6 +238,12 @@ switch ($cmd) {
             }
         }
 
+        // Remove from containerd registry
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        exec("ctr -a $ctrSock -n default containers rm " . escapeshellarg($name) . " 2>/dev/null");
+        // Remove state directory
+        exec("rm -rf /var/run/microvms/*/". escapeshellarg($name) . " 2>/dev/null");
+
         // Remove entire VM folder (config + rootfs)
         if (is_dir($vmPath)) {
             exec("rm -rf " . escapeshellarg($vmPath) . " 2>&1", $output, $ret);

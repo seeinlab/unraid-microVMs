@@ -211,16 +211,15 @@ function microvm_list_vms() {
         ];
     }
 
-    // Detect orphan VMs (running but no config file) from state dir
+    // Detect orphan VMs from state dir + containerd containers
+    // Source 1: state dir metadata files
     foreach (glob("/var/run/microvms/*/*/metadata.json") as $metaFile) {
         $meta = json_decode(@file_get_contents($metaFile), true);
         if (!$meta || empty($meta['name'])) continue;
         $orphanName = $meta['name'];
-        // Skip if already in list
         $found = false;
         foreach ($vms as $v) { if ($v['name'] === $orphanName) { $found = true; break; } }
         if ($found) continue;
-        // Check if actually running
         if (isset($running_vms[$orphanName])) {
             $vms[] = [
                 'name' => $orphanName,
@@ -229,6 +228,37 @@ function microvm_list_vms() {
                 'state' => 'running (orphan)',
                 'socket' => $meta['socket'] ?? '',
             ];
+        }
+    }
+
+    // Source 2: containerd registered containers (visible to flintlockd too)
+    $ctrSock = '/var/run/microvms/containerd.sock';
+    if (file_exists($ctrSock)) {
+        $ctrList = shell_exec("ctr -a $ctrSock -n default containers list 2>/dev/null");
+        if ($ctrList) {
+            foreach (explode("\n", trim($ctrList)) as $line) {
+                if (strpos($line, 'CONTAINER') === 0) continue; // header
+                $parts = preg_split('/\s+/', trim($line));
+                if (empty($parts[0])) continue;
+                $ctrName = $parts[0];
+                // Skip if already in list
+                $found = false;
+                foreach ($vms as $v) { if ($v['name'] === $ctrName) { $found = true; break; } }
+                if ($found) continue;
+                // This is a containerd-registered VM not in our config dir
+                $ctrInfo = shell_exec("ctr -a $ctrSock -n default containers info $ctrName 2>/dev/null");
+                $info = $ctrInfo ? json_decode($ctrInfo, true) : [];
+                $labels = $info['Labels'] ?? [];
+                $vmm = $labels['microvm.vmm'] ?? 'unknown';
+                $state = isset($running_vms[$ctrName]) ? 'running' : ($labels['microvm.state'] ?? 'stopped');
+                $vms[] = [
+                    'name' => $ctrName,
+                    'vmm' => $vmm,
+                    'config' => ['namespace' => $labels['microvm.namespace'] ?? 'default', 'network' => ['ip' => $labels['microvm.ip'] ?? '']],
+                    'state' => $state,
+                    'socket' => "/tmp/microvms-{$ctrName}.sock",
+                ];
+            }
         }
     }
 

@@ -866,6 +866,24 @@ FCEOF
   cat > "$state_dir/metadata.json" << METAEOF
 {"name":"$name","namespace":"$ns","vmm":"$vmm","pid":$vm_pid,"state":"running","started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","socket":"/tmp/microvms-${name}.sock","config":"$config"}
 METAEOF
+
+  # Register in containerd (source of truth for VM state)
+  local ctr_sock="/var/run/microvms/containerd.sock"
+  local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
+  oci_ref=${oci_ref:-"docker.io/library/alpine:latest"}
+  # Remove existing entry if re-starting
+  ctr -a "$ctr_sock" -n default containers rm "$name" 2>/dev/null
+  # Create container entry with microvm labels
+  ctr -a "$ctr_sock" -n default containers create \
+    --label "microvm.vmm=$vmm" \
+    --label "microvm.state=running" \
+    --label "microvm.pid=$vm_pid" \
+    --label "microvm.namespace=$ns" \
+    --label "microvm.ip=$ip" \
+    --label "microvm.tap=tap${tap_id}" \
+    --label "microvm.started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "$oci_ref" "$name" 2>/dev/null && log "Registered in containerd: $name"
+
   log "State dir: $state_dir"
 
   # For Cloud Hypervisor: capture serial PTY output and create FIFO for input
@@ -936,6 +954,12 @@ stop_vm() {
       break
     fi
   done
+
+  # Update containerd container labels (state → stopped)
+  local ctr_sock="/var/run/microvms/containerd.sock"
+  if [ -S "$ctr_sock" ]; then
+    ctr -a "$ctr_sock" -n default containers label "$name" "microvm.state=stopped" "microvm.pid=0" 2>/dev/null
+  fi
 
   # Detect VMM from config (new or legacy format)
   local vmm="$DEFAULT_VMM"
