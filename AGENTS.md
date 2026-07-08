@@ -87,12 +87,14 @@ docs/                                   ← Design docs, research, progress
 
 ## Namespace Model
 
-| Namespace | Auto-created | Purpose | Delete behavior |
-|-----------|-------------|---------|-----------------|
-| `default` | Always | Fallback / general | Protected |
-| `ch` | When CH enabled | Cloud Hypervisor VMs | Removed when CH disabled (if empty) |
-| `fc` | When FC enabled | Firecracker VMs | Removed when FC disabled (if empty) |
-| `flintlock` | By Liquidmetal | flintlockd orchestration | Hidden from UI |
+Fixed 4 namespaces — no user-created namespaces.
+
+| Namespace | Auto-created when | Default for | Protected |
+|-----------|------------------|-------------|-----------|
+| `default` | Always (containerd start) | Fallback | Yes |
+| `ch` | CH_ENABLED=yes | Cloud Hypervisor VMs | Removed if CH disabled & empty |
+| `fc` | FC_ENABLED=yes | Firecracker VMs | Removed if FC disabled & empty |
+| `flintlock` | Liquidmetal enabled (flintlockd creates its own) | flintlockd orchestration | Hidden from UI, cannot be user-created |
 
 ## Deploy Pattern (development)
 

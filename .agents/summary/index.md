@@ -59,12 +59,14 @@ docs/FEATURES-AND-DATA-MODELS.md     ← Complete API + data model reference
 
 ## Namespace Model
 
-| Namespace | Auto-created | Purpose |
-|-----------|-------------|---------|
-| `default` | Always | Fallback / general use |
-| `ch` | When CH enabled | Cloud Hypervisor VMs |
-| `fc` | When FC enabled | Firecracker VMs |
-| `flintlock` | By Liquidmetal | flintlockd orchestration (hidden from UI) |
+Fixed 4 namespaces — no user-created namespaces.
+
+| Namespace | Auto-created when | Default for | Protected |
+|-----------|------------------|-------------|-----------|
+| `default` | Always (containerd start) | Fallback | Yes |
+| `ch` | CH_ENABLED=yes | Cloud Hypervisor VMs | Removed if CH disabled & empty |
+| `fc` | FC_ENABLED=yes | Firecracker VMs | Removed if FC disabled & empty |
+| `flintlock` | Liquidmetal enabled (flintlockd creates its own) | flintlockd orchestration | Hidden from UI, cannot be user-created |
 
 ## VM Directory Layout
 
