@@ -185,7 +185,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 <div id="section_existing" style="display:none;">
 <dl>
   <dt>rootFS Path:</dt>
-  <dd><input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/myvm/rootfs.raw" style="width:400px;"></dd>
+  <dd><input type="text" id="vm_rootfs_path" placeholder="<?=$vmdir?>/ch/myvm/rootfs.raw" style="width:400px;"></dd>
 </dl>
 </div>
 
@@ -248,7 +248,7 @@ function buildConfig() {
     namespace: document.getElementById('vm_namespace').value,
     engine: $('input[name="engine"]:checked').val(),
     kernel: "<?=$vmdir?>/kernels/vmlinux",
-    disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
+    disk: "<?=$vmdir?>/" + document.getElementById('vm_namespace').value + "/" + name + "/rootfs.raw",
     cmdline: "console=ttyS0 root=/dev/vda rw init=/init ip=" + document.getElementById('vm_ip').value + "::" + document.getElementById('vm_gateway').value + ":255.255.255.0:::off",
     boot_vcpus: parseInt(document.getElementById('vm_cpus').value),
     max_vcpus: parseInt(document.getElementById('vm_max_cpus').value),

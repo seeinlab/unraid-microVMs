@@ -537,7 +537,8 @@ push_kernel_images() {
 
 create_taps() {
   [ -d "$VMDIR" ] || return
-  for vmdir in "$VMDIR"/*/; do
+  for vmdir in "$VMDIR"/*/*/; do
+    [ -d "$vmdir" ] || continue
     local config_file=""
     for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
       [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
@@ -677,7 +678,17 @@ activate_thin_rootfs() {
 
 start_vm() {
   local name="$1"
-  local vmdir="$VMDIR/$name"
+  local ns="${2:-}"
+
+  # If namespace not passed, try to find it by scanning all namespace dirs
+  if [ -z "$ns" ]; then
+    for nsdir in "$VMDIR"/*/; do
+      [ -d "$nsdir/$name" ] && ns=$(basename "$nsdir") && break
+    done
+    ns=${ns:-default}
+  fi
+
+  local vmdir="$VMDIR/$ns/$name"
   local sock="/tmp/microvms-${name}.sock"
 
   # Find config file (new format: {vmm}.json, legacy: config.json)
@@ -920,7 +931,14 @@ METAEOF
 stop_vm() {
   local name="$1"
   local sock="/tmp/microvms-${name}.sock"
-  local vmdir="$VMDIR/$name"
+
+  # Find namespace by scanning dirs
+  local ns=""
+  for nsdir in "$VMDIR"/*/; do
+    [ -d "$nsdir/$name" ] && ns=$(basename "$nsdir") && break
+  done
+  ns=${ns:-default}
+  local vmdir="$VMDIR/$ns/$name"
 
   # Kill any ttyd console relay for this VM
   local ttyd_pid_file="/var/tmp/ttyd-microvms-${name}.pid"
@@ -1154,16 +1172,18 @@ microvm_start() {
   # Step 7: Autostart VMs
   log "[7/7] Autostarting VMs..."
   if [ "$AUTOSTART" = "yes" ]; then
-    for vmdir in "$VMDIR"/*/; do
+    for vmdir in "$VMDIR"/*/*/; do
+      [ -d "$vmdir" ] || continue
       local config_file=""
       for candidate in "cloud-hypervisor.json" "firecracker.json" "config.json"; do
         [ -f "$vmdir/$candidate" ] && config_file="$vmdir/$candidate" && break
       done
       [ -z "$config_file" ] && continue
       local name=$(basename "$vmdir")
+      local ns=$(basename "$(dirname "$vmdir")")
       local autostart=$(grep -oP '"autostart"\s*:\s*\K(true|false)' "$config_file")
       if [ "$autostart" = "true" ]; then
-        start_vm "$name"
+        start_vm "$name" "$ns"
       fi
     done
   fi

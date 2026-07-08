@@ -119,11 +119,32 @@ function microvm_get_storage($config) {
 }
 
 /**
+ * Resolve full path for a VM: $vmdir/$namespace/$name
+ * Scans namespace dirs if namespace not provided.
+ */
+function microvm_resolve_vmpath($name, $vmdir = null, $namespace = null) {
+    if (!$vmdir) {
+        $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+    }
+    if (empty($namespace)) {
+        foreach (glob("$vmdir/*/") as $nsDir) {
+            if (is_dir("$nsDir$name")) {
+                $namespace = basename($nsDir);
+                break;
+            }
+        }
+    }
+    if (empty($namespace)) $namespace = 'default';
+    return "$vmdir/$namespace/$name";
+}
+
+/**
  * Get the log file path for a VM, organized by VMM subdirectory.
  * Returns: /var/log/microvms/{vmm}/{name}.log
  */
 function microvm_get_log_path($name, $vmdir) {
-    $vmPath = "$vmdir/$name";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
     $configFile = microvm_find_config_file($vmPath);
     $vmm = 'cloud-hypervisor'; // default
     if ($configFile && file_exists($configFile)) {
@@ -138,7 +159,7 @@ function microvm_get_log_path($name, $vmdir) {
 function microvm_next_tap_id($vmdir) {
     $used_ids = [];
     if (is_dir($vmdir)) {
-        foreach (glob("$vmdir/*/") as $vmPath) {
+        foreach (glob("$vmdir/*/*/") as $vmPath) {
             $configFile = microvm_find_config_file(rtrim($vmPath, '/'));
             if (!$configFile) continue;
             $cfg = json_decode(file_get_contents($configFile), true);
@@ -187,14 +208,17 @@ function microvm_list_vms() {
         }
     }
 
-    foreach (glob("$vmdir/*/") as $vmPath) {
+    foreach (glob("$vmdir/*/*/") as $vmPath) {
         $vmPath = rtrim($vmPath, '/');
         $name = basename($vmPath);
+        $ns = basename(dirname($vmPath));
         $configFile = microvm_find_config_file($vmPath);
         if (!$configFile) continue;
 
         $config = json_decode(file_get_contents($configFile), true);
         if (!$config) continue;
+        // Ensure namespace from dir structure is reflected
+        if (empty($config['namespace'])) $config['namespace'] = $ns;
 
         $vmm = microvm_get_vmm($configFile);
 
@@ -313,10 +337,11 @@ function microvm_snapshot_vm($name, $tag = null) {
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
     $sock = "/tmp/microvms-{$name}.sock";
     $tag = $tag ?: date('Y-m-d_His');
-    $snapdir = "$vmdir/$name/snapshots/$tag";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
+    $snapdir = "$vmPath/snapshots/$tag";
 
     // Detect engine from config
-    $configFile = microvm_find_config_file("$vmdir/$name");
+    $configFile = microvm_find_config_file($vmPath);
     $engine = 'cloud-hypervisor';
     if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true);
@@ -410,7 +435,8 @@ function microvm_fc_api_call($sock, $path, $method = 'GET', $body = null) {
 function microvm_list_snapshots($name) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $snapdir = "$vmdir/$name/snapshots";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
+    $snapdir = "$vmPath/snapshots";
     $snapshots = [];
 
     if (!is_dir($snapdir)) return $snapshots;
@@ -445,7 +471,8 @@ function microvm_delete_snapshot($name, $tag) {
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
     // Sanitize tag to prevent directory traversal
     $tag = basename($tag);
-    $snapPath = "$vmdir/$name/snapshots/$tag";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
+    $snapPath = "$vmPath/snapshots/$tag";
 
     if (!is_dir($snapPath)) {
         return ['success' => false, 'error' => "Snapshot '$tag' not found for VM '$name'"];
@@ -462,7 +489,8 @@ function microvm_restore_snapshot($name, $tag) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
     $tag = basename($tag);
-    $snapPath = "$vmdir/$name/snapshots/$tag";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
+    $snapPath = "$vmPath/snapshots/$tag";
     $sock = "/tmp/microvms-{$name}.sock";
 
     if (!is_dir($snapPath)) {
@@ -470,7 +498,7 @@ function microvm_restore_snapshot($name, $tag) {
     }
 
     // Detect engine
-    $configFile = microvm_find_config_file("$vmdir/$name");
+    $configFile = microvm_find_config_file($vmPath);
     $vmConfig = [];
     if ($configFile) {
         $vmConfig = json_decode(file_get_contents($configFile), true) ?: [];
@@ -883,7 +911,7 @@ function flintlock_stop_vm($name, $namespace = null) {
 function flintlock_save_uid($name, $uid) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $vmPath = "$vmdir/$name";
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
     $configFile = microvm_find_config_file($vmPath);
 
     if ($configFile) {
@@ -908,7 +936,8 @@ function flintlock_save_uid($name, $uid) {
 function flintlock_load_uid($name) {
     $cfg = microvm_load_config();
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-    $configFile = microvm_find_config_file("$vmdir/$name");
+    $vmPath = microvm_resolve_vmpath($name, $vmdir);
+    $configFile = microvm_find_config_file($vmPath);
 
     if (!$configFile) return null;
 

@@ -47,6 +47,20 @@ $bridge = $cfg['BRIDGE'] ?? 'br0';
 $cmd = $_REQUEST['cmd'] ?? '';
 $name = $_REQUEST['name'] ?? '';
 
+// Resolve namespace: from request, or scan dirs to find existing VM
+$namespace = $_REQUEST['namespace'] ?? '';
+if (empty($namespace) && !empty($name)) {
+    // Scan all namespace dirs to find this VM
+    foreach (glob("$vmdir/*/") as $nsDir) {
+        if (is_dir("$nsDir$name")) {
+            $namespace = basename($nsDir);
+            break;
+        }
+    }
+}
+if (empty($namespace)) $namespace = 'default';
+$vmpath = "$vmdir/$namespace/$name";
+
 switch ($cmd) {
     case 'list':
         $vms = microvm_list_vms();
@@ -96,7 +110,7 @@ switch ($cmd) {
 
     case 'vm_config':
         // Return VM config JSON (for Edit form — always from file, not live state)
-        $configFile = microvm_find_config_file("$vmdir/$name");
+        $configFile = microvm_find_config_file("$vmpath");
         if ($configFile) {
             echo file_get_contents($configFile);
         } else {
@@ -109,7 +123,7 @@ switch ($cmd) {
         if ($info) {
             echo json_encode($info);
         } else {
-            $configFile = microvm_find_config_file("$vmdir/$name");
+            $configFile = microvm_find_config_file("$vmpath");
             if ($configFile) {
                 echo file_get_contents($configFile);
             } else {
@@ -134,7 +148,7 @@ switch ($cmd) {
 
     case 'resize':
         // Only Cloud Hypervisor supports live resize via ch-remote
-        $configFile = microvm_find_config_file("$vmdir/$name");
+        $configFile = microvm_find_config_file("$vmpath");
         $vmConfig = [];
         if ($configFile) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
@@ -203,7 +217,7 @@ switch ($cmd) {
         break;
 
     case 'delete':
-        $vmPath = "$vmdir/$name";
+        $vmPath = "$vmpath";
 
         // Check for snapshots - block delete if any exist
         $snapDir = "$vmPath/snapshots";
@@ -284,7 +298,7 @@ switch ($cmd) {
         $vmm = $_REQUEST['engine'] ?? 'cloud-hypervisor';
 
         // --- Direct Mode ---
-        $vmPath = "$vmdir/$name";
+        $vmPath = "$vmpath";
         $systemDir = '/mnt/user/system/microvms';
 
         // Create VM directory
@@ -536,7 +550,7 @@ SCRIPT;
         }
         $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($config['name']));
         $vmm = $config['vmm'] ?? $config['engine'] ?? 'cloud-hypervisor';
-        $vmPath = "$vmdir/$name";
+        $vmPath = "$vmpath";
         @mkdir($vmPath, 0755, true);
         // Write as {vmm}.json
         $configFilename = "$vmPath/$vmm.json";
@@ -546,7 +560,7 @@ SCRIPT;
 
     case 'console':
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
-        $logFile = "$vmdir/$name/vm.log";
+        $logFile = "$vmpath/vm.log";
         if (!file_exists($logFile)) $logFile = microvm_get_log_path($name, $vmdir);
         $sock = "/tmp/microvms-{$name}.sock";
 
@@ -557,7 +571,7 @@ SCRIPT;
         }
 
         // Detect engine
-        $configFile = microvm_find_config_file("$vmdir/$name");
+        $configFile = microvm_find_config_file("$vmpath");
         $vmConfig = $configFile ? json_decode(file_get_contents($configFile), true) : [];
         $engine = microvm_get_vmm($configFile);
 
@@ -693,7 +707,7 @@ SCRIPT;
 
     case 'logs':
         // Return last 100 lines of VM log (AJAX)
-        $logFile = "$vmdir/$name/vm.log";
+        $logFile = "$vmpath/vm.log";
         if (!file_exists($logFile)) $logFile = microvm_get_log_path($name, $vmdir);
         if (file_exists($logFile)) {
             $lines = shell_exec("tail -100 " . escapeshellarg($logFile) . " 2>/dev/null");
@@ -705,7 +719,7 @@ SCRIPT;
 
     case 'logs_terminal':
         // Open log viewer via ttyd + unix socket (proxied at /logterminal/)
-        $logFile = "$vmdir/$name/vm.log";
+        $logFile = "$vmpath/vm.log";
         // Fallback to old path if new path doesn't exist
         if (!file_exists($logFile)) {
             $logFile = microvm_get_log_path($name, $vmdir);
@@ -760,7 +774,7 @@ SCRIPT;
     case 'autostart':
         // Toggle autostart for a VM
         $enabled = ($_POST['enabled'] ?? 'false') === 'true';
-        $configFile = microvm_find_config_file("$vmdir/$name");
+        $configFile = microvm_find_config_file("$vmpath");
         if ($configFile) {
             $vmConfig = json_decode(file_get_contents($configFile), true);
             $vmConfig['autostart'] = $enabled;
@@ -876,7 +890,7 @@ SCRIPT;
         break;
 
     case 'delete_rootfs':
-        $rootfsPath = "$vmdir/$name";
+        $rootfsPath = "$vmpath";
         // Check VM is not running
         if (file_exists("/tmp/microvms-{$name}.sock")) {
             echo json_encode(['success' => false, 'error' => "VM '$name' is running. Stop it first."]);
@@ -1006,7 +1020,7 @@ INIT;
         }
         $cfg = microvm_load_config();
         $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-        $configFile = microvm_find_config_file("$vmdir/$name");
+        $configFile = microvm_find_config_file("$vmpath");
         $vmm = $configFile ? microvm_get_vmm($configFile) : 'cloud-hypervisor';
         if ($vmm === 'cloud-hypervisor') {
             $logfile = "/var/log/microvms/cloud-hypervisor/{$name}.serial.log";
