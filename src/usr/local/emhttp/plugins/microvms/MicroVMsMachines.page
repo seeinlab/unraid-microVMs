@@ -349,6 +349,8 @@ function vmConsole(name) {
       row.appendChild(btn);
       inp.focus();
 
+      var shouldScroll = false;
+
       // Refresh output
       var output = document.getElementById('console-output');
       var refreshOutput = function() {
@@ -356,7 +358,10 @@ function vmConsole(name) {
           if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
           if (data && data.success && output) {
             output.textContent = data.log || '';
-            output.scrollTop = output.scrollHeight;
+            if (shouldScroll) {
+              output.scrollTop = output.scrollHeight;
+              shouldScroll = false;
+            }
           }
         });
       };
@@ -367,6 +372,7 @@ function vmConsole(name) {
         if (!cmd) return;
         inp.value = '';
         inp.focus();
+        shouldScroll = true;
         $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_input', name: name, input: cmd}, function() {
           setTimeout(refreshOutput, 400);
           setTimeout(refreshOutput, 1200);
@@ -376,6 +382,7 @@ function vmConsole(name) {
       inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); sendCommand(); } });
       btn.addEventListener('click', sendCommand);
 
+      shouldScroll = true;
       refreshOutput();
       var interval = setInterval(refreshOutput, 2000);
       document.querySelector('.sweet-alert .confirm').addEventListener('click', function() { clearInterval(interval); });
