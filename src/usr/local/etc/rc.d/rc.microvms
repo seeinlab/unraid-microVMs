@@ -902,7 +902,7 @@ METAEOF
 
   # Register in containerd (source of truth for VM state)
   local ctr_sock="/var/run/microvms/containerd.sock"
-  local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
+  local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null | sed 's|\\\/|/|g')
   oci_ref=${oci_ref:-"docker.io/library/alpine:latest"}
   # Normalize: docker.io/nginx → docker.io/library/nginx
   if [[ "$oci_ref" == docker.io/* ]] && [[ "$oci_ref" != docker.io/library/* ]]; then
