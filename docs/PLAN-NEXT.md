@@ -71,7 +71,7 @@
 - [ ] Community Applications submission
 - [ ] Multi-NIC support
 - [ ] VM migration between hosts
-- [ ] Suspend/Resume (Lambda snapshot pattern)
+- [ ] Suspend/Resume as user-facing feature (CH: ch-remote pause/resume, FC: PATCH /vm state. Add `paused` state + Pause/Resume buttons in context menu)
 
 ---
 
