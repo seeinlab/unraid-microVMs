@@ -386,35 +386,33 @@ Guest VM ←→ virtio-net ←→ TAP device ←→ br0 bridge ←→ LAN
 
 ```
 CH process → --serial pty → /dev/pts/N (allocated by CH)
-                                ↓ (cat)
-                        serial.log file ← output capture
-                                ↑ (tail -f fifo > pty)
-                        /tmp/microvms-$name.fifo ← input path
-                                ↑
-                        ttyd WebSocket (/logterminal/)
+                                ↕ (bidirectional PTY)
+                        Input: console_input writes directly to PTY
+                        Output: cat $pty >> {name}.serial.log (background)
 ```
 
 - CH started with `--serial pty --console off`
-- PTY path extracted from CH log: `grep -oP '/dev/pts/\d+'`
-- Output: `cat $pty >> serial.log` (background process, PID saved)
-- Input: `printf '%s\n' "$cmd" > $pty` (direct PTY write from `console_input`)
-- ttyd relay: connects FIFO ↔ browser via `/logterminal/microvm-$name.console/`
+- PTY path: extracted from CH log (`grep -oP '/dev/pts/\d+'`) on normal start, or from `ch-remote info` after restore
+- Output capture: `cat $pty >> /var/log/microvms/cloud-hypervisor/{name}.serial.log`
+- Input: `printf '%s\n' "$cmd" > /dev/pts/N` (direct PTY write from `console_input` PHP handler)
+- Console UI reads: `tail -100 {name}.serial.log` (polled every 2s)
+- Note: rc.microvms still creates a FIFO on start (legacy), but PHP bypasses it and writes to PTY directly
 
 #### Firecracker
 
 ```
 FIFO (mkfifo) → tail -f | FC process → stdout → .log file
                      ↑                              ↓
-              /tmp/microvms-$name.fifo      /var/log/.../name.log
+              /tmp/microvms-{name}.fifo     /var/log/.../name.log
                      ↑                              ↓
-              ttyd WebSocket              console_output reads this
+              console_input writes here     console_output reads this
 ```
 
 - FC started with FIFO piped to stdin: `(tail -f $fifo | firecracker --api-sock ...) >> .log`
 - Input: `printf '%s\n' "$cmd" > $fifo` (FIFO write from `console_input`)
 - Output: FC's stdout/stderr IS the serial output (goes to `.log` file)
-- FIFO path saved to `/var/tmp/microvms-$name.fifo`
-- ttyd relay uses `microvms-console-fc` helper script
+- Console UI reads: `tail -100 /var/log/microvms/firecracker/{name}.log` (polled every 2s)
+- FIFO path saved to `/var/tmp/microvms-{name}.fifo` (for reference only)
 
 ---
 
@@ -422,30 +420,51 @@ FIFO (mkfifo) → tail -f | FC process → stdout → .log file
 
 #### Cloud Hypervisor
 
+**Create:**
 ```
-Pause → ch-remote snapshot file://$snapdir → Resume
+ch-remote --api-socket $sock pause
+ch-remote --api-socket $sock snapshot file://$snapdir
+ch-remote --api-socket $sock resume
 ```
 
-- Files saved: `$VMDIR/$ns/$name/snapshots/$tag/` (CH internal format)
-- Restore flow:
-  1. Kill existing CH process
-  2. Start new `cloud-hypervisor --api-socket $sock` (no --kernel, API-only mode)
-  3. `ch-remote restore source_url=file://$snapdir,resume=true`
-  4. Poll `ch-remote ping` until responsive (up to 10s)
-  5. Re-setup serial PTY capture
+**Restore (CH v52 — API method required):**
+```
+1. Kill existing CH process + remove socket
+2. Start: cloud-hypervisor --api-socket $sock  (API-only, NO --kernel)
+3. ch-remote --api-socket $sock restore source_url=file://$snapdir,resume=true
+4. Poll ch-remote ping (500ms intervals, up to 10s timeout)
+5. Get PTY from ch-remote info (serial.file field)
+6. Start output capture: cat $pty >> {name}.serial.log
+```
+
+- Snapshot saves: `config.json` + `state.json` + `memory-ranges` (CH internal format)
+- Path: `$VMDIR/{ns}/{name}/snapshots/{tag}/`
+- **Critical**: Using `--kernel` + `--restore` CLI flags boots a fresh VM ignoring the snapshot. Must use API method.
+- Snapshot captures: CPU state + memory + device config (disk path, net config, kernel cmdline)
+- Disk is NOT snapshotted (live block device shared before/after)
 
 #### Firecracker
 
+**Create:**
 ```
-Pause (PATCH /vm {state:Paused}) → PUT /snapshot/create → Resume (PATCH /vm {state:Resumed})
+PATCH /vm → {state: "Paused"}
+PUT /snapshot/create → {snapshot_type: "Full", snapshot_path, mem_file_path}
+PATCH /vm → {state: "Resumed"}
 ```
 
-- Files saved: `$snapdir/snapshot` (VM state) + `$snapdir/mem` (memory file)
-- Restore flow:
-  1. Kill existing FC process
-  2. Start new `firecracker --api-sock $sock` (no config, blank state)
-  3. `PUT /snapshot/load` with `snapshot_path`, `mem_backend`, `resume_vm=true`
-  4. TAP device must exist on host before load (FC expects same network topology)
+**Restore:**
+```
+1. Kill existing FC process + remove socket
+2. Create FIFO, start: (tail -f $fifo | firecracker --api-sock $sock --id $name) >> .log
+3. Wait for socket (poll 200ms × 5 = 1s max)
+4. PUT /snapshot/load → {snapshot_path, mem_backend: {backend_path, backend_type: "File"}, resume_vm: true}
+```
+
+- Snapshot saves: `snapshot` (VM state) + `mem` (full memory dump)
+- Path: `$VMDIR/{ns}/{name}/snapshots/{tag}/`
+- TAP device must exist on host before snapshot load
+- FC snapshot captures full memory state — files written after snapshot disappear on restore (page cache rollback)
+- `resume_vm: true` atomically loads and resumes in one call
 
 ---
 
