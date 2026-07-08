@@ -99,7 +99,6 @@ img.vm-icon-stopped { opacity:0.4; }
 <table class="tablesorter microvm shift ups">
 <thead><tr>
   <th>Name</th>
-  <th>VMM</th>
   <th>Namespace</th>
   <th>vCPUs</th>
   <th>Memory</th>
@@ -154,7 +153,6 @@ img.vm-icon-stopped { opacity:0.4; }
         </span>
       </span>
     </td>
-    <td><?=$engine_display?></td>
     <td><?=htmlspecialchars($vmConfig['namespace'] ?? 'default')?></td>
     <td><?=$cpus?></td>
     <td><?=$mem_display?></td>
