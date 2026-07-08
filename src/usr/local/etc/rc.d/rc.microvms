@@ -887,8 +887,9 @@ METAEOF
   local ctr_sock="/var/run/microvms/containerd.sock"
   local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
   oci_ref=${oci_ref:-"docker.io/library/alpine:latest"}
-  # Ensure namespace exists
+  # Ensure namespace and image exist
   ctr -a "$ctr_sock" namespaces create "$ns" 2>/dev/null
+  ctr -a "$ctr_sock" -n "$ns" images pull "$oci_ref" 2>/dev/null
   # Remove existing entry if re-starting
   ctr -a "$ctr_sock" -n "$ns" containers rm "$name" 2>/dev/null
   # Create container entry with microvm labels

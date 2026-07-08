@@ -528,11 +528,14 @@ SCRIPT;
         file_put_contents($configFilename, json_encode($config, JSON_PRETTY_PRINT));
 
         // Register in containerd (source of truth for VM list)
+        // Container lives in its VMM namespace (ch/fc/default)
         $ctrSock = '/var/run/microvms/containerd.sock';
         if (file_exists($ctrSock)) {
             $ociRef = $config['image']['ref'] ?? 'docker.io/library/alpine:latest';
             $ns = $namespace;
             exec("ctr -a $ctrSock namespaces create " . escapeshellarg($ns) . " 2>/dev/null");
+            // Ensure image exists in target namespace (content shared, just metadata)
+            exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " images pull " . escapeshellarg($ociRef) . " 2>/dev/null");
             exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " containers rm " . escapeshellarg($name) . " 2>/dev/null");
             $labelArgs = "--label microvm.vmm=" . escapeshellarg($vmm)
                 . " --label microvm.state=created"
