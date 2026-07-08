@@ -248,6 +248,44 @@ function microvm_list_vms() {
         }
     }
 
+    // Also detect flintlockd-managed VMs (stored in content store, not containers)
+    $flintlockState = '/var/run/microvms/flintlockd-state/vm';
+    if (is_dir($flintlockState)) {
+        $flPids = [];
+        $chPids = trim(shell_exec("pidof cloud-hypervisor 2>/dev/null"));
+        if ($chPids) {
+            foreach (explode(' ', $chPids) as $pid) {
+                $cmdline = @file_get_contents("/proc/$pid/cmdline");
+                if ($cmdline && preg_match('/flintlockd-state.*?([a-z0-9\-]+)\/([A-Z0-9]+)\/cloudhypervisor/', $cmdline, $m)) {
+                    $flPids[$m[1]] = true;
+                }
+            }
+        }
+        // Scan flintlockd state dirs
+        foreach (glob("$flintlockState/*/*") as $nsDir) {
+            $vmName = basename($nsDir);
+            $flNs = basename(dirname($nsDir));
+            // Skip if already in list
+            $found = false;
+            foreach ($vms as $v) { if ($v['name'] === $vmName) { $found = true; break; } }
+            if ($found) continue;
+            // Check PID file for first UID
+            $uidDirs = glob("$nsDir/*/cloudhypervisor.pid");
+            $state = 'stopped';
+            if (!empty($uidDirs)) {
+                $pid = trim(@file_get_contents($uidDirs[0]));
+                if ($pid && file_exists("/proc/$pid")) $state = 'running';
+            }
+            $vms[] = [
+                'name' => $vmName,
+                'vmm' => 'cloud-hypervisor',
+                'config' => ['namespace' => $flNs, 'network' => ['ip' => ''], 'managed_by' => 'flintlockd'],
+                'state' => $state,
+                'socket' => '',
+            ];
+        }
+    }
+
     return $vms;
 }
 
