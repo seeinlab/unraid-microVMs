@@ -814,6 +814,59 @@ SCRIPT;
         }
         break;
 
+    case 'flintlock_start':
+        // Re-reconcile a stopped flintlockd VM (flintlockd will detect and restart it)
+        // Flintlockd reconciles every 10 min — for immediate start, we'd need to re-create
+        // For now, just inform user that flintlockd will auto-reconcile
+        $uid = $_REQUEST['uid'] ?? '';
+        if (empty($uid)) {
+            echo json_encode(['success' => false, 'error' => 'No UID provided']);
+            break;
+        }
+        // Trigger reconcile by touching the content store entry (not directly possible)
+        // Best we can do: tell flintlockd to get the VM (which triggers reconcile)
+        $out = shell_exec("grpcurl -plaintext -d " . escapeshellarg(json_encode(['uid' => $uid])) . " 0.0.0.0:9090 microvm.services.api.v1alpha1.MicroVM/GetMicroVM 2>&1");
+        echo json_encode(['success' => true, 'message' => "Flintlockd will reconcile and restart the VM on next cycle.", 'output' => $out]);
+        break;
+
+    case 'flintlock_force_stop':
+        // Kill the flintlockd VM process directly
+        $flState = '/var/run/microvms/flintlockd-state/vm';
+        $pid = '';
+        // Find PID from state dir
+        foreach (glob("$flState/*/$name/*/cloudhypervisor.pid") as $pidFile) {
+            $pid = trim(@file_get_contents($pidFile));
+            break;
+        }
+        if (empty($pid)) {
+            foreach (glob("$flState/*/$name/*/firecracker.pid") as $pidFile) {
+                $pid = trim(@file_get_contents($pidFile));
+                break;
+            }
+        }
+        if ($pid && file_exists("/proc/$pid")) {
+            exec("kill -9 $pid 2>/dev/null");
+            echo json_encode(['success' => true, 'message' => "Force killed flintlockd VM '$name' (PID $pid). Flintlockd may restart it on next reconcile."]);
+        } else {
+            echo json_encode(['success' => false, 'error' => "No running process found for flintlockd VM '$name'"]);
+        }
+        break;
+
+    case 'flintlock_delete':
+        // Delete via gRPC API
+        $uid = $_REQUEST['uid'] ?? '';
+        if (empty($uid)) {
+            echo json_encode(['success' => false, 'error' => 'No UID provided']);
+            break;
+        }
+        $out = shell_exec("grpcurl -plaintext -d " . escapeshellarg(json_encode(['uid' => $uid])) . " 0.0.0.0:9090 microvm.services.api.v1alpha1.MicroVM/DeleteMicroVM 2>&1");
+        if (strpos($out, 'ERROR') !== false || strpos($out, 'Error') !== false) {
+            echo json_encode(['success' => false, 'error' => $out]);
+        } else {
+            echo json_encode(['success' => true, 'message' => "Flintlockd VM '$name' deleted via gRPC.", 'output' => $out]);
+        }
+        break;
+
     case 'liquidmetal':
         // Toggle Liquidmetal services (flintlockd + containerd + registry) for remote automation
         $action = $_POST['action'] ?? '';

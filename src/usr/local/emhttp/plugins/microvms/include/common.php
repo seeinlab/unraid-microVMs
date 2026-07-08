@@ -251,17 +251,7 @@ function microvm_list_vms() {
     // Also detect flintlockd-managed VMs (stored in content store, not containers)
     $flintlockState = '/var/run/microvms/flintlockd-state/vm';
     if (is_dir($flintlockState)) {
-        $flPids = [];
-        $chPids = trim(shell_exec("pidof cloud-hypervisor 2>/dev/null"));
-        if ($chPids) {
-            foreach (explode(' ', $chPids) as $pid) {
-                $cmdline = @file_get_contents("/proc/$pid/cmdline");
-                if ($cmdline && preg_match('/flintlockd-state.*?([a-z0-9\-]+)\/([A-Z0-9]+)\/cloudhypervisor/', $cmdline, $m)) {
-                    $flPids[$m[1]] = true;
-                }
-            }
-        }
-        // Scan flintlockd state dirs
+        // Scan flintlockd state dirs: {state}/vm/{ns}/{name}/{uid}/
         foreach (glob("$flintlockState/*/*") as $nsDir) {
             $vmName = basename($nsDir);
             $flNs = basename(dirname($nsDir));
@@ -269,17 +259,30 @@ function microvm_list_vms() {
             $found = false;
             foreach ($vms as $v) { if ($v['name'] === $vmName) { $found = true; break; } }
             if ($found) continue;
-            // Check PID file for first UID
-            $uidDirs = glob("$nsDir/*/cloudhypervisor.pid");
+            // Find UID dir and PID file
+            $uidDirs = glob("$nsDir/*");
             $state = 'stopped';
-            if (!empty($uidDirs)) {
-                $pid = trim(@file_get_contents($uidDirs[0]));
-                if ($pid && file_exists("/proc/$pid")) $state = 'running';
+            $uid = '';
+            $vmm = 'cloud-hypervisor';
+            foreach ($uidDirs as $uidDir) {
+                if (!is_dir($uidDir)) continue;
+                $uid = basename($uidDir);
+                // Check CH PID
+                $pidFile = "$uidDir/cloudhypervisor.pid";
+                if (!file_exists($pidFile)) {
+                    $pidFile = "$uidDir/firecracker.pid";
+                    $vmm = 'firecracker';
+                }
+                if (file_exists($pidFile)) {
+                    $pid = trim(@file_get_contents($pidFile));
+                    if ($pid && file_exists("/proc/$pid")) $state = 'running';
+                }
+                break; // first UID dir
             }
             $vms[] = [
                 'name' => $vmName,
-                'vmm' => 'cloud-hypervisor',
-                'config' => ['namespace' => $flNs, 'network' => ['ip' => ''], 'managed_by' => 'flintlockd'],
+                'vmm' => $vmm,
+                'config' => ['namespace' => $flNs, 'network' => ['ip' => ''], 'managed_by' => 'flintlockd', 'uid' => $uid],
                 'state' => $state,
                 'socket' => '',
             ];

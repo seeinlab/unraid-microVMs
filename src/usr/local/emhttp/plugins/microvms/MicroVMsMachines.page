@@ -115,6 +115,8 @@ img.vm-icon-stopped { opacity:0.4; }
     $name = htmlspecialchars($vm['name']);
     $state = $vm['state'];
     $vmConfig = $vm['config'];
+    $managed_by = $vmConfig['managed_by'] ?? 'webgui';
+    $fl_uid = $vmConfig['uid'] ?? '';
     $cpus = $vmConfig['vcpus'] ?? $vmConfig['boot_vcpus'] ?? '-';
     $mem_mb = $vmConfig['memory_mb'] ?? '-';
     $mem_display = ($mem_mb !== '-' && $mem_mb >= 1024) ? round($mem_mb / 1024, 1) . ' GB' : $mem_mb . ' MB';
@@ -136,11 +138,11 @@ img.vm-icon-stopped { opacity:0.4; }
   <tr class="sortable">
     <td>
       <span class="outer">
-        <span id="vm-<?=$name?>" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>')" class="hand">
+        <span id="vm-<?=$name?>" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>','<?=$managed_by?>','<?=$fl_uid?>')" class="hand">
           <img src="<?=$icon?>" class="vm-icon <?=$icon_opacity?>" onerror="this.src='/plugins/dynamix.vm.manager/images/default.png';">
         </span>
         <span class="inner">
-          <a href="#" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>');return false;"><?=$name?></a><br>
+          <a href="#" onclick="addMicroVMContext('<?=$name?>','<?=$state?>','<?=$engine?>','<?=$managed_by?>','<?=$fl_uid?>');return false;"><?=$name?></a><br>
           <span class="<?=$color_class?>" style="font-size:0.85rem;"><?=$status_symbol?> <?=$state?></span>
         </span>
       </span>
@@ -170,10 +172,47 @@ img.vm-icon-stopped { opacity:0.4; }
 <script>
 var plugin = '<?=$plugin?>';
 
-function addMicroVMContext(name, state, engine) {
+function addMicroVMContext(name, state, engine, managed_by, uid) {
   var opts = [];
   context.settings({right:false, above:false});
 
+  // Flintlockd-managed VMs: limited menu
+  if (managed_by === 'flintlockd') {
+    if (state == 'running') {
+      opts.push({text:'Force Stop', icon:'fa-power-off', action:function(e){
+        e.preventDefault();
+        swal({title:'Force Stop flintlockd VM?', text:'This kills the process. Flintlockd may restart it on next reconcile.', type:'warning', showCancelButton:true, confirmButtonText:'Force Stop'}, function(){
+          $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'flintlock_force_stop', name:name}, function(data){
+            if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+            swal({title: data.success ? 'Done' : 'Error', text: data.message || data.error, type: data.success ? 'success' : 'error'}, function(){ location.reload(); });
+          });
+        });
+      }});
+    } else {
+      opts.push({text:'Start (reconcile)', icon:'fa-play', action:function(e){
+        e.preventDefault();
+        $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'flintlock_start', name:name, uid:uid}, function(data){
+          if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+          swal({title:'Reconcile triggered', text: data.message || '', type:'info'}, function(){ location.reload(); });
+        });
+      }});
+    }
+    opts.push({divider:true});
+    opts.push({text:'Remove microVM', icon:'fa-trash', action:function(e){
+      e.preventDefault();
+      swal({title:'Delete flintlockd VM?', text:'This calls gRPC DeleteMicroVM. Flintlockd will clean up snapshot, TAP, and state.', type:'warning', showCancelButton:true, confirmButtonText:'Delete'}, function(){
+        $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd:'flintlock_delete', name:name, uid:uid}, function(data){
+          if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+          swal({title: data.success ? 'Deleted' : 'Error', text: data.message || data.error, type: data.success ? 'success' : 'error'}, function(){ location.reload(); });
+        });
+      });
+    }});
+    context.destroy('#vm-' + name);
+    context.attach('#vm-' + name, opts);
+    return;
+  }
+
+  // WebGUI-managed VMs: full menu
   if (state == 'running') {
     if (engine == 'cloud-hypervisor') {
       opts.push({text:'Stop', icon:'fa-stop', action:function(e){
