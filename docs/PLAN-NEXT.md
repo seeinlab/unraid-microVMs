@@ -33,12 +33,7 @@
 - [ ] Liquidmetal enable doesn't auto-start crane registry + flintlockd
   - Toggling Liquidmetal to enabled in Settings and clicking Apply doesn't start services
   - Check: `#command` might not trigger restart, or FLINTLOCKD config value isn't read correctly after save
-- [ ] **Flintlockd deadlocks on second VM creation** (critical)
-  - First VM after fresh start works (alpine, CH). All subsequent creates hang at "checking state of microvm"
-  - Affects both CH and FC providers, all images (alpine, nginx)
-  - Suspected cause: containerd devmapper snapshotter lock contention with WebGUI VMs holding active snapshots
-  - Workaround: restart flintlockd (only first VM works per session)
-  - Need to investigate: does stopping WebGUI VMs first help? Is it a containerd version issue?
+- [x] ~~Flintlockd deadlocks on second VM creation~~ — FIXED: stale containerd leases. Clean leases before start.
 - [ ] **Flintlockd macvtap not supported on Unraid** (by design)
   - Unraid bonds all NICs into br0; macvtap needs standalone physical NIC
   - Always use type=1 (TAP/bridge) for flintlockd on Unraid
