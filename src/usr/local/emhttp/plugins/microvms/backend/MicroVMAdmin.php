@@ -532,6 +532,15 @@ SCRIPT;
         $ctrSock = '/var/run/microvms/containerd.sock';
         if (file_exists($ctrSock)) {
             $ociRef = $config['image']['ref'] ?? 'docker.io/library/alpine:latest';
+            // Normalize: docker.io/nginx → docker.io/library/nginx
+            if (!str_contains($ociRef, '/')) {
+                $ociRef = "docker.io/library/$ociRef";
+            } elseif (preg_match('#^docker\.io/([^/]+)$#', $ociRef, $m)) {
+                $ociRef = "docker.io/library/" . $m[1];
+            } elseif (!str_contains($ociRef, '.') && substr_count($ociRef, '/') === 1) {
+                $ociRef = "docker.io/library/$ociRef";
+            }
+            if (!str_contains($ociRef, ':')) $ociRef .= ':latest';
             $ns = $namespace;
             exec("ctr -a $ctrSock namespaces create " . escapeshellarg($ns) . " 2>/dev/null");
             // Ensure image exists in target namespace (content shared, just metadata)
