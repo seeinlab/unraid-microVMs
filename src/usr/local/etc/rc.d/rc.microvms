@@ -896,6 +896,14 @@ METAEOF
   local ctr_sock="/var/run/microvms/containerd.sock"
   local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
   oci_ref=${oci_ref:-"docker.io/library/alpine:latest"}
+  # Normalize: docker.io/nginx → docker.io/library/nginx
+  if [[ "$oci_ref" == docker.io/* ]] && [[ "$oci_ref" != docker.io/library/* ]]; then
+    local img_path="${oci_ref#docker.io/}"
+    if [[ "$img_path" != */* ]]; then
+      oci_ref="docker.io/library/${img_path}"
+    fi
+  fi
+  [[ "$oci_ref" != *:* ]] && oci_ref="${oci_ref}:latest"
   # Ensure namespace and image exist
   ctr -a "$ctr_sock" namespaces create "$ns" 2>/dev/null
   ctr -a "$ctr_sock" -n "$ns" images pull "$oci_ref" 2>/dev/null
