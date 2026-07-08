@@ -32,7 +32,7 @@ Creates and starts a microVM. Flintlockd pulls the kernel and rootfs OCI images 
 | `microvm.root_volume.size_in_mb` | int32 | Disk size in MB |
 | `microvm.interfaces[]` | array | Network interfaces |
 | `microvm.interfaces[].device_id` | string | Interface name (e.g. `eth0`) |
-| `microvm.interfaces[].type` | int32 | Interface type (1 = macvtap, 2 = tap) |
+| `microvm.interfaces[].type` | int32 | Interface type (0 = MACVTAP, 1 = TAP) |
 | `microvm.provider` | string | VMM provider: `cloudhypervisor` or `firecracker` |
 
 **Example — Create with Cloud Hypervisor:**
@@ -65,7 +65,7 @@ grpcurl -plaintext -d '{
     "interfaces": [
       {
         "device_id": "eth0",
-        "type": 2
+        "type": 1
       }
     ],
     "provider": "cloudhypervisor"
@@ -103,7 +103,7 @@ grpcurl -plaintext -d '{
     "interfaces": [
       {
         "device_id": "eth0",
-        "type": 2
+        "type": 1
       }
     ],
     "provider": "firecracker"
