@@ -1,7 +1,6 @@
 Menu="MicroVMs:3"
 Title="Usage Statistics"
 Tag="bar-chart"
-Cond="is_file('/usr/local/bin/flintlockd')"
 Markdown="false"
 ---
 <?php
@@ -10,97 +9,23 @@ $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 
 $cfg = microvm_load_config();
-$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
 $vms = microvm_list_vms();
-
-// Gather stats
 $total_vms = count($vms);
-$running_vms_list = array_filter($vms, fn($v) => $v['state'] === 'running');
-$running_count = count($running_vms_list);
-$stopped_vms = $total_vms - $running_count;
-
-$total_cpus_allocated = 0;
-$total_mem_allocated = 0;
-
-foreach ($running_vms_list as $vm) {
-    $total_cpus_allocated += $vm['config']['vcpus'] ?? $vm['config']['boot_vcpus'] ?? 0;
-    $total_mem_allocated += $vm['config']['memory_mb'] ?? 0;
-}
-
-// Host info
+$running_count = count(array_filter($vms, fn($v) => $v['state'] === 'running'));
+$stopped_count = $total_vms - $running_count;
 $host_cpus = intval(trim(shell_exec('nproc')));
 $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
-
-// Build PID map for running VMs (accurate: pidof + cmdline)
-$vm_pids = [];
-foreach (['cloud-hypervisor', 'firecracker'] as $bin) {
-    $pids = trim(shell_exec("pidof $bin 2>/dev/null"));
-    if (!$pids) continue;
-    foreach (explode(' ', $pids) as $pid) {
-        $cmdline = @file_get_contents("/proc/$pid/cmdline");
-        if ($cmdline && preg_match('/microvms-([a-z0-9\-]+)\.sock/', $cmdline, $m)) {
-            $vm_pids[$m[1]] = intval($pid);
-        }
-        // flintlockd VMs: extract name from state dir path
-        if ($cmdline && preg_match('/flintlockd-state\/vm\/[^\/]+\/([a-z0-9\-]+)\//', $cmdline, $m)) {
-            $vm_pids[$m[1]] = intval($pid);
-        }
-    }
-}
-
-// Get process stats from /proc/PID/
-function get_vm_proc_stats($pid) {
-    if (!$pid || !file_exists("/proc/$pid/status")) return null;
-    $stats = [];
-
-    // Memory (VmRSS from /proc/PID/status)
-    $status = @file_get_contents("/proc/$pid/status");
-    if ($status && preg_match('/VmRSS:\s+(\d+)\s+kB/', $status, $m)) {
-        $stats['rss_mb'] = round($m[1] / 1024);
-    }
-
-    // CPU time from /proc/PID/stat (field 14=utime, 15=stime in clock ticks)
-    $stat = @file_get_contents("/proc/$pid/stat");
-    if ($stat) {
-        // Skip past the comm field (may contain spaces/parens)
-        $parts = preg_split('/\)\s+/', $stat, 2);
-        if (isset($parts[1])) {
-            $fields = explode(' ', $parts[1]);
-            $utime = intval($fields[11] ?? 0); // field 14 (0-indexed from after comm)
-            $stime = intval($fields[12] ?? 0); // field 15
-            $clk_tck = 100; // standard on Linux
-            $stats['cpu_seconds'] = round(($utime + $stime) / $clk_tck);
-            // Uptime for this process (field 22 = starttime)
-            $starttime = intval($fields[19] ?? 0);
-            $uptime = floatval(explode(' ', @file_get_contents('/proc/uptime'))[0]);
-            $stats['uptime_seconds'] = round($uptime - ($starttime / $clk_tck));
-            if ($stats['uptime_seconds'] > 0) {
-                $stats['cpu_percent'] = round(($stats['cpu_seconds'] / $stats['uptime_seconds']) * 100, 1);
-            }
-        }
-    }
-
-    // Disk I/O from /proc/PID/io
-    $io = @file_get_contents("/proc/$pid/io");
-    if ($io) {
-        if (preg_match('/read_bytes:\s+(\d+)/', $io, $m)) $stats['read_mb'] = round($m[1] / 1048576, 1);
-        if (preg_match('/write_bytes:\s+(\d+)/', $io, $m)) $stats['write_mb'] = round($m[1] / 1048576, 1);
-    }
-
-    return $stats;
-}
-
-// Storage
-$vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null | cut -f1")) ?: '0';
 ?>
 
 <style>
-.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin:15px 0; }
-.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:8px; padding:15px; text-align:center; }
-.stat-card .number { font-size:2em; font-weight:bold; color:#89b4fa; }
-.stat-card .label { font-size:0.85em; opacity:0.7; margin-top:5px; }
+.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin:15px 0; }
+.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:8px; padding:12px; text-align:center; }
+.stat-card .number { font-size:1.8em; font-weight:bold; color:#89b4fa; }
+.stat-card .label { font-size:0.8em; opacity:0.7; margin-top:4px; }
 .stat-card.running .number { color:#4CAF50; }
 .stat-card.stopped .number { color:#f44336; }
+#stats-table td, #process-table td { font-family:monospace; font-size:0.85rem; }
+.loading { opacity:0.5; }
 </style>
 
 <table class="tablesorter shift ups">
@@ -110,40 +35,105 @@ $vmdir_size = trim(shell_exec("du -sh " . escapeshellarg($vmdir) . " 2>/dev/null
 <div class="stat-grid">
   <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total microVMs</div></div>
   <div class="stat-card running"><div class="number"><?=$running_count?></div><div class="label">Running</div></div>
-  <div class="stat-card stopped"><div class="number"><?=$stopped_vms?></div><div class="label">Stopped</div></div>
-  <div class="stat-card"><div class="number"><?=$total_cpus_allocated?>/<?=$host_cpus?></div><div class="label">vCPUs Allocated</div></div>
-  <div class="stat-card"><div class="number"><?=$total_mem_allocated?>M/<?=$host_mem?>M</div><div class="label">Memory Allocated</div></div>
-  <div class="stat-card"><div class="number"><?=$vmdir_size?></div><div class="label">Disk Used</div></div>
+  <div class="stat-card stopped"><div class="number"><?=$stopped_count?></div><div class="label">Stopped</div></div>
+  <div class="stat-card"><div class="number"><?=$host_cpus?></div><div class="label">Host vCPUs</div></div>
+  <div class="stat-card"><div class="number"><?=$host_mem?>M</div><div class="label">Host RAM</div></div>
 </div>
 
-<?php if ($running_count > 0): ?>
+<!-- Live Resource Usage (AJAX polled) -->
 <table class="tablesorter shift ups">
-<thead><tr><td>Running VM Details</td></tr></thead>
+<thead><tr><td>Live Resource Usage <span id="stats-status" style="font-size:0.7em;opacity:0.5;margin-left:10px;"></span></td></tr></thead>
 </table>
 
-<table class="tablesorter shift ups">
-<thead><tr><th>Name</th><th>vCPUs</th><th>Memory</th><th>IP</th><th>PID</th><th>CPU %</th><th>RSS</th><th>Disk Read</th><th>Disk Write</th></tr></thead>
+<table class="tablesorter shift ups" id="stats-table">
+<thead><tr>
+  <th>Name</th>
+  <th>CPU %</th>
+  <th>RSS</th>
+  <th>Disk Read</th>
+  <th>Disk Write</th>
+  <th>Net RX</th>
+  <th>Net TX</th>
+</tr></thead>
 <tbody>
-<?php foreach ($vms as $vm): if ($vm['state'] !== 'running') continue;
-    $network = microvm_get_network($vm['config']);
-    $ip = $network['ip'] ?? '-';
-    $vcpus = $vm['config']['vcpus'] ?? $vm['config']['boot_vcpus'] ?? '-';
-    $mem = $vm['config']['memory_mb'] ?? '-';
-    $pid = $vm_pids[$vm['name']] ?? 0;
-    $proc = $pid ? get_vm_proc_stats($pid) : null;
-?>
-  <tr>
-    <td><b><?=htmlspecialchars($vm['name'])?></b></td>
-    <td><?=$vcpus?></td>
-    <td><?=$mem?> MB</td>
-    <td><?=htmlspecialchars($ip)?></td>
-    <td style="font-family:monospace;"><?=$pid ?: '-'?></td>
-    <td><?=$proc ? $proc['cpu_percent'] . '%' : '-'?></td>
-    <td><?=$proc ? $proc['rss_mb'] . ' MB' : '-'?></td>
-    <td><?=$proc ? $proc['read_mb'] . ' MB' : '-'?></td>
-    <td><?=$proc ? $proc['write_mb'] . ' MB' : '-'?></td>
-  </tr>
-<?php endforeach; ?>
+  <tr><td colspan="7" style="text-align:center;opacity:0.5;">Loading...</td></tr>
 </tbody>
 </table>
-<?php endif; ?>
+
+<!-- VMM Processes -->
+<table class="tablesorter shift ups">
+<thead><tr><td>VMM Processes</td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups" id="process-table">
+<thead><tr>
+  <th>Name</th>
+  <th>VMM</th>
+  <th>PID</th>
+  <th>TAP</th>
+  <th>Uptime</th>
+</tr></thead>
+<tbody>
+  <tr><td colspan="5" style="text-align:center;opacity:0.5;">Loading...</td></tr>
+</tbody>
+</table>
+
+<script>
+var plugin = '<?=$plugin?>';
+
+function formatUptime(seconds) {
+  if (seconds < 60) return seconds + 's';
+  if (seconds < 3600) return Math.floor(seconds/60) + 'm ' + (seconds%60) + 's';
+  var h = Math.floor(seconds/3600);
+  var m = Math.floor((seconds%3600)/60);
+  return h + 'h ' + m + 'm';
+}
+
+function refreshStats() {
+  $('#stats-status').text('updating...');
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'vm_stats'}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (!data || !data.success) return;
+
+    var stats = data.stats || [];
+    var statsHtml = '';
+    var procHtml = '';
+
+    if (stats.length === 0) {
+      statsHtml = '<tr><td colspan="7" style="text-align:center;opacity:0.5;">No running VMs</td></tr>';
+      procHtml = '<tr><td colspan="5" style="text-align:center;opacity:0.5;">No running VMs</td></tr>';
+    } else {
+      for (var i = 0; i < stats.length; i++) {
+        var s = stats[i];
+        statsHtml += '<tr>'
+          + '<td><b>' + s.name + '</b></td>'
+          + '<td>' + s.cpu_percent + '%</td>'
+          + '<td>' + s.rss_mb + ' MB</td>'
+          + '<td>' + s.disk_read_mb + ' MB</td>'
+          + '<td>' + s.disk_write_mb + ' MB</td>'
+          + '<td>' + s.net_rx_mb + ' MB</td>'
+          + '<td>' + s.net_tx_mb + ' MB</td>'
+          + '</tr>';
+
+        var vmmDisplay = (s.vmm === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
+        procHtml += '<tr>'
+          + '<td><b>' + s.name + '</b></td>'
+          + '<td>' + vmmDisplay + '</td>'
+          + '<td>' + s.pid + '</td>'
+          + '<td>' + (s.tap || '-') + '</td>'
+          + '<td>' + formatUptime(s.uptime) + '</td>'
+          + '</tr>';
+      }
+    }
+
+    $('#stats-table tbody').html(statsHtml);
+    $('#process-table tbody').html(procHtml);
+    $('#stats-status').text('updated ' + new Date().toLocaleTimeString());
+  });
+}
+
+$(function() {
+  refreshStats();
+  setInterval(refreshStats, 3000);
+});
+</script>

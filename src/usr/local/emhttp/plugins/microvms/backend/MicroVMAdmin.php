@@ -146,6 +146,99 @@ switch ($cmd) {
         ]);
         break;
 
+    case 'vm_stats':
+        // Return live stats for all running VMs (polled by AJAX)
+        $stats = [];
+        // Find all VMM PIDs
+        foreach (['cloud-hypervisor', 'firecracker'] as $bin) {
+            $pids = trim(shell_exec("pidof $bin 2>/dev/null"));
+            if (!$pids) continue;
+            foreach (explode(' ', $pids) as $pid) {
+                $cmdline = @file_get_contents("/proc/$pid/cmdline");
+                if (!$cmdline) continue;
+                $vmName = '';
+                $vmm = $bin;
+                // WebGUI VMs
+                if (preg_match('/microvms-([a-z0-9\-]+)\.sock/', $cmdline, $m)) {
+                    $vmName = $m[1];
+                }
+                // Flintlockd VMs
+                if (!$vmName && preg_match('/flintlockd-state\/vm\/[^\/]+\/([a-z0-9\-]+)\//', $cmdline, $m)) {
+                    $vmName = $m[1];
+                }
+                if (!$vmName) continue;
+
+                // Find TAP device from cmdline
+                $tap = '';
+                if (preg_match('/tap=([a-zA-Z0-9]+)/', $cmdline, $m)) {
+                    $tap = $m[1];
+                }
+
+                // CPU% from /proc/PID/stat
+                $cpuPercent = 0;
+                $stat = @file_get_contents("/proc/$pid/stat");
+                if ($stat) {
+                    $parts = preg_split('/\)\s+/', $stat, 2);
+                    if (isset($parts[1])) {
+                        $fields = explode(' ', $parts[1]);
+                        $utime = intval($fields[11] ?? 0);
+                        $stime = intval($fields[12] ?? 0);
+                        $starttime = intval($fields[19] ?? 0);
+                        $uptime = floatval(explode(' ', @file_get_contents('/proc/uptime'))[0]);
+                        $elapsed = $uptime - ($starttime / 100);
+                        if ($elapsed > 0) $cpuPercent = round((($utime + $stime) / 100) / $elapsed * 100, 1);
+                    }
+                }
+
+                // RSS from /proc/PID/status
+                $rssMb = 0;
+                $status = @file_get_contents("/proc/$pid/status");
+                if ($status && preg_match('/VmRSS:\s+(\d+)\s+kB/', $status, $m)) {
+                    $rssMb = round($m[1] / 1024);
+                }
+
+                // Disk I/O from /proc/PID/io
+                $readMb = 0; $writeMb = 0;
+                $io = @file_get_contents("/proc/$pid/io");
+                if ($io) {
+                    if (preg_match('/read_bytes:\s+(\d+)/', $io, $m)) $readMb = round($m[1] / 1048576, 1);
+                    if (preg_match('/write_bytes:\s+(\d+)/', $io, $m)) $writeMb = round($m[1] / 1048576, 1);
+                }
+
+                // Network I/O from /sys/class/net/{tap}/statistics/
+                $netRx = 0; $netTx = 0;
+                if ($tap && is_dir("/sys/class/net/$tap/statistics")) {
+                    $netRx = round(intval(@file_get_contents("/sys/class/net/$tap/statistics/rx_bytes")) / 1048576, 1);
+                    $netTx = round(intval(@file_get_contents("/sys/class/net/$tap/statistics/tx_bytes")) / 1048576, 1);
+                }
+
+                // Uptime
+                $uptimeSec = 0;
+                if ($stat && isset($parts[1])) {
+                    $fields2 = explode(' ', $parts[1]);
+                    $starttime2 = intval($fields2[19] ?? 0);
+                    $sysUptime = floatval(explode(' ', @file_get_contents('/proc/uptime'))[0]);
+                    $uptimeSec = round($sysUptime - ($starttime2 / 100));
+                }
+
+                $stats[] = [
+                    'name' => $vmName,
+                    'vmm' => $vmm,
+                    'pid' => intval($pid),
+                    'tap' => $tap,
+                    'cpu_percent' => $cpuPercent,
+                    'rss_mb' => $rssMb,
+                    'disk_read_mb' => $readMb,
+                    'disk_write_mb' => $writeMb,
+                    'net_rx_mb' => $netRx,
+                    'net_tx_mb' => $netTx,
+                    'uptime' => $uptimeSec,
+                ];
+            }
+        }
+        echo json_encode(['success' => true, 'stats' => $stats]);
+        break;
+
     case 'resize':
         // Only Cloud Hypervisor supports live resize via ch-remote
         $configFile = microvm_find_config_file("$vmpath");
