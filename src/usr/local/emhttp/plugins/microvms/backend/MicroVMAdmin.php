@@ -1044,13 +1044,30 @@ INIT;
             echo json_encode(['success' => false, 'error' => 'Invalid name']);
             break;
         }
-        $fifo = "/tmp/microvms-{$name}.fifo";
-        if (file_exists($fifo)) {
-            $escaped = str_replace("'", "'\\''", $input);
-            exec("printf '%s\\n' '$escaped' > " . escapeshellarg($fifo) . " 2>&1 &");
-            echo json_encode(['success' => true]);
+        // Determine VMM to choose input method
+        $configFile = microvm_find_config_file("$vmpath");
+        $vmm = $configFile ? microvm_get_vmm($configFile) : 'cloud-hypervisor';
+        $escaped = str_replace("'", "'\\''", $input);
+
+        if ($vmm === 'cloud-hypervisor') {
+            // CH: write directly to PTY (bidirectional) - FIFO doesn't work with tail -f on named pipes
+            $sock = "/tmp/microvms-{$name}.sock";
+            $pty = trim(shell_exec("ch-remote --api-socket " . escapeshellarg($sock) . " info 2>/dev/null | grep -oP '/dev/pts/\\d+'"));
+            if ($pty && file_exists($pty)) {
+                exec("printf '%s\\n' '$escaped' > " . escapeshellarg($pty) . " 2>&1 &");
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'No PTY available. Is the VM running?']);
+            }
         } else {
-            echo json_encode(['success' => false, 'error' => 'No FIFO available. Is the VM running?']);
+            // FC: write to FIFO (piped into FC stdin)
+            $fifo = "/tmp/microvms-{$name}.fifo";
+            if (file_exists($fifo)) {
+                exec("printf '%s\\n' '$escaped' > " . escapeshellarg($fifo) . " 2>&1 &");
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'No FIFO available. Is the VM running?']);
+            }
         }
         break;
 

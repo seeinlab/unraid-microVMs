@@ -549,26 +549,40 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
     }
 
     // Restore from snapshot using cloud-hypervisor
+    // CH v52: start API server only (no --kernel), then restore via ch-remote API
+    // Using --kernel with --restore causes CH to boot a fresh VM ignoring the snapshot
     $cmd = "nohup cloud-hypervisor"
         . " --api-socket " . escapeshellarg($sock)
-        . " --restore source_url=" . escapeshellarg("file://$snapPath")
-        . " --serial pty --console off"
         . " > /var/log/microvms/cloud-hypervisor/{$name}.log 2>&1 &";
     exec($cmd);
     sleep(2);
 
-    // Verify VM came back
-    exec("ch-remote --api-socket $sock ping 2>/dev/null", $verifyOut, $verifyRet);
+    // Restore via API (snapshot contains full config: disk, net, kernel, cmdline)
+    exec("ch-remote --api-socket " . escapeshellarg($sock)
+        . " restore source_url=" . escapeshellarg("file://$snapPath") . ",resume=true 2>&1",
+        $restoreOut, $restoreRet);
 
-    // Setup serial capture (same as normal start)
+    // Poll until VM responds (up to 10s)
+    $verifyRet = 1;
+    for ($i = 0; $i < 20; $i++) {
+        usleep(500000); // 500ms
+        exec("ch-remote --api-socket $sock ping 2>/dev/null", $verifyOut, $verifyRet);
+        if ($verifyRet === 0) break;
+    }
+
+    // Setup serial capture (PTY allocated by snapshot restore)
     if ($verifyRet === 0) {
-        $logFile = "/var/log/microvms/cloud-hypervisor/{$name}.log";
-        $ptyPath = trim(shell_exec("grep -oP '/dev/pts/\\d+' $logFile 2>/dev/null | tail -1"));
+        // Get PTY path from ch-remote info (not in log since we started without --serial pty)
+        $infoJson = shell_exec("ch-remote --api-socket $sock info 2>/dev/null");
+        $ptyPath = '';
+        if ($infoJson && preg_match('/"serial":\{[^}]*"file":"(\/dev\/pts\/\d+)"/', $infoJson, $m)) {
+            $ptyPath = $m[1];
+        }
         if ($ptyPath) {
-            $fifo = "/var/tmp/microvms-{$name}.fifo";
-            exec("rm -f $fifo && mkfifo $fifo 2>/dev/null");
-            exec("nohup cat $fifo > $ptyPath 2>/dev/null &");
-            exec("nohup cat $ptyPath >> /var/log/microvms/cloud-hypervisor/{$name}-serial.log 2>/dev/null &");
+            // CH console: input goes directly to PTY (from console_input handler)
+            // Only need output capture: PTY → serial log
+            $serialLog = "/var/log/microvms/cloud-hypervisor/{$name}.serial.log";
+            exec("nohup cat " . escapeshellarg($ptyPath) . " >> " . escapeshellarg($serialLog) . " 2>/dev/null &");
         }
     }
 
@@ -651,6 +665,10 @@ function microvm_restore_snapshot_fc($name, $tag, $snapPath, $sock, $vmConfig, $
     }
 
     // Load snapshot
+    // Firecracker requires network interface to be configured BEFORE loading snapshot
+    // The snapshot expects the same TAP device that was attached when snapshot was created
+    // Note: As of FC 1.5+, snapshot/load handles device restoration automatically
+    // but the TAP device must exist on the host
     $result = microvm_fc_api_call($sock, '/snapshot/load', 'PUT', [
         'snapshot_path' => $snapshotFile,
         'mem_backend' => [
