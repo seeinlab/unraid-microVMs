@@ -930,18 +930,24 @@ SCRIPT;
         break;
 
     case 'flintlock_start':
-        // Re-reconcile a stopped flintlockd VM (flintlockd will detect and restart it)
-        // Flintlockd reconciles every 10 min — for immediate start, we'd need to re-create
-        // For now, just inform user that flintlockd will auto-reconcile
+        // Restart flintlockd to force immediate reconcile (resync detects pending VMs and starts them)
         $uid = $_REQUEST['uid'] ?? '';
         if (empty($uid)) {
             echo json_encode(['success' => false, 'error' => 'No UID provided']);
             break;
         }
-        // Trigger reconcile by touching the content store entry (not directly possible)
-        // Best we can do: tell flintlockd to get the VM (which triggers reconcile)
+        // Check if VM spec still exists
         $out = shell_exec("grpcurl -plaintext -d " . escapeshellarg(json_encode(['uid' => $uid])) . " 0.0.0.0:9090 microvm.services.api.v1alpha1.MicroVM/GetMicroVM 2>&1");
-        echo json_encode(['success' => true, 'message' => "Flintlockd will reconcile and restart the VM on next cycle.", 'output' => $out]);
+        if (strpos($out, 'not found') !== false || strpos($out, 'Error') !== false) {
+            echo json_encode(['success' => false, 'error' => "VM spec not found in flintlockd (UID: $uid). The VM must be recreated via gRPC CreateMicroVM."]);
+            break;
+        }
+        // Restart flintlockd (cleans leases + triggers immediate resync)
+        exec("/etc/rc.d/rc.microvms stop_flintlockd 2>/dev/null");
+        sleep(2);
+        exec("/etc/rc.d/rc.microvms start_flintlockd 2>&1", $startOut);
+        sleep(5);
+        echo json_encode(['success' => true, 'message' => "Flintlockd restarted. Reconcile triggered — VM should start within seconds."]);
         break;
 
     case 'flintlock_force_stop':
