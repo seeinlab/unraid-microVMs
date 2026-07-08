@@ -71,6 +71,23 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 
 <dl>
+  <dt>Namespace:</dt>
+  <dd><select id="vm_namespace" style="width:200px;">
+    <option value="default" selected>default</option>
+    <?php
+    $ctrSock = '/var/run/microvms/containerd.sock';
+    $nsOut = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+    foreach (explode("\n", $nsOut) as $ns) {
+        $ns = trim($ns);
+        if ($ns && $ns !== 'default' && $ns !== 'flintlock') {
+            echo "<option value=\"$ns\">$ns</option>\n";
+        }
+    }
+    ?>
+  </select></dd>
+</dl>
+
+<dl>
   <dt>vCPUs:</dt>
   <dd><select id="vm_cpus" style="width:80px;">
     <?php for ($i = 1; $i <= $nproc; $i++): ?>
@@ -228,6 +245,7 @@ function buildConfig() {
   var mac = '52:54:00:' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2) + ':' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2) + ':' + ('0'+Math.floor(Math.random()*256).toString(16)).slice(-2);
   return {
     name: name,
+    namespace: document.getElementById('vm_namespace').value,
     engine: $('input[name="engine"]:checked').val(),
     kernel: "<?=$vmdir?>/kernels/vmlinux",
     disk: "<?=$vmdir?>/" + name + "/rootfs.raw",
@@ -319,6 +337,7 @@ function submitForm() {
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
     cmd: 'create',
     name: name,
+    namespace: document.getElementById('vm_namespace').value,
     engine: $('input[name="engine"]:checked').val(),
     cpus: document.getElementById('vm_cpus').value,
     max_cpus: document.getElementById('vm_max_cpus').value,

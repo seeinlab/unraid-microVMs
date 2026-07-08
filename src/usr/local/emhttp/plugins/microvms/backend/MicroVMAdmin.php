@@ -830,6 +830,51 @@ SCRIPT;
         echo json_encode(['success' => true, 'message' => implode("\n", $output) ?: 'No unused images to prune']);
         break;
 
+    case 'list_namespaces':
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        $out = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+        $namespaces = array_filter(explode("\n", $out));
+        echo json_encode(['success' => true, 'namespaces' => $namespaces]);
+        break;
+
+    case 'create_namespace':
+        $nsName = $_REQUEST['namespace'] ?? '';
+        if (!preg_match('/^[a-z0-9\-]+$/', $nsName)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid namespace name (lowercase, numbers, hyphens only)']);
+            break;
+        }
+        if ($nsName === 'flintlock') {
+            echo json_encode(['success' => false, 'error' => "'flintlock' is reserved for Liquidmetal orchestration"]);
+            break;
+        }
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        exec("ctr -a $ctrSock namespaces create " . escapeshellarg($nsName) . " 2>&1", $out, $ret);
+        if ($ret === 0) {
+            echo json_encode(['success' => true, 'message' => "Namespace '$nsName' created"]);
+        } else {
+            echo json_encode(['success' => false, 'error' => implode(' ', $out)]);
+        }
+        break;
+
+    case 'delete_namespace':
+        $nsName = $_REQUEST['namespace'] ?? '';
+        if (in_array($nsName, ['default', 'flintlock'])) {
+            echo json_encode(['success' => false, 'error' => "'$nsName' cannot be deleted (protected)"]);
+            break;
+        }
+        if (!preg_match('/^[a-z0-9\-]+$/', $nsName)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid namespace name']);
+            break;
+        }
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        exec("ctr -a $ctrSock namespaces remove " . escapeshellarg($nsName) . " 2>&1", $out, $ret);
+        if ($ret === 0) {
+            echo json_encode(['success' => true, 'message' => "Namespace '$nsName' deleted"]);
+        } else {
+            echo json_encode(['success' => false, 'error' => implode(' ', $out)]);
+        }
+        break;
+
     case 'delete_rootfs':
         $rootfsPath = "$vmdir/$name";
         // Check VM is not running

@@ -206,3 +206,47 @@ _(Thin Pool Size)_ (GB):
 &nbsp;
 : <span class="inline-block"><input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 </form>
+
+<div style="margin-top:20px;">
+<strong>Namespaces</strong>
+<span style="margin-left:10px;"><input type="button" value="Create" onclick="createNamespace()" style="padding:2px 12px;"></span>
+<div id="namespace-list" style="margin-top:8px;font-family:monospace;font-size:0.9rem;"></div>
+</div>
+
+<script>
+function loadNamespaces() {
+  $.post('/plugins/microvms/backend/MicroVMAdmin.php', {cmd: 'list_namespaces'}, function(data) {
+    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+    if (data && data.success) {
+      var html = '<table class="tablesorter" style="width:auto;"><thead><tr><th>Namespace</th><th></th></tr></thead><tbody>';
+      (data.namespaces || []).forEach(function(ns) {
+        var del = (ns !== 'default' && ns !== 'flintlock') ?
+          '<input type="button" value="Delete" onclick="deleteNamespace(\'' + ns + '\')" style="padding:1px 8px;font-size:0.8rem;">' : '<em style="color:#666;">protected</em>';
+        html += '<tr><td>' + ns + '</td><td>' + del + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById('namespace-list').innerHTML = html;
+    }
+  });
+}
+function createNamespace() {
+  swal({title:'Create Namespace', text:'Name (lowercase, numbers, hyphens):', type:'input', showCancelButton:true, inputValue:'', closeOnConfirm:false}, function(val) {
+    if (!val) return;
+    $.post('/plugins/microvms/backend/MicroVMAdmin.php', {cmd:'create_namespace', namespace:val}, function(data) {
+      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+      if (data && data.success) { swal({title:'Created', text:data.message, type:'success'}); loadNamespaces(); }
+      else { swal({title:'Error', text:(data && data.error) || 'Failed', type:'error'}); }
+    });
+  });
+}
+function deleteNamespace(ns) {
+  swal({title:'Delete namespace "' + ns + '"?', text:'All images/snapshots in this namespace will be lost.', type:'warning', showCancelButton:true, confirmButtonText:'Delete'}, function() {
+    $.post('/plugins/microvms/backend/MicroVMAdmin.php', {cmd:'delete_namespace', namespace:ns}, function(data) {
+      if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
+      if (data && data.success) { swal({title:'Deleted', type:'success'}); loadNamespaces(); }
+      else { swal({title:'Error', text:(data && data.error) || 'Failed', type:'error'}); }
+    });
+  });
+}
+$(function(){ loadNamespaces(); });
+</script>
