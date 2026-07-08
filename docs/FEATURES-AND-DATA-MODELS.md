@@ -555,42 +555,49 @@ PATCH /vm → {state: "Resumed"}
 /var/run/microvms/                    ← RUNTIME_DIR
 ├── containerd.sock                   ← Containerd gRPC socket
 ├── containerd.pid                    ← Containerd PID file
-├── flintlockd.pid                    ← Flintlockd PID file
-├── crane-registry.pid                ← Registry PID file
+├── flintlockd.pid                    ← Flintlockd PID file (if Liquidmetal enabled)
+├── crane-registry.pid                ← Registry PID file (if Liquidmetal enabled)
 ├── containerd-config.toml            ← Generated containerd config
 ├── containerd-state/                 ← Containerd ephemeral state
-├── flintlockd-state/                 ← Flintlockd ephemeral state
+├── flintlockd-state/                 ← Flintlockd ephemeral state (if enabled)
 ├── thinpool-data-loop                ← Loop device path (for teardown)
 ├── thinpool-meta-loop                ← Loop device path (for teardown)
 └── {namespace}/{vm-name}/            ← Per-VM state
-    ├── {vmm}.pid
+    ├── {vmm}.pid                     ← VMM process PID
     ├── {vmm}.sock → /tmp/microvms-{name}.sock
-    └── metadata.json
+    └── metadata.json                 ← Runtime metadata (name, ns, vmm, pid, state, started_at)
 
 /tmp/
 ├── microvms-{name}.sock              ← VMM API socket (CH or FC)
-├── microvms-{name}.fifo              ← Console input FIFO
-├── microvms-{name}-fc.json           ← Generated FC boot config (ephemeral)
-└── microvm-mount-{name}/             ← Temp mount point during rootfs creation
+├── microvms-{name}.fifo              ← Console input FIFO (FC: active, CH: legacy/unused by PHP)
+└── microvms-{name}-fc.json           ← Generated FC boot config (ephemeral)
 
 /var/tmp/
-├── ttyd-microvms-{name}.pid          ← Console ttyd PID
-├── ttyd-microvms-{name}-log.pid      ← Log viewer ttyd PID
-├── microvms-{name}.fifo              ← FIFO path reference file
-├── microvms-{name}-serial.pid        ← CH serial capture PID
-└── microvm-{name}.console.sock       ← ttyd Unix socket (proxied by nginx)
+├── microvms-{name}.fifo              ← FIFO path reference (text file containing /tmp path)
+└── microvms-{name}-serial.pid        ← CH serial capture process PID
 
-/var/log/microvms/
-├── backend.log                       ← PHP backend AJAX log
-├── containerd.log                    ← Containerd output
-├── flintlockd.log                    ← Flintlockd output
-├── registry.log                      ← Crane registry output
+/var/log/microvms/                    ← Log directory (tmpfs, recreated on start)
+├── backend.log                       ← PHP backend AJAX log (MicroVMAdmin.php)
+├── containerd.log                    ← Containerd daemon output
+├── flintlockd.log                    ← Flintlockd daemon output (if enabled)
+├── registry.log                      ← Crane registry output (if enabled)
 ├── cloud-hypervisor/
-│   ├── {name}.log                    ← CH process stdout/stderr
-│   └── {name}.serial.log            ← CH serial PTY capture (kernel + app output)
+│   ├── {name}.log                    ← CH process stdout/stderr (boot messages, warnings)
+│   └── {name}.serial.log             ← CH serial PTY capture (guest kernel + shell output)
 └── firecracker/
-    └── {name}.log                    ← FC process output (IS the serial output)
+    └── {name}.log                    ← FC process stdout (IS the serial output — boot + shell)
 ```
+
+**Console I/O paths:**
+
+| VMM | Input path | Output path | How input works | How output works |
+|-----|-----------|-------------|-----------------|------------------|
+| CH | `/dev/pts/N` (direct PTY write) | `{name}.serial.log` | `console_input` → `printf > /dev/pts/N` | `cat /dev/pts/N >> .serial.log` (bg process) |
+| FC | `/tmp/microvms-{name}.fifo` | `{name}.log` | `console_input` → `printf > FIFO` | FC stdout piped to .log at start |
+
+**Log files read by WebGUI:**
+- `console_output` handler reads: CH → `{name}.serial.log`, FC → `{name}.log`
+- `vm_log` handler reads: same files (tail -100)
 
 ### Plugin Files (installed by PLG)
 
