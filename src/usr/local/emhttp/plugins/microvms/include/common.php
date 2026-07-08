@@ -231,22 +231,24 @@ function microvm_list_vms() {
         }
     }
 
-    // Source 2: containerd registered containers (visible to flintlockd too)
+    // Source 2: containerd registered containers (all namespaces except flintlock)
     $ctrSock = '/var/run/microvms/containerd.sock';
     if (file_exists($ctrSock)) {
-        $ctrList = shell_exec("ctr -a $ctrSock -n default containers list 2>/dev/null");
-        if ($ctrList) {
+        $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+        foreach (explode("\n", $nsList) as $ns) {
+            $ns = trim($ns);
+            if (empty($ns) || $ns === 'flintlock') continue; // flintlock reserved for flintlockd
+            $ctrList = shell_exec("ctr -a $ctrSock -n $ns containers list 2>/dev/null");
+            if (!$ctrList) continue;
             foreach (explode("\n", trim($ctrList)) as $line) {
-                if (strpos($line, 'CONTAINER') === 0) continue; // header
+                if (strpos($line, 'CONTAINER') === 0) continue;
                 $parts = preg_split('/\s+/', trim($line));
                 if (empty($parts[0])) continue;
                 $ctrName = $parts[0];
-                // Skip if already in list
                 $found = false;
                 foreach ($vms as $v) { if ($v['name'] === $ctrName) { $found = true; break; } }
                 if ($found) continue;
-                // This is a containerd-registered VM not in our config dir
-                $ctrInfo = shell_exec("ctr -a $ctrSock -n default containers info $ctrName 2>/dev/null");
+                $ctrInfo = shell_exec("ctr -a $ctrSock -n $ns containers info $ctrName 2>/dev/null");
                 $info = $ctrInfo ? json_decode($ctrInfo, true) : [];
                 $labels = $info['Labels'] ?? [];
                 $vmm = $labels['microvm.vmm'] ?? 'unknown';
@@ -254,7 +256,7 @@ function microvm_list_vms() {
                 $vms[] = [
                     'name' => $ctrName,
                     'vmm' => $vmm,
-                    'config' => ['namespace' => $labels['microvm.namespace'] ?? 'default', 'network' => ['ip' => $labels['microvm.ip'] ?? '']],
+                    'config' => ['namespace' => $ns, 'network' => ['ip' => $labels['microvm.ip'] ?? '']],
                     'state' => $state,
                     'socket' => "/tmp/microvms-{$ctrName}.sock",
                 ];

@@ -238,11 +238,16 @@ switch ($cmd) {
             }
         }
 
-        // Remove from containerd registry
+        // Remove from containerd registry (search all namespaces)
         $ctrSock = '/var/run/microvms/containerd.sock';
-        exec("ctr -a $ctrSock -n default containers rm " . escapeshellarg($name) . " 2>/dev/null");
+        $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+        foreach (explode("\n", $nsList) as $ns) {
+            $ns = trim($ns);
+            if (empty($ns)) continue;
+            exec("ctr -a $ctrSock -n $ns containers rm " . escapeshellarg($name) . " 2>/dev/null");
+        }
         // Remove state directory
-        exec("rm -rf /var/run/microvms/*/". escapeshellarg($name) . " 2>/dev/null");
+        exec("rm -rf /var/run/microvms/*/" . escapeshellarg($name) . " 2>/dev/null");
 
         // Remove entire VM folder (config + rootfs)
         if (is_dir($vmPath)) {
@@ -477,7 +482,7 @@ SCRIPT;
 
         $config = [
             'name' => $name,
-            'namespace' => 'default',
+            'namespace' => ($_REQUEST['namespace'] ?? 'default') === 'flintlock' ? 'default' : ($_REQUEST['namespace'] ?? 'default'),
             'vcpus' => $cpus,
             'max_vcpus' => intval($_REQUEST['max_cpus'] ?? ($cpus * 2)),
             'memory_mb' => $memory,

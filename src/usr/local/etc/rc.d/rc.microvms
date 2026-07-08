@@ -306,6 +306,8 @@ EOF
   fi
 
   log "microvms-containerd started (PID $pid)"
+  # Ensure 'default' namespace exists
+  ctr -a "$CONTAINERD_SOCK" namespaces create default 2>/dev/null
   return 0
 }
 
@@ -871,10 +873,12 @@ METAEOF
   local ctr_sock="/var/run/microvms/containerd.sock"
   local oci_ref=$(grep -oP '"ref"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
   oci_ref=${oci_ref:-"docker.io/library/alpine:latest"}
+  # Ensure namespace exists
+  ctr -a "$ctr_sock" namespaces create "$ns" 2>/dev/null
   # Remove existing entry if re-starting
-  ctr -a "$ctr_sock" -n default containers rm "$name" 2>/dev/null
+  ctr -a "$ctr_sock" -n "$ns" containers rm "$name" 2>/dev/null
   # Create container entry with microvm labels
-  ctr -a "$ctr_sock" -n default containers create \
+  ctr -a "$ctr_sock" -n "$ns" containers create \
     --label "microvm.vmm=$vmm" \
     --label "microvm.state=running" \
     --label "microvm.pid=$vm_pid" \
@@ -882,7 +886,7 @@ METAEOF
     --label "microvm.ip=$ip" \
     --label "microvm.tap=tap${tap_id}" \
     --label "microvm.started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "$oci_ref" "$name" 2>/dev/null && log "Registered in containerd: $name"
+    "$oci_ref" "$name" 2>/dev/null && log "Registered in containerd: $name (ns=$ns)"
 
   log "State dir: $state_dir"
 
@@ -958,7 +962,10 @@ stop_vm() {
   # Update containerd container labels (state → stopped)
   local ctr_sock="/var/run/microvms/containerd.sock"
   if [ -S "$ctr_sock" ]; then
-    ctr -a "$ctr_sock" -n default containers label "$name" "microvm.state=stopped" "microvm.pid=0" 2>/dev/null
+    # Try all namespaces (VM might be in default or custom ns)
+    for ns in $(ctr -a "$ctr_sock" namespaces list -q 2>/dev/null); do
+      ctr -a "$ctr_sock" -n "$ns" containers label "$name" "microvm.state=stopped" "microvm.pid=0" 2>/dev/null && break
+    done
   fi
 
   # Detect VMM from config (new or legacy format)
