@@ -16,27 +16,26 @@ $sock = '/var/run/microvms/containerd.sock';
 $containerd_running = file_exists($sock);
 
 // Pulled images
-$ch_images = [];
-$fc_images = [];
+$images_list = [];
+$snapshots_list = [];
 if ($containerd_running) {
     $img_out = shell_exec("ctr -a $sock -n default images list -q 2>/dev/null");
-    if ($img_out) $ch_images = array_filter(explode("\n", trim($img_out)));
-    $fc_images = []; // All in default namespace now
-}
+    if ($img_out) $images_list = array_filter(explode("\n", trim($img_out)));
 
-// Active snapshots
-$ch_snapshots = [];
-$fc_snapshots = [];
-if ($containerd_running) {
     $snap_out = shell_exec("ctr -a $sock -n default snapshots --snapshotter devmapper list 2>/dev/null");
     if ($snap_out) {
         $lines = array_filter(explode("\n", trim($snap_out)));
         if (count($lines) > 1) {
             array_shift($lines);
-            $ch_snapshots = $lines;
+            $snapshots_list = $lines;
         }
     }
 }
+// Keep old vars for backward compat with display code
+$ch_images = $images_list;
+$fc_images = [];
+$ch_snapshots = $snapshots_list;
+$fc_snapshots = [];
 
 // Existing rootfs images (legacy raw storage)
 $images = [];
@@ -73,13 +72,7 @@ if (is_dir($vmdir)) {
 <?php else: ?>
   <?php foreach ($ch_images as $img): ?>
   <tr>
-    <td><span style="color:#4CAF50;"><i class="fa fa-cloud"></i> cloud-hypervisor</span></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img)?></td>
-  </tr>
-  <?php endforeach; ?>
-  <?php foreach ($fc_images as $img): ?>
-  <tr>
-    <td><span style="color:#ff9800;"><i class="fa fa-fire"></i> firecracker</span></td>
+    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> default</span></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img)?></td>
   </tr>
   <?php endforeach; ?>
@@ -106,27 +99,13 @@ if (is_dir($vmdir)) {
   <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No active snapshots.</td></tr>
 <?php else: ?>
   <?php foreach ($ch_snapshots as $line):
-    // Parse snapshot line: KEY PARENT KIND
     $parts = preg_split('/\s+/', trim($line), 4);
     $key = $parts[0] ?? '';
     $parent = $parts[1] ?? '';
     $kind = $parts[2] ?? '';
   ?>
   <tr>
-    <td><span style="color:#4CAF50;"><i class="fa fa-cloud"></i> cloud-hypervisor</span></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($key)?></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($parent)?></td>
-    <td><?=htmlspecialchars($kind)?></td>
-  </tr>
-  <?php endforeach; ?>
-  <?php foreach ($fc_snapshots as $line):
-    $parts = preg_split('/\s+/', trim($line), 4);
-    $key = $parts[0] ?? '';
-    $parent = $parts[1] ?? '';
-    $kind = $parts[2] ?? '';
-  ?>
-  <tr>
-    <td><span style="color:#ff9800;"><i class="fa fa-fire"></i> firecracker</span></td>
+    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> default</span></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($key)?></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($parent)?></td>
     <td><?=htmlspecialchars($kind)?></td>
