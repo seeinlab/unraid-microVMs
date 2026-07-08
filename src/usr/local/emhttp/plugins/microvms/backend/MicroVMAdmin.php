@@ -221,11 +221,24 @@ switch ($cmd) {
                     $uptimeSec = round($sysUptime - ($starttime2 / 100));
                 }
 
+                // Extract vCPUs and memory from cmdline
+                $vcpus = 0; $memCurrent = 0; $memMax = 0;
+                if (preg_match('/boot=(\d+)/', $cmdline, $m)) $vcpus = intval($m[1]);
+                if (preg_match('/size=(\d+)M/', $cmdline, $m)) $memCurrent = intval($m[1]);
+                if (preg_match('/hotplug_size=(\d+)M/', $cmdline, $m)) $memMax = $memCurrent + intval($m[1]);
+                if ($memMax === 0) $memMax = $memCurrent;
+                // FC: memory from --config-file or from /proc/PID/cmdline
+                if ($vcpus === 0 && preg_match('/vcpu_count.*?(\d+)/', $cmdline, $m)) $vcpus = intval($m[1]);
+                if ($memCurrent === 0 && preg_match('/mem_size_mib.*?(\d+)/', $cmdline, $m)) $memCurrent = intval($m[1]);
+
                 $stats[] = [
                     'name' => $vmName,
                     'vmm' => $vmm,
                     'pid' => intval($pid),
                     'tap' => $tap,
+                    'vcpus' => $vcpus,
+                    'mem_current' => $memCurrent,
+                    'mem_max' => $memMax,
                     'cpu_percent' => $cpuPercent,
                     'rss_mb' => $rssMb,
                     'disk_read_mb' => $readMb,

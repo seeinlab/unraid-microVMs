@@ -18,14 +18,16 @@ $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
 ?>
 
 <style>
-.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin:15px 0; }
-.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:8px; padding:12px; text-align:center; }
-.stat-card .number { font-size:1.8em; font-weight:bold; color:#89b4fa; }
-.stat-card .label { font-size:0.8em; opacity:0.7; margin-top:4px; }
+.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin:12px 0; }
+.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:6px; padding:10px; text-align:center; }
+.stat-card .number { font-size:1.6em; font-weight:bold; color:#89b4fa; }
+.stat-card .label { font-size:0.75em; opacity:0.7; margin-top:3px; }
 .stat-card.running .number { color:#4CAF50; }
 .stat-card.stopped .number { color:#f44336; }
-#stats-table td, #process-table td { font-family:monospace; font-size:0.85rem; }
-.loading { opacity:0.5; }
+#vm-usage td { font-size:0.85rem; }
+#vm-usage .bar-bg { background:#333; border-radius:3px; height:14px; position:relative; min-width:60px; }
+#vm-usage .bar-fill { background:#4CAF50; border-radius:3px; height:100%; transition:width 0.5s; }
+#vm-usage .bar-text { position:absolute; top:0; left:4px; font-size:10px; line-height:14px; color:#fff; }
 </style>
 
 <table class="tablesorter shift ups">
@@ -36,26 +38,21 @@ $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
   <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total microVMs</div></div>
   <div class="stat-card running"><div class="number"><?=$running_count?></div><div class="label">Running</div></div>
   <div class="stat-card stopped"><div class="number"><?=$stopped_count?></div><div class="label">Stopped</div></div>
-  <div class="stat-card"><div class="number"><?=$host_cpus?></div><div class="label">Host vCPUs</div></div>
-  <div class="stat-card"><div class="number"><?=$host_mem?>M</div><div class="label">Host RAM</div></div>
+  <div class="stat-card"><div class="number"><?=$host_cpus?></div><div class="label">Host CPUs</div></div>
+  <div class="stat-card"><div class="number"><?=round($host_mem/1024, 1)?>G</div><div class="label">Host RAM</div></div>
 </div>
 
-<!-- Live Resource Usage (AJAX polled) -->
-<table class="tablesorter shift ups">
-<thead><tr><td>Live Resource Usage <span id="stats-status" style="font-size:0.7em;opacity:0.5;margin-left:10px;"></span></td></tr></thead>
-</table>
-
-<table class="tablesorter shift ups" id="stats-table">
+<table class="tablesorter shift ups" id="vm-usage">
 <thead><tr>
   <th>Name</th>
-  <th>CPU %</th>
-  <th>RSS</th>
-  <th>Disk Read</th>
-  <th>Disk Write</th>
-  <th>Net RX</th>
-  <th>Net TX</th>
+  <th>Guest CPU</th>
+  <th>Host CPU</th>
+  <th>Memory inuse/Current/Maximum</th>
+  <th>Disk IO</th>
+  <th>Network IO</th>
+  <th>Uptime</th>
 </tr></thead>
-<tbody>
+<tbody id="vm-usage-body">
   <tr><td colspan="7" style="text-align:center;opacity:0.5;">Loading...</td></tr>
 </tbody>
 </table>
@@ -65,70 +62,86 @@ $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
 <thead><tr><td>VMM Processes</td></tr></thead>
 </table>
 
-<table class="tablesorter shift ups" id="process-table">
+<table class="tablesorter shift ups" id="vm-proc">
 <thead><tr>
   <th>Name</th>
   <th>VMM</th>
   <th>PID</th>
-  <th>TAP</th>
-  <th>Uptime</th>
 </tr></thead>
-<tbody>
-  <tr><td colspan="5" style="text-align:center;opacity:0.5;">Loading...</td></tr>
+<tbody id="vm-proc-body">
+  <tr><td colspan="3" style="text-align:center;opacity:0.5;">Loading...</td></tr>
 </tbody>
 </table>
 
 <script>
 var plugin = '<?=$plugin?>';
+var hostMem = <?=$host_mem?>;
 
-function formatUptime(seconds) {
-  if (seconds < 60) return seconds + 's';
-  if (seconds < 3600) return Math.floor(seconds/60) + 'm ' + (seconds%60) + 's';
-  var h = Math.floor(seconds/3600);
-  var m = Math.floor((seconds%3600)/60);
-  return h + 'h ' + m + 'm';
+function formatUptime(s) {
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  var h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  if (h < 24) return h + 'h ' + m + 'm';
+  var d = Math.floor(h/24); h = h % 24;
+  return d + 'd ' + h + 'h';
+}
+
+function makeBar(percent, label) {
+  var p = Math.min(percent, 100);
+  var color = p > 80 ? '#f44336' : p > 50 ? '#ff9800' : '#4CAF50';
+  return '<div class="bar-bg"><div class="bar-fill" style="width:' + p + '%;background:' + color + '"></div><div class="bar-text">' + label + '</div></div>';
 }
 
 function refreshStats() {
-  $('#stats-status').text('updating...');
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'vm_stats'}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
     if (!data || !data.success) return;
-
     var stats = data.stats || [];
-    var statsHtml = '';
-    var procHtml = '';
 
     if (stats.length === 0) {
-      statsHtml = '<tr><td colspan="7" style="text-align:center;opacity:0.5;">No running VMs</td></tr>';
-      procHtml = '<tr><td colspan="5" style="text-align:center;opacity:0.5;">No running VMs</td></tr>';
-    } else {
-      for (var i = 0; i < stats.length; i++) {
-        var s = stats[i];
-        statsHtml += '<tr>'
-          + '<td><b>' + s.name + '</b></td>'
-          + '<td>' + s.cpu_percent + '%</td>'
-          + '<td>' + s.rss_mb + ' MB</td>'
-          + '<td>' + s.disk_read_mb + ' MB</td>'
-          + '<td>' + s.disk_write_mb + ' MB</td>'
-          + '<td>' + s.net_rx_mb + ' MB</td>'
-          + '<td>' + s.net_tx_mb + ' MB</td>'
-          + '</tr>';
-
-        var vmmDisplay = (s.vmm === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
-        procHtml += '<tr>'
-          + '<td><b>' + s.name + '</b></td>'
-          + '<td>' + vmmDisplay + '</td>'
-          + '<td>' + s.pid + '</td>'
-          + '<td>' + (s.tap || '-') + '</td>'
-          + '<td>' + formatUptime(s.uptime) + '</td>'
-          + '</tr>';
-      }
+      $('#vm-usage-body').html('<tr><td colspan="7" style="text-align:center;opacity:0.5;">No running VMs</td></tr>');
+      $('#vm-proc-body').html('<tr><td colspan="3" style="text-align:center;opacity:0.5;">No running VMs</td></tr>');
+      return;
     }
 
-    $('#stats-table tbody').html(statsHtml);
-    $('#process-table tbody').html(procHtml);
-    $('#stats-status').text('updated ' + new Date().toLocaleTimeString());
+    var usageHtml = '';
+    var procHtml = '';
+
+    for (var i = 0; i < stats.length; i++) {
+      var s = stats[i];
+      // Guest CPU (allocated vCPUs)
+      var guestCpu = s.vcpus || '-';
+      // Host CPU (usage bar)
+      var hostCpuBar = makeBar(s.cpu_percent, s.cpu_percent + '%');
+      // Memory: inuse(RSS) / current(allocated) / maximum
+      var memStr = s.rss_mb + 'M / ' + s.mem_current + 'M / ' + s.mem_max + 'M';
+      var memPercent = s.mem_max > 0 ? (s.rss_mb / s.mem_max * 100) : 0;
+      var memBar = makeBar(memPercent, memStr);
+      // Disk IO
+      var diskStr = 'R: ' + s.disk_read_mb + 'M W: ' + s.disk_write_mb + 'M';
+      // Network IO
+      var netStr = 'RX: ' + s.net_rx_mb + 'M TX: ' + s.net_tx_mb + 'M';
+
+      usageHtml += '<tr>'
+        + '<td><b>' + s.name + '</b></td>'
+        + '<td>' + guestCpu + '</td>'
+        + '<td>' + hostCpuBar + '</td>'
+        + '<td>' + memBar + '</td>'
+        + '<td>' + diskStr + '</td>'
+        + '<td>' + netStr + '</td>'
+        + '<td>' + formatUptime(s.uptime) + '</td>'
+        + '</tr>';
+
+      var vmmDisplay = (s.vmm === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
+      procHtml += '<tr>'
+        + '<td><b>' + s.name + '</b></td>'
+        + '<td>' + vmmDisplay + '</td>'
+        + '<td style="font-family:monospace;">' + s.pid + '</td>'
+        + '</tr>';
+    }
+
+    $('#vm-usage-body').html(usageHtml);
+    $('#vm-proc-body').html(procHtml);
   });
 }
 
