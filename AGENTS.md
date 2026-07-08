@@ -28,11 +28,18 @@ docs/                                   ← Design docs, API refs, progress
 | PLG install NEVER touches /mnt/user/ | Array not online at boot time |
 | Services start via `event/array_started` | Unraid event system, not PLG script |
 | VMM from config filename | `cloud-hypervisor.json` vs `firecracker.json`, no JSON field |
-| Process detection: `pidof` | Not `pgrep -f` (Docker containerd false positive) |
+| Process detection: `pidof` + `/proc/PID/cmdline` | Not `pgrep -f` (Docker containerd false positive) |
 | AJAX uses `$_REQUEST` | `$_POST` empty in Unraid sub-page tab context |
 | CH disk: `image_type=raw` | Required for devmapper writes in CH v52 |
 | Thin pool: `ctr images mount` | Single command: pull + unpack + snapshot + mount |
-| JSON cmdline needs unescape | `sed 's\|\\\/\|/\|g'` after grep extraction |
+| Containerd namespace: `default` | Unified for all VMs, `flintlock` reserved for Liquidmetal |
+| VM state: containerd containers + state dir | `ctr containers create --label microvm.*` registers VM |
+| Network: kernel `ip=` parameter | No iproute2 needed in guest images |
+| Init: `/fly/init` + `catatonit` + `/fly/run.json` | Fly.io pattern, generic init for all images |
+| Stop: 10s ACPI then force kill | Never hang on unresponsive VM |
+| Thin pool persists across restart | Only `reset_thinpool` destroys (requires 'yes' confirmation) |
+| Single-script rootfs ops | All mount ops in one exec (Unraid mount namespace issue) |
+| Filesystem ops: use exec() not PHP native | PHP copy/mkdir fails on Unraid loop mounts |
 
 ## Key Entry Points
 

@@ -6,14 +6,20 @@
 
 | Question | Consult |
 |----------|---------|
-| How does the system work? | architecture.md |
-| What files do what? | components.md |
-| How to call the API? | interfaces.md |
-| What's the data format? | data_models.md |
-| How does create/start/stop work? | workflows.md |
-| What versions are needed? | dependencies.md |
-| What's broken or missing? | review_notes.md |
-| Project overview + tech stack | codebase_info.md |
+| Full verified architecture | docs/ARCHITECTURE.md |
+| How does the system work? | .agents/summary/architecture.md |
+| What files do what? | .agents/summary/components.md |
+| How to call the API? | .agents/summary/interfaces.md |
+| What's the data format? | .agents/summary/data_models.md |
+| How does create/start/stop work? | .agents/summary/workflows.md |
+| What versions are needed? | .agents/summary/dependencies.md |
+| What's broken or missing? | docs/PLAN-NEXT.md |
+| Init process design (Fly.io pattern) | docs/RESEARCH-init-process.md |
+| VM state management research | docs/RESEARCH-state-management.md |
+| Unraid array integration gotchas | docs/RESEARCH-unraid-array.md |
+| Why flintlockd was dropped as default | docs/RESEARCH-init-process.md (bottom) |
+| Console architecture | docs/PLAN-console.md |
+| Init refactor plan | docs/PLAN-init-refactor.md |
 
 ## File Descriptions
 
