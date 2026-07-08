@@ -708,9 +708,17 @@ start_vm() {
 
   [ -n "$config" ] || { log "ERROR: No config for VM '$name'"; return 1; }
 
-  # Check if VM is actually running (socket exists AND process alive)
+  # Check if VM is actually running (socket exists AND VMM process alive)
   if [ -S "$sock" ]; then
-    if pgrep -f "microvms-${name}" &>/dev/null; then
+    local vm_running=false
+    for p in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
+      local cl=$(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null)
+      if echo "$cl" | grep -q "microvms-${name}\.sock"; then
+        vm_running=true
+        break
+      fi
+    done
+    if $vm_running; then
       log "VM '$name' already running"
       return 0
     else
