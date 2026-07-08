@@ -101,16 +101,6 @@ switch ($cmd) {
             exec("kill -9 $pid 2>&1");
             sleep(1);
             @unlink($sock);
-            // Update containerd label so Start works again
-            $ctrSock = '/var/run/microvms/containerd.sock';
-            if (file_exists($ctrSock)) {
-                $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
-                foreach (explode("\n", $nsList) as $ns) {
-                    $ns = trim($ns);
-                    if (empty($ns)) continue;
-                    exec("ctr -a $ctrSock -n $ns containers label " . escapeshellarg($name) . " microvm.state=stopped microvm.pid=0 2>/dev/null");
-                }
-            }
             echo json_encode(['success' => true, 'message' => "Force killed VM $name (PID: $pid)"]);
         } else {
             @unlink($sock);
@@ -668,7 +658,10 @@ SCRIPT;
                 . " --label microvm.namespace=" . escapeshellarg($ns)
                 . " --label microvm.ip=" . escapeshellarg($config['network']['ip'] ?? '')
                 . " --label microvm.tap=tap" . ($config['network']['tap_id'] ?? 0);
-            exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " containers create $labelArgs " . escapeshellarg($ociRef) . " " . escapeshellarg($name) . " 2>/dev/null");
+            exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " containers create $labelArgs " . escapeshellarg($ociRef) . " " . escapeshellarg($name) . " 2>&1", $ctrOut, $ctrRet);
+            if ($ctrRet !== 0) {
+                microvm_log("WARN: containerd registration failed for $name: " . implode(' ', $ctrOut));
+            }
         }
 
         microvm_log("VM created: $name at $vmPath (config: $vmm.json)");
