@@ -181,10 +181,8 @@ function microvm_list_vms() {
     $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
     $vms = [];
 
-    if (!is_dir($vmdir)) return $vms;
-
     // Check which VMMs are enabled in settings
-    $ch_enabled = !isset($cfg['CH_ENABLED']) || $cfg['CH_ENABLED'] === 'yes'; // default enabled
+    $ch_enabled = !isset($cfg['CH_ENABLED']) || $cfg['CH_ENABLED'] === 'yes';
     $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 
     // Build set of running VM names via pidof + /proc/PID/cmdline (fast, accurate)
@@ -208,79 +206,63 @@ function microvm_list_vms() {
         }
     }
 
-    foreach (glob("$vmdir/*/*/") as $vmPath) {
-        $vmPath = rtrim($vmPath, '/');
-        $name = basename($vmPath);
-        $ns = basename(dirname($vmPath));
-        $configFile = microvm_find_config_file($vmPath);
-        if (!$configFile) continue;
-
-        $config = json_decode(file_get_contents($configFile), true);
-        if (!$config) continue;
-        // Ensure namespace from dir structure is reflected
-        if (empty($config['namespace'])) $config['namespace'] = $ns;
-
-        $vmm = microvm_get_vmm($configFile);
-
-        // Skip VMs whose VMM is disabled in settings
-        if ($vmm === 'cloud-hypervisor' && !$ch_enabled) continue;
-        if ($vmm === 'firecracker' && !$fc_enabled) continue;
-
-        $vms[] = [
-            'name' => $name,
-            'vmm' => $vmm,
-            'config' => $config,
-            'state' => isset($running_vms[$name]) ? 'running' : 'stopped',
-            'socket' => "/tmp/microvms-{$name}.sock",
-        ];
-    }
-
-    // Detect orphan VMs from state dir + containerd containers
-    // Source 1: state dir metadata files
-    foreach (glob("/var/run/microvms/*/*/metadata.json") as $metaFile) {
-        $meta = json_decode(@file_get_contents($metaFile), true);
-        if (!$meta || empty($meta['name'])) continue;
-        $orphanName = $meta['name'];
-        $found = false;
-        foreach ($vms as $v) { if ($v['name'] === $orphanName) { $found = true; break; } }
-        if ($found) continue;
-        if (isset($running_vms[$orphanName])) {
-            $vms[] = [
-                'name' => $orphanName,
-                'vmm' => $meta['vmm'] ?? 'unknown',
-                'config' => $meta,
-                'state' => 'running (orphan)',
-                'socket' => $meta['socket'] ?? '',
-            ];
-        }
-    }
-
-    // Source 2: containerd registered containers (all namespaces except flintlock)
+    // PRIMARY SOURCE: containerd containers (single source of truth)
     $ctrSock = '/var/run/microvms/containerd.sock';
     if (file_exists($ctrSock)) {
         $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
         foreach (explode("\n", $nsList) as $ns) {
             $ns = trim($ns);
-            if (empty($ns) || $ns === 'flintlock') continue; // flintlock reserved for flintlockd
+            if (empty($ns) || $ns === 'flintlock') continue;
+
             $ctrList = shell_exec("ctr -a $ctrSock -n $ns containers list 2>/dev/null");
             if (!$ctrList) continue;
+
             foreach (explode("\n", trim($ctrList)) as $line) {
                 if (strpos($line, 'CONTAINER') === 0) continue;
                 $parts = preg_split('/\s+/', trim($line));
                 if (empty($parts[0])) continue;
                 $ctrName = $parts[0];
-                $found = false;
-                foreach ($vms as $v) { if ($v['name'] === $ctrName) { $found = true; break; } }
-                if ($found) continue;
+
+                // Get container labels
                 $ctrInfo = shell_exec("ctr -a $ctrSock -n $ns containers info $ctrName 2>/dev/null");
                 $info = $ctrInfo ? json_decode($ctrInfo, true) : [];
                 $labels = $info['Labels'] ?? [];
+
                 $vmm = $labels['microvm.vmm'] ?? 'unknown';
-                $state = isset($running_vms[$ctrName]) ? 'running' : ($labels['microvm.state'] ?? 'stopped');
+
+                // Skip VMs whose VMM is disabled
+                if ($vmm === 'cloud-hypervisor' && !$ch_enabled) continue;
+                if ($vmm === 'firecracker' && !$fc_enabled) continue;
+
+                // Determine actual state from process scan (cross-check)
+                $state = $labels['microvm.state'] ?? 'stopped';
+                if (isset($running_vms[$ctrName])) {
+                    $state = 'running';
+                } elseif ($state === 'running') {
+                    // Label says running but no process — stale, mark stopped
+                    $state = 'stopped';
+                }
+
+                // Enrich with config file data (for UI: cpus, memory, ip, etc.)
+                $vmPath = microvm_resolve_vmpath($ctrName, $vmdir, $ns);
+                $configFile = microvm_find_config_file($vmPath);
+                $config = null;
+                if ($configFile) {
+                    $config = json_decode(file_get_contents($configFile), true);
+                }
+                if (!$config) {
+                    // No config file — build minimal config from labels
+                    $config = [
+                        'namespace' => $ns,
+                        'network' => ['ip' => $labels['microvm.ip'] ?? ''],
+                    ];
+                }
+                if (empty($config['namespace'])) $config['namespace'] = $ns;
+
                 $vms[] = [
                     'name' => $ctrName,
                     'vmm' => $vmm,
-                    'config' => ['namespace' => $ns, 'network' => ['ip' => $labels['microvm.ip'] ?? '']],
+                    'config' => $config,
                     'state' => $state,
                     'socket' => "/tmp/microvms-{$ctrName}.sock",
                 ];

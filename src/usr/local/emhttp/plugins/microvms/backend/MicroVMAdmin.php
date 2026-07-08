@@ -527,6 +527,22 @@ SCRIPT;
         $configFilename = "$vmPath/$vmm.json";
         file_put_contents($configFilename, json_encode($config, JSON_PRETTY_PRINT));
 
+        // Register in containerd (source of truth for VM list)
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        if (file_exists($ctrSock)) {
+            $ociRef = $config['image']['ref'] ?? 'docker.io/library/alpine:latest';
+            $ns = $namespace;
+            exec("ctr -a $ctrSock namespaces create " . escapeshellarg($ns) . " 2>/dev/null");
+            exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " containers rm " . escapeshellarg($name) . " 2>/dev/null");
+            $labelArgs = "--label microvm.vmm=" . escapeshellarg($vmm)
+                . " --label microvm.state=created"
+                . " --label microvm.pid=0"
+                . " --label microvm.namespace=" . escapeshellarg($ns)
+                . " --label microvm.ip=" . escapeshellarg($config['network']['ip'] ?? '')
+                . " --label microvm.tap=tap" . ($config['network']['tap_id'] ?? 0);
+            exec("ctr -a $ctrSock -n " . escapeshellarg($ns) . " containers create $labelArgs " . escapeshellarg($ociRef) . " " . escapeshellarg($name) . " 2>/dev/null");
+        }
+
         microvm_log("VM created: $name at $vmPath (config: $vmm.json)");
         // Auto-start the VM if autostart is enabled
         if (($_POST['autostart'] ?? 'false') === 'true') {
