@@ -856,6 +856,18 @@ FCEOF
   local vm_pid=$!
   log "Started VM '$name' (vmm=$vmm, PID=$vm_pid)"
 
+  # Write state directory (flintlock-compatible structure)
+  local ns=$(grep -oP '"namespace"\s*:\s*"\K[^"]+' "$config" 2>/dev/null)
+  ns=${ns:-default}
+  local state_dir="/var/run/microvms/${ns}/${name}"
+  mkdir -p "$state_dir"
+  echo "$vm_pid" > "$state_dir/${vmm}.pid"
+  ln -sf "/tmp/microvms-${name}.sock" "$state_dir/${vmm}.sock" 2>/dev/null
+  cat > "$state_dir/metadata.json" << METAEOF
+{"name":"$name","namespace":"$ns","vmm":"$vmm","pid":$vm_pid,"state":"running","started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","socket":"/tmp/microvms-${name}.sock","config":"$config"}
+METAEOF
+  log "State dir: $state_dir"
+
   # For Cloud Hypervisor: capture serial PTY output and create FIFO for input
   if [ "$vmm" = "cloud-hypervisor" ]; then
     local serial_log="/var/log/microvms/cloud-hypervisor/${name}.serial.log"
@@ -910,6 +922,20 @@ stop_vm() {
   rm -f "/tmp/microvms-${name}.fifo"
   rm -f "/var/tmp/microvms-${name}.fifo"
   rm -f "/var/tmp/microvms-${name}.pty"
+
+  # Update state directory
+  for state_dir in /var/run/microvms/*/; do
+    if [ -d "${state_dir}${name}" ]; then
+      # Mark as stopped in metadata
+      local meta="${state_dir}${name}/metadata.json"
+      if [ -f "$meta" ]; then
+        sed -i 's/"state":"running"/"state":"stopped"/' "$meta"
+        sed -i 's/"pid":[0-9]*/"pid":0/' "$meta"
+      fi
+      rm -f "${state_dir}${name}/"*.pid
+      break
+    fi
+  done
 
   # Detect VMM from config (new or legacy format)
   local vmm="$DEFAULT_VMM"

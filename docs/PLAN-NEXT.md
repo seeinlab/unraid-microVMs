@@ -96,3 +96,10 @@ Host:
   - Add Namespace column to MicroVMsMachines.page
   - Update ctr commands throughout (remove `-n firecracker` / `-n cloud-hypervisor`)
 
+
+
+### Bug: Enable Liquidmetal does not auto-start crane registry + flintlockd
+- **Symptom**: Toggling Liquidmetal to enabled in Settings and clicking Apply doesn't start the services
+- **Expected**: Apply → restart → start should launch crane registry + flintlockd
+- **Check**: The `#command` might not trigger restart, or the FLINTLOCKD config value isn't being read correctly after save
+

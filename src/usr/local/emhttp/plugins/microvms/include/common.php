@@ -211,6 +211,27 @@ function microvm_list_vms() {
         ];
     }
 
+    // Detect orphan VMs (running but no config file) from state dir
+    foreach (glob("/var/run/microvms/*/*/metadata.json") as $metaFile) {
+        $meta = json_decode(@file_get_contents($metaFile), true);
+        if (!$meta || empty($meta['name'])) continue;
+        $orphanName = $meta['name'];
+        // Skip if already in list
+        $found = false;
+        foreach ($vms as $v) { if ($v['name'] === $orphanName) { $found = true; break; } }
+        if ($found) continue;
+        // Check if actually running
+        if (isset($running_vms[$orphanName])) {
+            $vms[] = [
+                'name' => $orphanName,
+                'vmm' => $meta['vmm'] ?? 'unknown',
+                'config' => $meta,
+                'state' => 'running (orphan)',
+                'socket' => $meta['socket'] ?? '',
+            ];
+        }
+    }
+
     return $vms;
 }
 
