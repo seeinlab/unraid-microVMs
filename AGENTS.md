@@ -14,13 +14,13 @@ src/usr/local/emhttp/plugins/microvms/  ← WebGUI plugin (start here for UI)
   MicroVMsMachines.page                 ← VM list + context menu + Console popup
   AddMicroVMs.page                      ← Create VM form (namespace dropdown)
   MicroVMsRootFS.page                   ← Storage tab (images + snapshots)
-  MicroVMsSettings*.page                ← Settings (5 sub-pages + namespace list)
+  MicroVMsSettings*.page                ← Settings (4 sub-pages + namespace list)
 
 src/usr/local/etc/rc.d/rc.microvms      ← Service manager (bash, 1200+ lines)
 src/usr/local/share/microvms/fly-init   ← Guest init script (Fly.io pattern)
 plugin/microvms.plg                     ← PLG installer (XML)
 docs/                                   ← Design docs, research, progress
-  FEATURES-AND-DATA-MODELS.md           ← Complete reference (611 lines)
+  FEATURES-AND-DATA-MODELS.md           ← Complete reference
   ARCHITECTURE.md                       ← Verified architecture
   PLAN-NEXT.md                          ← Remaining work
 ```
@@ -40,7 +40,7 @@ docs/                                   ← Design docs, research, progress
 | Containerd namespaces: `default`, `ch`, `fc` | Per-VMM, auto-created. `flintlock` reserved for Liquidmetal |
 | VM state: containerd containers + state dir | `ctr containers create --label microvm.*` registers VM |
 | Network: kernel `ip=` parameter | No iproute2 needed in guest images |
-| Init: `/fly/init` + `catatonit` + `/fly/run.json` | Fly.io pattern, generic init for all images |
+| Init: `/fly/init` + `/fly/run.json` | Fly.io pattern, generic init for all images (catatonit installed but init is shell script) |
 | Stop: 10s ACPI then force kill | Never hang on unresponsive VM |
 | Thin pool persists across restart | Only `reset_thinpool` destroys (requires 'yes' confirmation) |
 | Single-script rootfs ops | All mount ops in one exec (Unraid mount namespace issue) |
@@ -95,6 +95,8 @@ Fixed 4 namespaces — no user-created namespaces.
 | `ch` | CH_ENABLED=yes | Cloud Hypervisor VMs | Removed if CH disabled & empty |
 | `fc` | FC_ENABLED=yes | Firecracker VMs | Removed if FC disabled & empty |
 | `flintlock` | Liquidmetal enabled (flintlockd creates its own) | flintlockd orchestration | Hidden from UI, cannot be user-created |
+
+> **Note:** Backend has `create_namespace`/`delete_namespace` APIs (for future use) but Settings UI only shows a read-only list. Namespace create/remove is automatic via VMM enable/disable toggle.
 
 ## Deploy Pattern (development)
 

@@ -173,5 +173,7 @@
   "171": "validateUserId",
   "172": "ValidationError (class)",
   "173": "ch-remote",
-  "174": "crane"
+  "174": "crane",
+  "175": "Backend Commands (MicroVMAdmin.php)",
+  "176": "microVMs Plugin Documentation"
 }

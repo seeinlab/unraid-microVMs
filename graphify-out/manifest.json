@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   ".agents/summary/index.md": {
-    "mtime": 1783482855.2630334,
-    "ast_hash": "58aad97fdc3902bb0f4cdff04b2d5d5e",
+    "mtime": 1783492322.993102,
+    "ast_hash": "b75057c44a3c801335a14abfd3bdf299",
     "semantic_hash": ""
   },
   ".agents/summary/interfaces.md": {
@@ -585,8 +585,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1783482806.0880609,
-    "ast_hash": "f8a70abe13430a17e43e19cfe2de07e5",
+    "mtime": 1783492465.8590822,
+    "ast_hash": "1121685ac2a53763ce956a92fd4f04d6",
     "semantic_hash": ""
   },
   "README.md": {
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "docs/PLAN-NEXT.md": {
-    "mtime": 1783477877.576092,
-    "ast_hash": "23ed14d2b925b6bab56ecd269ba84f4d",
+    "mtime": 1783491253.220806,
+    "ast_hash": "ce326b2e3efe238f2bec092a9dc60f11",
     "semantic_hash": ""
   },
   "docs/PLAN-console.md": {
@@ -697,6 +697,11 @@
   "src/usr/local/emhttp/plugins/microvms/microvms.svg": {
     "mtime": 1783265378.23988,
     "ast_hash": "7242f6939704fe67bbcf4f1e0914b2ef",
+    "semantic_hash": ""
+  },
+  "docs/FEATURES-AND-DATA-MODELS.md": {
+    "mtime": 1783492697.7580502,
+    "ast_hash": "a48ea70e5ac2c428030d567824ce18aa",
     "semantic_hash": ""
   }
 }

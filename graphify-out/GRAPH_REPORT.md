@@ -1,16 +1,16 @@
 # Graph Report - unraid-microVMs  (2026-07-08)
 
 ## Corpus Check
-- 134 files · ~111,834 words
+- 135 files · ~116,029 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1544 nodes · 1468 edges · 175 communities (124 shown, 51 thin omitted)
+- 1582 nodes · 1505 edges · 177 communities (126 shown, 51 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d9ee8e29`
+- Built from commit: `6bfd2534`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -42,7 +42,6 @@
 - [[_COMMUNITY_init-nginx.sh|init-nginx.sh]]
 - [[_COMMUNITY_init-serial.sh|init-serial.sh]]
 - [[_COMMUNITY_microvms-console|microvms-console]]
-- [[_COMMUNITY_README|README.md]]
 - [[_COMMUNITY_Mastering Modern TypeScript|Mastering Modern TypeScript]]
 - [[_COMMUNITY_microVMs Plugin — Design Patterns|microVMs Plugin — Design Patterns]]
 - [[_COMMUNITY_Endpoints|Endpoints]]
@@ -176,6 +175,8 @@
 - [[_COMMUNITY_validateEmail|validateEmail]]
 - [[_COMMUNITY_validateUserId|validateUserId]]
 - [[_COMMUNITY_ValidationError (class)|ValidationError (class)]]
+- [[_COMMUNITY_Backend Commands (MicroVMAdmin.php)|Backend Commands (MicroVMAdmin.php)]]
+- [[_COMMUNITY_microVMs Plugin Documentation|microVMs Plugin Documentation]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `compilerOptions` - 26 edges
@@ -195,7 +196,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (175 total, 51 thin omitted)
+## Communities (177 total, 51 thin omitted)
 
 ### Community 0 - "compilerOptions"
 Cohesion: 0.06
@@ -237,16 +238,12 @@ Nodes (29): 1. Explicit Negation in Rules, 2. Entry in Rationalization Table, 3.
 Cohesion: 0.07
 Nodes (29): any vs unknown, Assertion Functions, Built-in Type Guards, Contents, Custom Type Guards, Decision Guide, Function Annotations, instanceof Guard (+21 more)
 
-### Community 30 - "README.md"
-Cohesion: 0.20
-Nodes (5): API Reference, Architecture & Design, microVMs Plugin Documentation, Progress, Research
-
 ### Community 31 - "Mastering Modern TypeScript"
 Cohesion: 0.07
 Nodes (30): Assets, Basic Generic Function, Common Mistakes, Conditional Types, Constrained Generics, Cross-Language Comparison, ESLint Flat Config (ESLint 9+), Framework Integration (+22 more)
 
 ### Community 32 - "microVMs Plugin — Design Patterns"
-Cohesion: 0.07
+Cohesion: 0.08
 Nodes (26): AJAX Backend, Boot Sequence (rc.microvms start), Compatibility Matrix, Config Format (Infra-as-Code), Containerd Namespaces, Direct Mode (WebGUI), Directory Structure, File: `cloud-hypervisor.json` or `firecracker.json` (+18 more)
 
 ### Community 33 - "Endpoints"
@@ -262,8 +259,8 @@ Cohesion: 0.07
 Nodes (26): Architecture (same for both VMMs):, Available Tools on Unraid, CH Changes:, CH Garbled Output, CH Serial Options (from documentation), CH: Use `--serial socket=` (BEST), Comparison, Console Architecture - Research & Recommendation (+18 more)
 
 ### Community 36 - "Development Notes"
-Cohesion: 0.15
-Nodes (12): Bug: Enable Liquidmetal does not auto-start crane registry + flintlockd, Containerd Namespace Merge, Deploy, Development Notes, Done (this session) ✅, Key Architecture, PLAN-NEXT — Remaining Work, Priority 1: Bugs (+4 more)
+Cohesion: 0.17
+Nodes (11): Deploy, Development Notes, Done (this session) ✅, Key Architecture, PLAN-NEXT — Remaining Work, Previously Completed ✅, Priority 1: Bugs, Priority 2: Features (+3 more)
 
 ### Community 37 - "Thin Pool — Containerd OCI Flow (IMPLEMENTED)"
 Cohesion: 0.13
@@ -382,8 +379,8 @@ Cohesion: 0.13
 Nodes (14): Gotchas, Laravel Starter Kit Upgrade, Out of scope, Phase 1: Identify the kit and branch variant, Phase 2: Enumerate available upstream features, Phase 3: Present the catalog and get explicit selection, Phase 4: Preflight, baseline, and workspace setup, Phase 5: Apply each selected feature (+6 more)
 
 ### Community 81 - "File Descriptions"
-Cohesion: 0.14
-Nodes (13): architecture.md, codebase_info.md, components.md, data_models.md, dependencies.md, File Descriptions, interfaces.md, Key Design Rules (+5 more)
+Cohesion: 0.29
+Nodes (6): Key Design Rules, microVMs Plugin — Documentation Index, Namespace Model, Quick Reference, Source Layout (for code navigation), VM Directory Layout
 
 ### Community 82 - "Code Style Guide — microVMs Plugin"
 Cohesion: 0.09
@@ -446,8 +443,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 97 - "AGENTS.md — microVMs Plugin for Unraid"
-Cohesion: 0.20
-Nodes (9): AGENTS.md — microVMs Plugin for Unraid, Config Files (discoverable from repo), Critical Design Rules, Custom Instructions, Deploy Pattern (development), Directory Map, Key Entry Points, Patterns That Deviate From Defaults (+1 more)
+Cohesion: 0.18
+Nodes (10): AGENTS.md — microVMs Plugin for Unraid, Config Files (discoverable from repo), Critical Design Rules, Custom Instructions, Deploy Pattern (development), Directory Map, Key Entry Points, Namespace Model (+2 more)
 
 ### Community 98 - "Components"
 Cohesion: 0.20
@@ -637,8 +634,16 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
 
+### Community 175 - "Backend Commands (MicroVMAdmin.php)"
+Cohesion: 0.04
+Nodes (44): API Reference, Architecture, Backend Commands (MicroVMAdmin.php), Cloud Hypervisor, Cloud Hypervisor, Configuration & Services, Console, Console Model (+36 more)
+
+### Community 176 - "microVMs Plugin Documentation"
+Cohesion: 0.40
+Nodes (5): API Reference, Architecture & Design, microVMs Plugin Documentation, Progress, Research
+
 ## Knowledge Gaps
-- **1063 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1058 more)
+- **1088 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1083 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -647,10 +652,10 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Mastering Modern TypeScript` connect `Mastering Modern TypeScript` to `NestJS Integration Reference`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `Cloud Hypervisor API Reference (v52.0)` connect `Cloud Hypervisor API Reference (v52.0)` to `PHP Conventions`, `Key Patterns from References`, `README.md`?**
+- **Why does `TypeScript Type System Reference` connect `TypeScript Type System Reference` to `NestJS Integration Reference`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `mcp-remote`, `start-server.sh script`, `stop-server.sh script` to the rest of the system?**
-  _1063 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1088 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._
 - **Should `NestJS Integration Reference` be split into smaller, more focused modules?**
