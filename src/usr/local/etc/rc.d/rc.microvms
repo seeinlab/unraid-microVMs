@@ -1235,29 +1235,32 @@ case "$1" in
       exit 0
     fi
     echo ""
-    echo "Killing all VMs using thin pool..."
+    echo "1. Killing all VMs..."
     for p in $(pidof cloud-hypervisor 2>/dev/null) $(pidof firecracker 2>/dev/null); do
       kill -9 "$p" 2>/dev/null
     done
     sleep 1
-    echo "Stopping containerd..."
+    echo "2. Stopping containerd..."
     stop_containerd
     sleep 1
-    echo "Removing all dm snapshots..."
+    echo "3. Deleting containerd metadata (stale snapshot refs)..."
+    local meta_dir="$VMDIR/../system/microvms/containerd"
+    [ ! -d "$meta_dir" ] && meta_dir="/mnt/user/system/microvms/containerd"
+    rm -f "$meta_dir/io.containerd.metadata.v1.bolt/meta.db" 2>/dev/null
+    rm -rf "$meta_dir/io.containerd.snapshotter.v1.devmapper" 2>/dev/null
+    echo "4. Removing all dm snapshots..."
     for snap in $(dmsetup ls | grep microvms-thinpool-snap | awk '{print $1}'); do
       dmsetup remove --force "$snap" 2>/dev/null && echo "  removed $snap"
     done
-    echo "Removing thin pool..."
+    echo "5. Removing thin pool..."
     dmsetup remove --force microvms-thinpool 2>/dev/null
-    echo "Detaching loop devices..."
-    for loop in $(losetup -j "$VMDIR/thinpool/data" 2>/dev/null | cut -d: -f1); do
+    echo "6. Detaching loop devices..."
+    for loop in $(losetup -a 2>/dev/null | grep thinpool | cut -d: -f1); do
       losetup -d "$loop" 2>/dev/null
     done
-    for loop in $(losetup -j "$VMDIR/thinpool/meta" 2>/dev/null | cut -d: -f1); do
-      losetup -d "$loop" 2>/dev/null
-    done
-    echo "Deleting data files..."
+    echo "7. Deleting data files..."
     rm -f "$VMDIR/thinpool/data" "$VMDIR/thinpool/meta"
+    echo ""
     echo "=== Thin pool reset complete. Run 'rc.microvms start' to recreate. ==="
     ;;
   *)
