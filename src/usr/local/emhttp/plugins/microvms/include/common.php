@@ -279,10 +279,35 @@ function microvm_list_vms() {
                 }
                 break; // first UID dir
             }
+            // Get VM spec from gRPC (for vCPUs, memory, IP)
+            $vcpu = '-';
+            $memory = 0;
+            $ip = '';
+            if ($uid) {
+                $specJson = shell_exec("grpcurl -plaintext -d " . escapeshellarg(json_encode(['uid' => $uid])) . " 0.0.0.0:9090 microvm.services.api.v1alpha1.MicroVM/GetMicroVM 2>/dev/null");
+                if ($specJson) {
+                    $spec = json_decode($specJson, true);
+                    $vmSpec = $spec['microvm']['spec'] ?? [];
+                    $vcpu = $vmSpec['vcpu'] ?? '-';
+                    $memory = $vmSpec['memoryInMb'] ?? 0;
+                    // Get IP from interfaces (if assigned by flintlockd)
+                    $ifaces = $vmSpec['interfaces'] ?? [];
+                    if (!empty($ifaces[0]['address']['address'])) {
+                        $ip = explode('/', $ifaces[0]['address']['address'])[0];
+                    }
+                }
+            }
             $vms[] = [
                 'name' => $vmName,
                 'vmm' => $vmm,
-                'config' => ['namespace' => $flNs, 'network' => ['ip' => ''], 'managed_by' => 'flintlockd', 'uid' => $uid],
+                'config' => [
+                    'namespace' => $flNs,
+                    'vcpus' => $vcpu,
+                    'memory_mb' => $memory,
+                    'network' => ['ip' => $ip],
+                    'managed_by' => 'flintlockd',
+                    'uid' => $uid,
+                ],
                 'state' => $state,
                 'socket' => '',
             ];
