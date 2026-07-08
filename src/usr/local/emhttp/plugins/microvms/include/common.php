@@ -185,6 +185,19 @@ function microvm_list_vms() {
     $ctrSock = '/var/run/microvms/containerd.sock';
     if (!file_exists($ctrSock)) return $vms;
 
+    // Build running process set (for verifying "running" state)
+    $running_pids = [];
+    foreach (['cloud-hypervisor', 'firecracker'] as $bin) {
+        $pids = trim(shell_exec("pidof $bin 2>/dev/null"));
+        if (!$pids) continue;
+        foreach (explode(' ', $pids) as $pid) {
+            $cmdline = @file_get_contents("/proc/$pid/cmdline");
+            if ($cmdline && preg_match('/microvms-([a-z0-9\-]+)\.sock/', $cmdline, $m)) {
+                $running_pids[$m[1]] = true;
+            }
+        }
+    }
+
     $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
     foreach (explode("\n", $nsList) as $ns) {
         $ns = trim($ns);
@@ -204,14 +217,19 @@ function microvm_list_vms() {
             $info = $ctrInfo ? json_decode($ctrInfo, true) : [];
             $labels = $info['Labels'] ?? [];
 
-            // Only show microvm containers (skip non-microvm entries)
+            // Only show microvm containers
             if (!isset($labels['microvm.vmm'])) continue;
 
             $vmm = $labels['microvm.vmm'];
             $state = $labels['microvm.state'] ?? 'stopped';
             $ip = $labels['microvm.ip'] ?? '';
 
-            // Enrich with config file for full detail (optional, for UI)
+            // Verify: if label says running, confirm process is alive
+            if ($state === 'running' && !isset($running_pids[$ctrName])) {
+                $state = 'crashed';
+            }
+
+            // Enrich with config file for full detail
             $vmPath = microvm_resolve_vmpath($ctrName, $vmdir, $ns);
             $configFile = microvm_find_config_file($vmPath);
             $config = $configFile ? json_decode(file_get_contents($configFile), true) : null;
