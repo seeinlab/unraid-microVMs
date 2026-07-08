@@ -106,7 +106,21 @@ Each VM is stored as `{vmm}.json` in its directory. The filename determines the 
 
 #### Legacy Flat Format (config.json)
 
-Older VMs may use flat fields: `boot_vcpus`, `max_vcpus`, `disk`, `cmdline`, `ip`, `mac`, `bridge`, `tap_id`, `storage_type`, `disk_size_mb`, `thin_device_id`. The `common.php` helpers (`microvm_get_network()`, `microvm_get_storage()`) normalize both formats.
+Older VMs may use flat fields: `boot_vcpus`, `max_vcpus`, `disk`, `cmdline`, `ip`, `mac`, `bridge`, `tap_id`, `storage_type`, `disk_size_mb`, `thin_device_id`. The `common.php` helpers (`microvm_get_network()`, `microvm_get_storage()`, `microvm_resolve_vmpath()`) normalize both formats.
+
+**Key helper functions in `common.php`:**
+
+| Function | Purpose |
+|----------|---------|
+| `microvm_resolve_vmpath($name, $vmdir, $namespace)` | Resolves full path `$vmdir/$namespace/$name` (scans dirs if namespace not given) |
+| `microvm_find_config_file($vmPath)` | Finds `cloud-hypervisor.json` or `firecracker.json` in a VM directory |
+| `microvm_get_vmm($configFile)` | Returns VMM name from config filename |
+| `microvm_get_network($config)` | Normalizes network config (new nested or legacy flat) |
+| `microvm_get_storage($config)` | Normalizes storage config (new nested or legacy flat) |
+| `microvm_list_vms()` | Scans `$VMDIR/*/*/` + containerd + state dir for all VMs |
+| `microvm_next_tap_id($vmdir)` | Finds lowest unused TAP ID across all namespaces |
+| `microvm_snapshot_vm($name, $tag)` | Creates snapshot (CH: ch-remote, FC: API) |
+| `microvm_restore_snapshot($name, $tag)` | Restores snapshot (CH: API method, FC: snapshot/load) |
 
 ---
 
