@@ -40,7 +40,7 @@ docs/                                   ← Design docs, research, progress
 | Containerd namespaces: `default`, `ch`, `fc` | Per-VMM, auto-created. `flintlock` reserved for Liquidmetal |
 | VM state: containerd containers + state dir | `ctr containers create --label microvm.*` registers VM |
 | Network: kernel `ip=` parameter | No iproute2 needed in guest images |
-| Init: `/fly/init` + `/fly/run.json` | Fly.io pattern, generic init for all images (catatonit installed but init is shell script) |
+| Init: `/fly/init` + `/fly/run.json` + `/sbin/catatonit` | Fly.io pattern: shell init → catatonit (PID 1 reaper + signal proxy) → app |
 | Stop: 10s ACPI then force kill | Never hang on unresponsive VM |
 | Thin pool persists across restart | Only `reset_thinpool` destroys (requires 'yes' confirmation) |
 | Single-script rootfs ops | All mount ops in one exec (Unraid mount namespace issue) |
