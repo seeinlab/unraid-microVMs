@@ -98,6 +98,8 @@ Fixed 4 namespaces — no user-created namespaces.
 
 ## Deploy Pattern (development)
 
+> **Network Model Note:** MAC addresses are auto-generated on VM create (`52:54:00:xx:xx:xx`). Plan: add option in Add form to choose auto-generated or custom MAC, editable via Edit form (PHP).
+
 ```bash
 # Deploy single file to running Unraid:
 cat src/.../file | ssh -i ~/.ssh/mastervault root@192.168.50.6 'cat > /path/on/unraid'
