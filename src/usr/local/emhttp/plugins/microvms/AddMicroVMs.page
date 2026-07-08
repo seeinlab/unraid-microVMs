@@ -73,13 +73,13 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 <dl>
   <dt>Namespace:</dt>
   <dd><select id="vm_namespace" style="width:200px;">
-    <option value="default" selected>default</option>
     <?php
     $ctrSock = '/var/run/microvms/containerd.sock';
     $nsOut = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
-    foreach (explode("\n", $nsOut) as $ns) {
+    $nsList = array_filter(explode("\n", $nsOut));
+    foreach ($nsList as $ns) {
         $ns = trim($ns);
-        if ($ns && $ns !== 'default' && $ns !== 'flintlock') {
+        if ($ns && $ns !== 'flintlock') {
             echo "<option value=\"$ns\">$ns</option>\n";
         }
     }
@@ -420,14 +420,19 @@ function done() { location = '/MicroVMs'; }
 $('input[name="engine"]').change(function() {
   $('#label_ch').css({'border-color': '#555', 'background': 'transparent'});
   $('#label_fc').css({'border-color': '#555', 'background': 'transparent'});
+  var nsSel = document.getElementById('vm_namespace');
   if ($('#engine_ch').is(':checked')) {
     $('#label_ch').css({'border-color': '#4CAF50', 'background': '#1a2e1a'});
     $('#row_max_memory').show();
     $('#row_max_cpus').show();
+    // Default namespace to 'ch' for Cloud Hypervisor
+    if (nsSel.querySelector('option[value="ch"]')) nsSel.value = 'ch';
   } else {
     $('#label_fc').css({'border-color': '#ff9800', 'background': '#2e2a1a'});
     $('#row_max_memory').hide();
     $('#row_max_cpus').hide();
+    // Default namespace to 'fc' for Firecracker
+    if (nsSel.querySelector('option[value="fc"]')) nsSel.value = 'fc';
   }
 });
 
@@ -435,6 +440,13 @@ $('input[name="engine"]').change(function() {
 $(function() {
   if ($('#engine_fc').is(':checked')) {
     $('#row_max_memory').hide();
+  }
+  // Set initial namespace based on selected engine
+  var nsSel = document.getElementById('vm_namespace');
+  if ($('#engine_ch').is(':checked') && nsSel.querySelector('option[value="ch"]')) {
+    nsSel.value = 'ch';
+  } else if ($('#engine_fc').is(':checked') && nsSel.querySelector('option[value="fc"]')) {
+    nsSel.value = 'fc';
   }
   updateMaxMemory();
 });

@@ -1251,6 +1251,22 @@ INIT;
         }
 
         $cfg[$key] = $value;
+        // Manage containerd namespaces for VMM toggles
+        $ctrSock = '/var/run/microvms/containerd.sock';
+        if (file_exists($ctrSock)) {
+            if ($key === 'CH_ENABLED' && $value === 'yes') {
+                exec("ctr -a $ctrSock namespaces create ch 2>/dev/null");
+            } elseif ($key === 'CH_ENABLED' && $value === 'no') {
+                // Only remove if empty (no containers)
+                $count = trim(shell_exec("ctr -a $ctrSock -n ch containers list -q 2>/dev/null | wc -l"));
+                if ($count === '0') exec("ctr -a $ctrSock namespaces remove ch 2>/dev/null");
+            } elseif ($key === 'FC_ENABLED' && $value === 'yes') {
+                exec("ctr -a $ctrSock namespaces create fc 2>/dev/null");
+            } elseif ($key === 'FC_ENABLED' && $value === 'no') {
+                $count = trim(shell_exec("ctr -a $ctrSock -n fc containers list -q 2>/dev/null | wc -l"));
+                if ($count === '0') exec("ctr -a $ctrSock namespaces remove fc 2>/dev/null");
+            }
+        }
         // Write back
         $lines = [];
         foreach ($cfg as $k => $v) {

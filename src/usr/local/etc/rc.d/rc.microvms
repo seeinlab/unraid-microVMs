@@ -308,6 +308,9 @@ EOF
   log "microvms-containerd started (PID $pid)"
   # Ensure 'default' namespace exists
   ctr -a "$CONTAINERD_SOCK" namespaces create default 2>/dev/null
+  # Create per-VMM namespaces based on enabled engines
+  [ "$CH_ENABLED" = "yes" ] && ctr -a "$CONTAINERD_SOCK" namespaces create ch 2>/dev/null
+  [ "$FC_ENABLED" = "yes" ] && ctr -a "$CONTAINERD_SOCK" namespaces create fc 2>/dev/null
   return 0
 }
 
