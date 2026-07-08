@@ -377,6 +377,13 @@ start_flintlockd() {
 
   log "Starting flintlockd (gRPC 0.0.0.0:$FLINTLOCKD_GRPC_PORT)..."
 
+  # Clean stale containerd leases from previous flintlockd crashes
+  # (stale leases block the devmapper snapshotter)
+  for lease in $(ctr -a "$CONTAINERD_SOCK" -n flintlock leases list -q 2>/dev/null); do
+    ctr -a "$CONTAINERD_SOCK" -n flintlock leases rm "$lease" 2>/dev/null
+    log "Cleaned stale lease: $lease"
+  done
+
   # Create state directory
   mkdir -p "${RUNTIME_DIR}/flintlockd-state"
 
