@@ -189,3 +189,84 @@ Network configured by kernel `ip=` parameter (no userspace tools needed).
 | **Phase 2** | SQLite DB (like Fly.io's flyd) | Single (foundation) |
 | **Phase 3** | SQLite + gossip sync (like Corrosion) | Multi-host |
 | **Phase 4** | gRPC API (flintlockd or custom) | K8s integration |
+
+
+
+## Design: Plugin + Flintlockd Coexistence
+
+### Insight from flintlock source code:
+
+Flintlock uses **containerd's content store** as its VM spec database and **PID files** for runtime state. It doesn't have its own database — containerd IS the database.
+
+```
+Flintlock stores VM specs in: containerd content store (JSON blobs with labels)
+Flintlock tracks running state in: {stateDir}/{vmid}/cloudhypervisor.pid
+Flintlock reconciles: desired (content store) vs actual (PID alive?)
+```
+
+### How to support both WebGUI and flintlockd:
+
+**Shared layer (both modes use):**
+- containerd = images + snapshots + VM spec storage
+- State directory = PID files, sockets, logs
+- VMM providers = cloud-hypervisor, firecracker
+
+**WebGUI Direct Mode:**
+```
+WebGUI → PHP → rc.microvms → VMM
+  writes: config JSON (user-facing, /mnt/user/microvms/{name}/)
+  writes: state file (/var/run/microvms/{name}.state)
+  writes: PID file (same dir flintlock would use)
+```
+
+**Flintlockd Mode:**
+```
+gRPC → flintlockd → containerd content store → VMM
+  writes: VM spec to containerd content store
+  writes: PID file to state dir
+  reconciles: spec vs reality
+```
+
+### The key: SHARE THE STATE DIRECTORY
+
+If both WebGUI and flintlockd use the **same state directory** format:
+```
+/var/run/microvms/{name}/
+├── cloudhypervisor.pid   (or firecracker.pid)
+├── cloudhypervisor.sock
+├── cloudhypervisor.log
+```
+
+Then:
+- WebGUI can see VMs created by flintlockd (read PID files)
+- Flintlockd can see VMs created by WebGUI (if we also write to content store)
+- Both modes can coexist on the same host
+
+### Implementation plan:
+
+1. **Phase 1 (now):** WebGUI uses state files in `/var/run/microvms/{name}/`
+   - Same directory structure as flintlock expects
+   - PID file, socket, log paths match flintlock conventions
+
+2. **Phase 2:** When flintlockd is enabled, it reads the same state dir
+   - VMs created by WebGUI are visible to flintlockd
+   - VMs created by flintlockd are visible to WebGUI
+   - No conflict because state dir is shared
+
+3. **Phase 3:** WebGUI also writes VM spec to containerd content store
+   - Full bidirectional: flintlockd can reconcile WebGUI-created VMs
+   - WebGUI can show flintlockd-created VMs
+
+### What this means for our state file format:
+
+Match flintlock's directory structure:
+```
+/var/run/microvms/{namespace}/{name}/
+├── {vmm}.pid          ← PID of VMM process
+├── {vmm}.sock         ← API socket
+├── {vmm}.log          ← VMM log
+├── {vmm}.stdout       ← VM serial output
+├── metadata.json      ← VM state + config summary
+```
+
+This is compatible with flintlock's `fsState` implementation and allows both modes to coexist.
