@@ -19,23 +19,29 @@ $containerd_running = file_exists($sock);
 $images_list = [];
 $snapshots_list = [];
 if ($containerd_running) {
-    $img_out = shell_exec("ctr -a $sock -n default images list -q 2>/dev/null");
-    if ($img_out) $images_list = array_filter(explode("\n", trim($img_out)));
-
-    $snap_out = shell_exec("ctr -a $sock -n default snapshots --snapshotter devmapper list 2>/dev/null");
-    if ($snap_out) {
-        $lines = array_filter(explode("\n", trim($snap_out)));
-        if (count($lines) > 1) {
-            array_shift($lines);
-            $snapshots_list = $lines;
+    // Scan all namespaces for images and snapshots
+    $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
+    foreach (explode("\n", $nsList) as $ns) {
+        $ns = trim($ns);
+        if (empty($ns)) continue;
+        $img_out = shell_exec("ctr -a $sock -n $ns images list -q 2>/dev/null");
+        if ($img_out) {
+            foreach (array_filter(explode("\n", trim($img_out))) as $img) {
+                $images_list[] = ['ns' => $ns, 'ref' => $img];
+            }
+        }
+        $snap_out = shell_exec("ctr -a $sock -n $ns snapshots --snapshotter devmapper list 2>/dev/null");
+        if ($snap_out) {
+            $lines = array_filter(explode("\n", trim($snap_out)));
+            if (count($lines) > 1) {
+                array_shift($lines); // header
+                foreach ($lines as $line) {
+                    $snapshots_list[] = ['ns' => $ns, 'line' => $line];
+                }
+            }
         }
     }
 }
-// Keep old vars for backward compat with display code
-$ch_images = $images_list;
-$fc_images = [];
-$ch_snapshots = $snapshots_list;
-$fc_snapshots = [];
 
 // Existing rootfs images (legacy raw storage)
 $images = [];
@@ -67,13 +73,13 @@ if (is_dir($vmdir)) {
   <th>Image Reference</th>
 </tr></thead>
 <tbody>
-<?php if (empty($ch_images) && empty($fc_images)): ?>
+<?php if (empty($images_list)): ?>
   <tr><td colspan="2" style="text-align:center;padding:15px;opacity:0.6;">No pulled images found in containerd.</td></tr>
 <?php else: ?>
-  <?php foreach ($ch_images as $img): ?>
+  <?php foreach ($images_list as $item): ?>
   <tr>
-    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> default</span></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img)?></td>
+    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> <?=htmlspecialchars($item['ns'])?></span></td>
+    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($item['ref'])?></td>
   </tr>
   <?php endforeach; ?>
 <?php endif; ?>
@@ -95,17 +101,17 @@ if (is_dir($vmdir)) {
   <th>Kind</th>
 </tr></thead>
 <tbody>
-<?php if (empty($ch_snapshots) && empty($fc_snapshots)): ?>
+<?php if (empty($snapshots_list)): ?>
   <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No active snapshots.</td></tr>
 <?php else: ?>
-  <?php foreach ($ch_snapshots as $line):
-    $parts = preg_split('/\s+/', trim($line), 4);
+  <?php foreach ($snapshots_list as $item):
+    $parts = preg_split('/\s+/', trim($item['line']), 4);
     $key = $parts[0] ?? '';
     $parent = $parts[1] ?? '';
     $kind = $parts[2] ?? '';
   ?>
   <tr>
-    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> default</span></td>
+    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> <?=htmlspecialchars($item['ns'])?></span></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($key)?></td>
     <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($parent)?></td>
     <td><?=htmlspecialchars($kind)?></td>

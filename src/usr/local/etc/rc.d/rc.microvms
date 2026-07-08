@@ -644,11 +644,13 @@ delete_thin_rootfs() {
 # Activate an existing thin device (for VM start after reboot)
 # For containerd snapshots, they're auto-activated when prepared.
 # Usage: activate_thin_rootfs <vm_name> [vmm]
+# Usage: activate_thin_rootfs <vm_name> [vmm] [namespace]
 # Returns: device path on stdout
 activate_thin_rootfs() {
   local name="$1"
   local vmm="${2:-$DEFAULT_VMM}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n default"
+  local ns="${3:-default}"
+  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${ns}"
   local device_path=""
 
   # Try mount-path based key first (new format from ctr images mount)
@@ -746,7 +748,7 @@ start_vm() {
 
     local disk=""
     if [ "$storage_type" = "thin" ]; then
-      disk=$(activate_thin_rootfs "$name" "$vmm")
+      disk=$(activate_thin_rootfs "$name" "$vmm" "$ns")
       if [ $? -ne 0 ] || [ -z "$disk" ]; then
         log "ERROR: Failed to activate thin rootfs for VM '$name'"
         return 1
@@ -780,7 +782,7 @@ start_vm() {
     # If VM uses thin provisioned storage, activate the block device
     local storage_type=$(grep -oP '"storage_type"\s*:\s*"\K[^"]+' "$config")
     if [ "$storage_type" = "thin" ]; then
-      disk=$(activate_thin_rootfs "$name" "$vmm")
+      disk=$(activate_thin_rootfs "$name" "$vmm" "$ns")
       if [ $? -ne 0 ] || [ -z "$disk" ]; then
         log "ERROR: Failed to activate thin rootfs for VM '$name'"
         return 1

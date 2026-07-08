@@ -331,7 +331,7 @@ switch ($cmd) {
                 // Thin Pool: containerd pulls image → devmapper snapshot → mount → inject init
                 $sock = '/var/run/microvms/containerd.sock';
                 $snapshotKey = "vm-$name";
-                $ctr = "ctr -a $sock -n default";
+                $ctr = "ctr -a $sock -n " . escapeshellarg($namespace);
 
                 // Normalize image reference for containerd (requires fully qualified)
                 $pullImage = $ociImage;
@@ -858,8 +858,13 @@ SCRIPT;
     case 'prune_images':
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
-        $out = shell_exec("ctr -a $sock -n default images prune --all 2>&1");
-        if ($out) $output[] = trim($out);
+        $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
+        foreach (explode("\n", $nsList) as $ns) {
+            $ns = trim($ns);
+            if (empty($ns)) continue;
+            $out = shell_exec("ctr -a $sock -n $ns images prune --all 2>&1");
+            if ($out && trim($out)) $output[] = "[$ns] " . trim($out);
+        }
         echo json_encode(['success' => true, 'message' => implode("\n", $output) ?: 'No unused images to prune']);
         break;
 
