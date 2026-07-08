@@ -259,3 +259,4 @@ grpcurl -plaintext 0.0.0.0:9090 describe microvm.services.api.v1alpha1.MicroVM
 - Network interfaces use TAP devices attached to `br0` bridge on host
 - Cloud Hypervisor kernel must have PVH boot header (stock liquidmetal images work)
 - Firecracker kernel uses standard Linux boot protocol
+- **Unraid limitation:** macvtap (type=0) does NOT work on Unraid — all NICs are bonded into `br0`. Macvtap requires a physical NIC not in a bridge. Always use TAP/bridge mode (type=1) on Unraid.

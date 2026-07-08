@@ -173,7 +173,7 @@ _(Network Bridge)_:
 
 _(Networking)_:
 : <select name="DEFAULT_NETWORK" size="1">
-  <?=mk_option($cfg['DEFAULT_NETWORK'] ?? 'macvtap', "macvtap", "macvtap")?>
+  <?=mk_option($cfg['DEFAULT_NETWORK'] ?? 'tap', "tap", "TAP (bridge)")?>
   </select>
 
 _(Default VMM)_:
