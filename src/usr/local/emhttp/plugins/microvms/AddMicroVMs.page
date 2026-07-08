@@ -50,7 +50,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dt>Networking:</dt>
   <dd>
     <select id="vm_networking" style="width:200px;">
-      <option value="tap" selected>TAP (bridge)</option>
+      <option value="tap" selected>bridge(tap)</option>
     </select>
   </dd>
 </dl>
