@@ -644,7 +644,7 @@ delete_thin_rootfs() {
 activate_thin_rootfs() {
   local name="$1"
   local vmm="${2:-$DEFAULT_VMM}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
+  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n default"
   local device_path=""
 
   # Try mount-path based key first (new format from ctr images mount)
@@ -664,7 +664,7 @@ activate_thin_rootfs() {
     return 0
   fi
 
-  log "WARNING: No thin snapshot found for $name (namespace: $vmm)"
+  log "WARNING: No thin snapshot found for $name (namespace: default)"
   return 1
 }
 
