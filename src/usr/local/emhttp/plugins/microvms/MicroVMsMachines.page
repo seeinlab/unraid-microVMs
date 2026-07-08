@@ -127,7 +127,14 @@ img.vm-icon-stopped { opacity:0.4; }
     $icon = "/plugins/microvms/images/{$engine}.png";
     $tap_id = $network['tap_id'] ?? null;
     $bridge_name = $network['bridge'] ?? $cfg['BRIDGE'] ?? 'br0';
-    $tap_display = ($tap_id !== null && $tap_id !== '') ? "tap{$tap_id}@{$bridge_name}" : "-";
+    $tap_name = $network['tap_name'] ?? '';
+    if ($tap_name) {
+        $tap_display = "{$tap_name}@{$bridge_name}";
+    } elseif ($tap_id !== null && $tap_id !== '') {
+        $tap_display = "tap{$tap_id}@{$bridge_name}";
+    } else {
+        $tap_display = "-";
+    }
     $autostart = !empty($vmConfig['autostart']);
 
     $status_class = ($state === 'running') ? 'started' : 'stopped';

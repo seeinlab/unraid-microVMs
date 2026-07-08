@@ -288,12 +288,23 @@ function microvm_list_vms() {
                 if ($specJson) {
                     $spec = json_decode($specJson, true);
                     $vmSpec = $spec['microvm']['spec'] ?? [];
+                    $vmStatus = $spec['microvm']['status'] ?? [];
                     $vcpu = $vmSpec['vcpu'] ?? '-';
                     $memory = $vmSpec['memoryInMb'] ?? 0;
-                    // Get IP from interfaces (if assigned by flintlockd)
-                    $ifaces = $vmSpec['interfaces'] ?? [];
-                    if (!empty($ifaces[0]['address']['address'])) {
-                        $ip = explode('/', $ifaces[0]['address']['address'])[0];
+                    // Get IP from kernel cmdline ip= parameter
+                    $cmdline = $vmSpec['kernel']['cmdline'] ?? [];
+                    if (!empty($cmdline['ip'])) {
+                        // ip=192.168.50.215::192.168.50.1:255.255.255.0:::off → extract first IP
+                        $ip = explode(':', $cmdline['ip'])[0];
+                    }
+                    // Get TAP from status.networkInterfaces
+                    $netStatus = $vmStatus['networkInterfaces'] ?? [];
+                    $tap = '';
+                    foreach ($netStatus as $ifName => $ifStatus) {
+                        if (!empty($ifStatus['hostDeviceName'])) {
+                            $tap = $ifStatus['hostDeviceName'];
+                            break;
+                        }
                     }
                 }
             }
@@ -304,7 +315,7 @@ function microvm_list_vms() {
                     'namespace' => $flNs,
                     'vcpus' => $vcpu,
                     'memory_mb' => $memory,
-                    'network' => ['ip' => $ip],
+                    'network' => ['ip' => $ip, 'tap_name' => $tap ?? ''],
                     'managed_by' => 'flintlockd',
                     'uid' => $uid,
                 ],
