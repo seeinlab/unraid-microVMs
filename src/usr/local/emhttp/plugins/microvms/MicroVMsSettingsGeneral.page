@@ -220,7 +220,8 @@ function loadNamespaces() {
     if (data && data.success) {
       var html = '<table class="tablesorter" style="width:auto;"><thead><tr><th>Namespace</th><th></th></tr></thead><tbody>';
       (data.namespaces || []).forEach(function(ns) {
-        var del = (ns !== 'default' && ns !== 'flintlock') ?
+        if (ns === 'flintlock') return; // managed by Liquidmetal, not shown here
+        var del = (ns !== 'default') ?
           '<input type="button" value="Delete" onclick="deleteNamespace(\'' + ns + '\')" style="padding:1px 8px;font-size:0.8rem;">' : '<em style="color:#666;">protected</em>';
         html += '<tr><td>' + ns + '</td><td>' + del + '</td></tr>';
       });
