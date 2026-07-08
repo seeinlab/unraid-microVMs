@@ -198,16 +198,18 @@ var plugin = '<?=$plugin?>';
 
 function pruneImages() {
   swal({
-    title: 'Prune Unused Images?',
-    text: 'This will remove all unreferenced images from containerd in both namespaces.',
-    type: 'warning',
+    title: 'Prune Unused Images',
+    text: 'Select namespace to prune:',
+    type: 'input',
+    inputValue: 'all',
+    inputPlaceholder: 'all, ch, fc, or default',
     showCancelButton: true,
     confirmButtonText: 'Prune',
     cancelButtonText: 'Cancel',
     closeOnConfirm: false
-  }, function(confirmed) {
-    if (confirmed) {
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images'}, function(data) {
+  }, function(val) {
+    if (!val) return;
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: val}, function(data) {
         if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
         if (data.success) {
           swal({title: 'Done', text: data.message || 'Prune complete', type: 'success'}, function() { location.reload(); });

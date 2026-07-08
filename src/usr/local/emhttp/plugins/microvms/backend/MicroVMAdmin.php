@@ -858,8 +858,14 @@ SCRIPT;
     case 'prune_images':
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
-        $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
-        foreach (explode("\n", $nsList) as $ns) {
+        $pruneNs = $_REQUEST['namespace'] ?? 'all';
+        if ($pruneNs === 'all') {
+            $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
+            $namespaces = array_filter(explode("\n", $nsList));
+        } else {
+            $namespaces = [trim($pruneNs)];
+        }
+        foreach ($namespaces as $ns) {
             $ns = trim($ns);
             if (empty($ns)) continue;
             $out = shell_exec("ctr -a $sock -n $ns images prune --all 2>&1");
