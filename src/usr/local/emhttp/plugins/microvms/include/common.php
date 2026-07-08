@@ -552,12 +552,25 @@ function microvm_restore_snapshot_ch($name, $tag, $snapPath, $sock, $vmConfig, $
     $cmd = "nohup cloud-hypervisor"
         . " --api-socket " . escapeshellarg($sock)
         . " --restore source_url=" . escapeshellarg("file://$snapPath")
+        . " --serial pty --console off"
         . " > /var/log/microvms/cloud-hypervisor/{$name}.log 2>&1 &";
     exec($cmd);
     sleep(2);
 
     // Verify VM came back
     exec("ch-remote --api-socket $sock ping 2>/dev/null", $verifyOut, $verifyRet);
+
+    // Setup serial capture (same as normal start)
+    if ($verifyRet === 0) {
+        $logFile = "/var/log/microvms/cloud-hypervisor/{$name}.log";
+        $ptyPath = trim(shell_exec("grep -oP '/dev/pts/\\d+' $logFile 2>/dev/null | tail -1"));
+        if ($ptyPath) {
+            $fifo = "/var/tmp/microvms-{$name}.fifo";
+            exec("rm -f $fifo && mkfifo $fifo 2>/dev/null");
+            exec("nohup cat $fifo > $ptyPath 2>/dev/null &");
+            exec("nohup cat $ptyPath >> /var/log/microvms/cloud-hypervisor/{$name}-serial.log 2>/dev/null &");
+        }
+    }
 
     return [
         'success' => ($verifyRet === 0),
