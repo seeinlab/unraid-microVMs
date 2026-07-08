@@ -1,16 +1,16 @@
 # Graph Report - unraid-microVMs  (2026-07-08)
 
 ## Corpus Check
-- 134 files · ~111,834 words
+- 134 files · ~111,229 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1544 nodes · 1468 edges · 175 communities (124 shown, 51 thin omitted)
+- 1543 nodes · 1459 edges · 175 communities (124 shown, 51 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d9ee8e29`
+- Built from commit: `29a34336`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -226,8 +226,8 @@ Cohesion: 0.50
 Nodes (4): chrome-devtools, nightwatch, npx, mcp-remote
 
 ### Community 11 - "common.php"
-Cohesion: 0.14
-Nodes (24): flintlock_create_vm(), flintlock_delete_vm(), flintlock_get_vm_status(), flintlock_grpc_call(), flintlock_list_vms(), flintlock_load_uid(), flintlock_save_uid(), flintlock_stop_vm() (+16 more)
+Cohesion: 0.13
+Nodes (23): flintlock_create_vm(), flintlock_delete_vm(), flintlock_get_vm_status(), flintlock_grpc_call(), flintlock_list_vms(), flintlock_load_uid(), flintlock_save_uid(), flintlock_stop_vm() (+15 more)
 
 ### Community 13 - "Testing Skills With Subagents"
 Cohesion: 0.07
@@ -286,8 +286,8 @@ Cohesion: 0.08
 Nodes (26): Basic Commands, Build Tool (Vite), Common Rules Explained, Complete Project Setup, Contents, Example Tests, Flat Config Format, Formatting (Prettier) (+18 more)
 
 ### Community 46 - "Cloud Hypervisor API Reference (v52.0)"
-Cohesion: 0.20
-Nodes (10): Access Pattern, ch-remote CLI Commands (v52.0), CLI Boot (Direct Start without API), Cloud Hypervisor API Reference (v52.0), Comparison: Direct CLI vs API, Overview, PTY Path Discovery, Serial/Console Options (+2 more)
+Cohesion: 0.08
+Nodes (25): Access Pattern, ch-remote CLI Commands (v52.0), CLI Boot (Direct Start without API), Cloud Hypervisor API Reference (v52.0), Comparison: Direct CLI vs API, DiskConfig (add-disk), Endpoints, Hot-add Devices (+17 more)
 
 ### Community 48 - "What You Must Do When Invoked"
 Cohesion: 0.08
@@ -386,8 +386,8 @@ Cohesion: 0.14
 Nodes (13): architecture.md, codebase_info.md, components.md, data_models.md, dependencies.md, File Descriptions, interfaces.md, Key Design Rules (+5 more)
 
 ### Community 82 - "Code Style Guide — microVMs Plugin"
-Cohesion: 0.09
-Nodes (23): Backend Pattern (MicroVMAdmin.php), Code Style Guide — microVMs Plugin, Config File Pattern, Error Handling, File Headers, From Community Applications (Squidly271), From dynamix.vm.manager (Unraid built-in), From Fix Common Problems (Squidly271) (+15 more)
+Cohesion: 0.15
+Nodes (13): Backend Pattern (MicroVMAdmin.php), Code Style Guide — microVMs Plugin, Config File Pattern, File Headers, In .page files, JavaScript Conventions, Menu Types, Page Structure (.page files) (+5 more)
 
 ### Community 83 - "Interfaces & APIs"
 Cohesion: 0.17
@@ -550,12 +550,12 @@ Cohesion: 0.40
 Nodes (4): Controlplane Config (microvms.controlplane.cfg), Data Models, Filesystem Layout, VM Config (cloud-hypervisor.json / firecracker.json)
 
 ### Community 123 - "PHP Conventions"
-Cohesion: 0.25
-Nodes (8): DiskConfig (add-disk), Key Request Bodies, NetConfig (add-net), Restore (CLI only — boot arg), Snapshot, VmConfig (vm.create), VmResize, VmResizeDisk
+Cohesion: 0.40
+Nodes (5): Error Handling, Functions, Naming, PHP Conventions, Security
 
 ### Community 124 - "Key Patterns from References"
-Cohesion: 0.29
-Nodes (7): Endpoints, Hot-add Devices, Live Resize, Migration, Snapshots, VM Lifecycle, VMM Management
+Cohesion: 0.40
+Nodes (5): From Community Applications (Squidly271), From dynamix.vm.manager (Unraid built-in), From Fix Common Problems (Squidly271), From Tailscale Plugin, Key Patterns from References
 
 ### Community 125 - "Methods"
 Cohesion: 0.40
@@ -647,8 +647,8 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Mastering Modern TypeScript` connect `Mastering Modern TypeScript` to `NestJS Integration Reference`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `Cloud Hypervisor API Reference (v52.0)` connect `Cloud Hypervisor API Reference (v52.0)` to `PHP Conventions`, `Key Patterns from References`, `README.md`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `Cloud Hypervisor API Reference (v52.0)` connect `Cloud Hypervisor API Reference (v52.0)` to `README.md`?**
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **What connects `mcp-remote`, `start-server.sh script`, `stop-server.sh script` to the rest of the system?**
   _1063 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
@@ -656,6 +656,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `NestJS Integration Reference` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `common.php` be split into smaller, more focused modules?**
-  _Cohesion score 0.13636363636363635 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.12701612903225806 - nodes in this community are weakly interconnected._
 - **Should `Testing Skills With Subagents` be split into smaller, more focused modules?**
   _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._

@@ -1,0 +1,489 @@
+{
+  "communities": {
+    "0": [
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_allowsyntheticdefaultimports",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_baseurl",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declaration",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_declarationmap",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_esmoduleinterop",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_exactoptionalpropertytypes",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_forceconsistentcasinginfilenames",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_incremental",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_isolatedmodules",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_lib",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_module",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_moduleresolution",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nofallthroughcasesinswitch",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_noimplicitoverride",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nopropertyaccessfromindexsignature",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_nouncheckedindexedaccess",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_outdir",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_paths",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_rootdir",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_skiplibcheck",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_sourcemap",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_strict",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_target",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_tsbuildinfofile",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions_verbatimmodulesyntax",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_paths"
+    ],
+    "1": [
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_build_results",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_build",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_js_typecheck",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_discover_php_tests",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_has_npm_script",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_js_package_manager",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_run_check",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_run_tests_usage"
+    ],
+    "2": [
+      "mastering_typescript_enterprise_patterns_auth_jwtstrategy",
+      "mastering_typescript_enterprise_patterns_users_createuserdto",
+      "mastering_typescript_enterprise_patterns_users_index",
+      "mastering_typescript_enterprise_patterns_users_updateuserdto",
+      "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "mastering_typescript_enterprise_patterns_users_userrepository",
+      "mastering_typescript_enterprise_patterns_users_userrepository_nestjs",
+      "mastering_typescript_enterprise_patterns_users_userschema",
+      "mastering_typescript_enterprise_patterns_users_userservice",
+      "mastering_typescript_enterprise_patterns_users_usertypes"
+    ],
+    "3": [
+      "kiro_skills_starter_kit_upgrade_scripts_preflight",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_check_clean_tree",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_authenticated",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_check_gh_installed",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_check_git_repo",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_check_jq_installed",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_preflight_usage"
+    ],
+    "4": [
+      "kiro_skills_writing_skills_render_graphs",
+      "kiro_skills_writing_skills_render_graphs_combinegraphs",
+      "kiro_skills_writing_skills_render_graphs_execsync",
+      "kiro_skills_writing_skills_render_graphs_extractdotblocks",
+      "kiro_skills_writing_skills_render_graphs_extractgraphbody",
+      "kiro_skills_writing_skills_render_graphs_fs",
+      "kiro_skills_writing_skills_render_graphs_main",
+      "kiro_skills_writing_skills_render_graphs_path",
+      "kiro_skills_writing_skills_render_graphs_rendertosvg"
+    ],
+    "5": [
+      "mastering_typescript_enterprise_patterns_getuser",
+      "mastering_typescript_enterprise_patterns_handleerror",
+      "mastering_typescript_enterprise_patterns_isapperror",
+      "mastering_typescript_enterprise_patterns_notfounderror",
+      "mastering_typescript_enterprise_patterns_sendemail",
+      "mastering_typescript_enterprise_patterns_unauthorizederror",
+      "mastering_typescript_enterprise_patterns_validateemail",
+      "mastering_typescript_enterprise_patterns_validateuserid",
+      "mastering_typescript_enterprise_patterns_validationerror_class"
+    ],
+    "6": [
+      "agents_addmicrovms_page",
+      "agents_common_php",
+      "agents_microvmadmin_php",
+      "agents_microvmsmachines_page",
+      "agents_microvmssettingsgeneral_page",
+      "usr_local_bin_ch_remote",
+      "usr_local_bin_crane"
+    ],
+    "7": [
+      "agents_event_array_started",
+      "agents_event_stopping_svcs",
+      "agents_rc_microvms",
+      "usr_local_bin_cloud_hypervisor",
+      "usr_local_bin_firecracker",
+      "usr_local_bin_flintlockd",
+      "usr_local_bin_microvms_containerd"
+    ],
+    "8": [
+      "kiro_skills_mastering_typescript_scripts_validate_setup",
+      "kiro_skills_mastering_typescript_scripts_validate_setup_fail",
+      "kiro_skills_mastering_typescript_scripts_validate_setup_info",
+      "kiro_skills_mastering_typescript_scripts_validate_setup_pass",
+      "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "kiro_skills_mastering_typescript_scripts_validate_setup_warn"
+    ],
+    "9": [
+      "kiro_mcp",
+      "kiro_mcp_mcp_server_chrome_devtools",
+      "kiro_mcp_mcp_server_nightwatch",
+      "mcp_command_npx",
+      "mcp_package_mcp_remote"
+    ],
+    "10": [
+      "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests",
+      "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_lockfile",
+      "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_js_package_manager",
+      "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_reconcile_manifests_usage"
+    ],
+    "11": [
+      "kiro_skills_mastering_typescript_assets_tsconfig_template",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_exclude",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_include",
+      "kiro_skills_mastering_typescript_assets_tsconfig_template_schema"
+    ],
+    "12": [
+      "kiro_skills_systematic_debugging_condition_based_waiting_example",
+      "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforevent",
+      "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventcount",
+      "kiro_skills_systematic_debugging_condition_based_waiting_example_waitforeventmatch"
+    ],
+    "13": [
+      "kiro_skills_writing_skills_anthropic_best_practices",
+      "kiro_skills_writing_skills_persuasion_principles",
+      "kiro_skills_writing_skills_skill",
+      "kiro_skills_writing_skills_testing_skills_with_subagents"
+    ],
+    "14": [
+      "kiro_skills_brainstorming_scripts_helper",
+      "kiro_skills_brainstorming_scripts_helper_connect",
+      "kiro_skills_brainstorming_scripts_helper_sendevent"
+    ],
+    "15": [
+      "kiro_skills_starter_kit_upgrade_scripts_apply_new_files",
+      "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_apply_new_files_usage"
+    ],
+    "16": [
+      "kiro_skills_starter_kit_upgrade_scripts_classify_feature",
+      "kiro_skills_starter_kit_upgrade_scripts_classify_feature_classify",
+      "kiro_skills_starter_kit_upgrade_scripts_classify_feature_sh__entry"
+    ],
+    "17": [
+      "kiro_skills_starter_kit_upgrade_scripts_fetch_kit",
+      "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_fetch_kit_usage"
+    ],
+    "18": [
+      "kiro_skills_starter_kit_upgrade_scripts_later_edits",
+      "kiro_skills_starter_kit_upgrade_scripts_later_edits_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_later_edits_usage"
+    ],
+    "19": [
+      "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports",
+      "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_sh__entry",
+      "kiro_skills_starter_kit_upgrade_scripts_scan_transitive_imports_usage"
+    ],
+    "20": [
+      "mastering_typescript_enterprise_patterns_createuserschema",
+      "mastering_typescript_enterprise_patterns_formatzoderror",
+      "mastering_typescript_enterprise_patterns_validatecreateuser"
+    ],
+    "21": [
+      "mastering_typescript_enterprise_patterns_err",
+      "mastering_typescript_enterprise_patterns_ok",
+      "mastering_typescript_enterprise_patterns_parseemail"
+    ],
+    "22": [
+      "build",
+      "build_sh__entry"
+    ],
+    "23": [
+      "kiro_skills_brainstorming_scripts_start_server",
+      "kiro_skills_brainstorming_scripts_start_server_sh__entry"
+    ],
+    "24": [
+      "kiro_skills_brainstorming_scripts_stop_server",
+      "kiro_skills_brainstorming_scripts_stop_server_sh__entry"
+    ],
+    "25": [
+      "kiro_skills_systematic_debugging_find_polluter",
+      "kiro_skills_systematic_debugging_find_polluter_sh__entry"
+    ],
+    "26": [
+      "mastering_typescript_enterprise_patterns_common_decorators_roles",
+      "mastering_typescript_enterprise_patterns_common_guards_rolesguard"
+    ],
+    "27": [
+      "scripts_init_nginx",
+      "scripts_init_nginx_sh__entry"
+    ],
+    "28": [
+      "scripts_init_serial",
+      "scripts_init_serial_sh__entry"
+    ],
+    "29": [
+      "src_usr_local_bin_microvms_console",
+      "src_usr_local_bin_microvms_console__entry"
+    ],
+    "30": [
+      "docs_cloud_hypervisor_api"
+    ],
+    "31": [
+      "docs_code_style_guide"
+    ],
+    "32": [
+      "docs_design_patterns"
+    ],
+    "33": [
+      "docs_firecracker_api"
+    ],
+    "34": [
+      "docs_flintlockd_grpc_api"
+    ],
+    "35": [
+      "docs_kata_containers_research"
+    ],
+    "36": [
+      "docs_plan_next"
+    ],
+    "37": [
+      "docs_plan_thinpool_oci"
+    ],
+    "38": [
+      "docs_progress"
+    ],
+    "39": [
+      "docs_readme"
+    ],
+    "40": [
+      "kiro_skills_mastering_typescript_assets_eslint_template"
+    ],
+    "41": [
+      "kiro_skills_writing_skills_examples_claude_md_testing"
+    ],
+    "42": [
+      "kiro_steering_always"
+    ],
+    "43": [
+      "kiro_steering_graphify"
+    ],
+    "44": [
+      "mastering_typescript_enterprise_patterns_apperror"
+    ],
+    "45": [
+      "mastering_typescript_enterprise_patterns_common_exceptions_businessexception"
+    ],
+    "46": [
+      "mastering_typescript_enterprise_patterns_common_filters_allexceptionsfilter"
+    ],
+    "47": [
+      "mastering_typescript_enterprise_patterns_dompurify"
+    ],
+    "48": [
+      "mastering_typescript_enterprise_patterns_resulttypepattern"
+    ],
+    "49": [
+      "mastering_typescript_enterprise_patterns_updateuserschema"
+    ],
+    "50": [
+      "mastering_typescript_enterprise_patterns_users_userschema_zod"
+    ],
+    "51": [
+      "mastering_typescript_enterprise_patterns_users_userservice_nestjs"
+    ],
+    "52": [
+      "mastering_typescript_enterprise_patterns_userschema"
+    ],
+    "53": [
+      "mastering_typescript_enterprise_patterns_validationerror"
+    ],
+    "54": [
+      "mastering_typescript_enterprise_patterns_zod"
+    ],
+    "55": [
+      "plugin_microvms_plg"
+    ],
+    "56": [
+      "scripts_fetch_lm_svg"
+    ],
+    "57": [
+      "scripts_render_lm_icon"
+    ],
+    "58": [
+      "scripts_svg2png"
+    ],
+    "59": [
+      "usr_local_bin_grpcurl"
+    ],
+    "60": [
+      "usr_local_bin_ttyd"
+    ]
+  },
+  "cohesion": {
+    "0": 0.07407407407407407,
+    "1": 0.3111111111111111,
+    "2": 0.26666666666666666,
+    "3": 0.5,
+    "4": 0.3333333333333333,
+    "5": 0.2222222222222222,
+    "6": 0.2857142857142857,
+    "7": 0.2857142857142857,
+    "8": 0.6,
+    "9": 0.5,
+    "10": 0.5,
+    "11": 0.5,
+    "12": 0.5,
+    "13": 0.6666666666666666,
+    "14": 0.6666666666666666,
+    "15": 1.0,
+    "16": 1.0,
+    "17": 1.0,
+    "18": 1.0,
+    "19": 1.0,
+    "20": 0.6666666666666666,
+    "21": 0.6666666666666666,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0,
+    "25": 1.0,
+    "26": 1.0,
+    "27": 1.0,
+    "28": 1.0,
+    "29": 1.0,
+    "30": 1.0,
+    "31": 1.0,
+    "32": 1.0,
+    "33": 1.0,
+    "34": 1.0,
+    "35": 1.0,
+    "36": 1.0,
+    "37": 1.0,
+    "38": 1.0,
+    "39": 1.0,
+    "40": 1.0,
+    "41": 1.0,
+    "42": 1.0,
+    "43": 1.0,
+    "44": 1.0,
+    "45": 1.0,
+    "46": 1.0,
+    "47": 1.0,
+    "48": 1.0,
+    "49": 1.0,
+    "50": 1.0,
+    "51": 1.0,
+    "52": 1.0,
+    "53": 1.0,
+    "54": 1.0,
+    "55": 1.0,
+    "56": 1.0,
+    "57": 1.0,
+    "58": 1.0,
+    "59": 1.0,
+    "60": 1.0
+  },
+  "gods": [
+    {
+      "id": "kiro_skills_mastering_typescript_assets_tsconfig_template_compileroptions",
+      "label": "compilerOptions",
+      "degree": 26
+    },
+    {
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_sh__entry",
+      "label": "preflight.sh script",
+      "degree": 7
+    },
+    {
+      "id": "mastering_typescript_enterprise_patterns_users_userservice",
+      "label": "features/users/user.service",
+      "degree": 7
+    },
+    {
+      "id": "kiro_skills_mastering_typescript_scripts_validate_setup_sh__entry",
+      "label": "validate-setup.sh script",
+      "degree": 5
+    },
+    {
+      "id": "kiro_skills_starter_kit_upgrade_scripts_preflight_fail",
+      "label": "fail()",
+      "degree": 5
+    },
+    {
+      "id": "kiro_skills_writing_skills_render_graphs_main",
+      "label": "main()",
+      "degree": 4
+    },
+    {
+      "id": "mastering_typescript_enterprise_patterns_handleerror",
+      "label": "handleError",
+      "degree": 4
+    },
+    {
+      "id": "mastering_typescript_enterprise_patterns_users_index",
+      "label": "features/users/index",
+      "degree": 4
+    },
+    {
+      "id": "mastering_typescript_enterprise_patterns_users_usercontroller",
+      "label": "features/users/user.controller",
+      "degree": 4
+    },
+    {
+      "id": "kiro_mcp_mcp_server_nightwatch",
+      "label": "nightwatch",
+      "degree": 3
+    }
+  ],
+  "surprises": [
+    {
+      "source": "modules/users/users.repository",
+      "target": "features/users/user.service",
+      "source_files": [
+        "src/modules/users/users.repository.ts",
+        "src/features/users/user.service.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; peripheral node `modules/users/users.repository` unexpectedly reaches hub `features/users/user.service`"
+    },
+    {
+      "source": "modules/auth/strategies/jwt.strategy",
+      "target": "features/users/user.service",
+      "source_files": [
+        "src/modules/auth/strategies/jwt.strategy.ts",
+        "src/features/users/user.service.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "peripheral node `modules/auth/strategies/jwt.strategy` unexpectedly reaches hub `features/users/user.service`"
+    },
+    {
+      "source": "features/users/user.service",
+      "target": "modules/users/dto/createuserdto",
+      "source_files": [
+        "src/features/users/user.service.ts",
+        "src/modules/users/dto/create-user.dto.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "peripheral node `modules/users/dto/createuserdto` unexpectedly reaches hub `features/users/user.service`"
+    },
+    {
+      "source": "features/users/user.service",
+      "target": "modules/users/dto/updateuserdto",
+      "source_files": [
+        "src/features/users/user.service.ts",
+        "src/modules/users/dto/update-user.dto.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "peripheral node `modules/users/dto/updateuserdto` unexpectedly reaches hub `features/users/user.service`"
+    },
+    {
+      "source": "features/users/user.service",
+      "target": "features/users/user.repository",
+      "source_files": [
+        "src/features/users/user.service.ts",
+        "src/features/users/user.repository.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "peripheral node `features/users/user.repository` unexpectedly reaches hub `features/users/user.service`"
+    }
+  ],
+  "tokens": {
+    "input": 153984,
+    "output": 8294
+  }
+}
