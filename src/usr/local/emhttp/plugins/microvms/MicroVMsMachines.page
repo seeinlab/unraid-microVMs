@@ -242,6 +242,10 @@ function addMicroVMContext(name, state, engine, managed_by, uid) {
       e.preventDefault();
       vmConsole(name);
     }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmVmmLogs(name, engine);
+    }});
     if (engine == 'cloud-hypervisor') {
       opts.push({text:'Edit', icon:'fa-pencil', action:function(e){
         e.preventDefault();
@@ -264,6 +268,10 @@ function addMicroVMContext(name, state, engine, managed_by, uid) {
     opts.push({text:'Start', icon:'fa-play', action:function(e){
       e.preventDefault();
       vmAction('start', name);
+    }});
+    opts.push({text:'Logs', icon:'fa-file-text-o', action:function(e){
+      e.preventDefault();
+      vmVmmLogs(name, engine);
     }});
     opts.push({text:'Snapshots', icon:'fa-history', action:function(e){
       e.preventDefault();
@@ -463,9 +471,16 @@ function vmVmmLogs(name, engine) {
   $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'view_log', service: service}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
     if (data && data.success) {
-      swal({title: name + ' — Logs', text: '<pre style="text-align:left;max-height:400px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#1a1a2e;padding:12px;border-radius:4px;color:#ccc;">' + (data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
+      swal({title: name + ' — Serial Log', text: '<pre style="text-align:left;max-height:500px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#0d1117;padding:12px;border-radius:4px;color:#c9d1d9;border:1px solid #30363d;">' + escapeHtml(data.log || '(empty)') + '</pre>', html: true, confirmButtonText: 'Close'});
+      setTimeout(function() {
+        var modal = document.querySelector('.sweet-alert');
+        if (modal) {
+          modal.style.width = '75%';
+          modal.style.maxWidth = '860px';
+        }
+      }, 100);
     } else {
-      swal({title: 'VMM Logs Error', text: (data && data.error) || 'Failed to load VMM logs', type: 'error'});
+      swal({title: 'Log Error', text: (data && data.error) || 'Failed to load serial log', type: 'error'});
     }
   });
 }
