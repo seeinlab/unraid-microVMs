@@ -30,6 +30,10 @@
 ## Remaining
 
 ### Priority 1: Bugs
+- [ ] `/var/log` tmpfs fills up (128MB) — flintlockd.log grows unbounded
+  - Truncate flintlockd.log on service start or limit verbosity
+  - Move microvms logs to persistent storage (e.g. /mnt/user/appdata/microvms/logs/)
+  - Causes console to break (serial log can't write)
 - [ ] Liquidmetal enable doesn't auto-start crane registry + flintlockd
   - Toggling Liquidmetal to enabled in Settings and clicking Apply doesn't start services
   - Check: `#command` might not trigger restart, or FLINTLOCKD config value isn't read correctly after save

@@ -972,10 +972,18 @@ METAEOF
   if [ "$vmm" = "cloud-hypervisor" ]; then
     local serial_log="/var/log/microvms/cloud-hypervisor/${name}.serial.log"
     local ch_fifo="/tmp/microvms-${name}.fifo"
-    # Wait briefly for CH to report PTY path in its log
-    sleep 1
-    local pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" | tail -1)
-    if [ -n "$pty_path" ] && [ -e "$pty_path" ]; then
+    # Wait for CH to report PTY path (check log first, then ch-remote info as fallback)
+    local pty_path=""
+    for i in 1 2 3 4 5; do
+      sleep 1
+      pty_path=$(grep -oP '/dev/pts/\d+' "/var/log/microvms/cloud-hypervisor/${name}.log" 2>/dev/null | tail -1)
+      [ -n "$pty_path" ] && [ -e "$pty_path" ] && break
+      # Fallback: ask CH API for PTY path
+      pty_path=$(ch-remote --api-socket "/tmp/microvms-${name}.sock" info 2>/dev/null | grep -oP '"serial":\{"file":"\K/dev/pts/\d+')
+      [ -n "$pty_path" ] && [ -e "$pty_path" ] && break
+      pty_path=""
+    done
+    if [ -n "$pty_path" ]; then
       # Capture serial output from PTY to log file
       cat "$pty_path" >> "$serial_log" 2>/dev/null &
       local serial_pid=$!
