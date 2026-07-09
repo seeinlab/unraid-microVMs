@@ -547,6 +547,23 @@ switch ($cmd) {
             $mountCmd = ($storageType === 'thin') ? "true" : "mount $mountDev \$MOUNT";
             $precleanCmd = ($storageType === 'thin') ? "true" : "umount \$MOUNT 2>/dev/null || true";
 
+            // Parse mounts from POST (needed for /fly/mounts injection below)
+            $mounts = [];
+            if (!empty($_POST['mounts'])) {
+                $mountsInput = is_string($_POST['mounts']) ? json_decode($_POST['mounts'], true) : $_POST['mounts'];
+                if (is_array($mountsInput)) {
+                    foreach ($mountsInput as $m) {
+                        if (!empty($m['tag']) && !empty($m['host_path']) && !empty($m['guest_path'])) {
+                            $mounts[] = [
+                                'tag' => preg_replace('/[^a-z0-9\-_]/', '', strtolower($m['tag'])),
+                                'host_path' => $m['host_path'],
+                                'guest_path' => $m['guest_path'],
+                            ];
+                        }
+                    }
+                }
+            }
+
             // Generate /fly/mounts content (tab-separated: tag\tguest_path)
             $mountsFileContent = '';
             if (!empty($mounts)) {
@@ -611,23 +628,6 @@ SCRIPT;
             $storageConfig['image_ref'] = $ociImage;
         } else {
             $storageConfig['size_mb'] = $diskSize;
-        }
-
-        // Parse mounts from POST (JSON array of {tag, host_path, guest_path})
-        $mounts = [];
-        if (!empty($_POST['mounts'])) {
-            $mountsInput = is_string($_POST['mounts']) ? json_decode($_POST['mounts'], true) : $_POST['mounts'];
-            if (is_array($mountsInput)) {
-                foreach ($mountsInput as $m) {
-                    if (!empty($m['tag']) && !empty($m['host_path']) && !empty($m['guest_path'])) {
-                        $mounts[] = [
-                            'tag' => preg_replace('/[^a-z0-9\-_]/', '', strtolower($m['tag'])),
-                            'host_path' => $m['host_path'],
-                            'guest_path' => $m['guest_path'],
-                        ];
-                    }
-                }
-            }
         }
 
         $config = [
