@@ -61,27 +61,63 @@
   - Kill orphan VMM processes on service start
 
 ### Priority 2: Features
-- [ ] CH virtiofs (host path sharing)
-  - virtiofsd already on Unraid — just need `--fs` flag + `--memory shared=on`
-  - Add "Shared Folders" field to Add form (host path → guest mount tag)
+- [x] ~~CH virtiofs~~ — DONE (virtiofsd + --fs + auto-mount via /fly/mounts)
+- [x] ~~Storage tab improvements~~ — DONE
+- [x] ~~Create from JSON~~ — DONE (full create flow with fall-through)
+- [ ] **Add/Edit form redesign** — section-based layout (Engine → Identity → Image Source → Compute → Network → Env → Mounts → Options)
+  - Image Source tabs: OCI | URL (.raw/.tar.gz/.zip) | Existing path (like Proxmox LXC)
+  - JSON ↔ Form bidirectional toggle
+  - Fixed MAC address option (auto-generated default, editable)
+  - Override Entrypoint/CMD (custom command instead of image default)
+- [ ] **Balloon** (memory reclaim) — CH: `--balloon`, FC: `PUT /balloon`
+  - Enable per VM, live resize via API, stats polling in UI
+- [ ] **Pause/Resume** — CH: `ch-remote pause/resume`, FC: `PATCH /vm`
+  - Add Pause/Resume buttons in context menu, `paused` state in list
+- [ ] **Watchdog** (CH only) — `--watchdog` flag
+  - Toggle in Add form, auto-reboot hung guests
+- [ ] **Pvpanic** (CH only) — `--pvpanic` flag
+  - Toggle in Add form, guest crash notification → Unraid notification
+- [ ] **Entropy device** (FC only) — `PUT /entropy`
+  - Toggle in Add form, optional rate limiter
+- [ ] **Hugepages** — CH: `hugepages=on`, FC: `"huge_pages":"2M"`
+  - Toggle in Add form (requires host hugepage pool pre-configured)
+- [ ] **Disk Resize** (CH only) — `ch-remote resize-disk`
+  - Add to Edit form / context menu
+- [ ] **Disk Hotplug** (CH only) — `ch-remote add-disk / remove-device`
+  - Add/Remove disk buttons on running VM
+- [ ] **Diff Snapshots** — CH + FC both support incremental
+  - FC: `track_dirty_pages: true` + `snapshot_type: Diff`
+  - Add "Diff" vs "Full" option in Snapshot UI
+- [ ] **Metrics/Counters** — CH: `ch-remote counters`, FC: `PUT /metrics`
+  - Feed into Stats page for per-device I/O stats
+- [ ] **Vsock** (host↔guest comms) — CH: `--vsock`, FC: `PUT /vsock`
+  - Agent communication without networking, CID assignment
+- [ ] **Rate Limiting** (net + disk) — both CH and FC
+  - Advanced section in Add/Edit form: bandwidth + IOPS limits per device
 - [ ] IPAM (IP Address Management)
   - Auto-suggest next available IP from subnet
   - Gateway auto-fill from bridge config
-- [x] ~~Storage tab improvements~~ — FIXED: full redesign (Thin Pool status bars, Volumes table, Images table, Pull & Convert, Run GC, per-namespace)
-- [ ] Create from JSON — full create flow (pull image, create rootfs, inject init/env/mounts, register containerd, autostart)
-  - Currently `create_json` only writes config file to disk, doesn't build VM
-  - Should reuse same logic as `create` command but accept a JSON config object
 - [ ] Update root README.md for GitHub
 
-### Priority 3: Future
+### Priority 3: Future / Advanced
+- [ ] **USB/PCI Passthrough** (CH only) — `--device path=/sys/bus/pci/devices/...`
+  - VFIO device passthrough for GPU, NIC, USB controllers
+  - Requires IOMMU groups, vfio-pci binding, device picker UI
+- [ ] **Live Migration** (CH only) — `ch-remote send-migration`
+  - Move running VM between Unraid hosts without downtime
+- [ ] **UEFI Firmware Boot** (CH only) — `--firmware CLOUDHV.fd`
+  - Boot standard cloud images without custom kernel
+- [ ] **MMDS** (FC only) — metadata service at 169.254.169.254
+  - Cloud-init compatible config injection
+- [ ] **CPU Templates** (FC only) — `"cpu_template": "T2"`
+  - Named presets for snapshot/restore across CPU generations
 - [ ] Multi-container per VM (Fly.io rate-limiter-demo pattern)
 - [ ] TLS/auth for flintlockd
 - [ ] Community Applications submission
-- [ ] Multi-NIC support
-- [ ] VM migration between hosts
-- [ ] Suspend/Resume as user-facing feature (CH: ch-remote pause/resume, FC: PATCH /vm state. Add `paused` state + Pause/Resume buttons in context menu)
+- [ ] Multi-NIC support (CH: `ch-remote add-net` hotplug)
+- [ ] VM migration between hosts (requires shared storage)
 - [ ] OpenBao/Vault secrets integration (encrypted secrets layer, resolved at VM start, not baked into rootfs)
-- [ ] Add/Edit form UI polish — 1:1 field mapping with JSON config (bidirectional: UI↔JSON editable both ways)
+- [ ] TPM support (CH only) — `--tpm socket=<swtpm_path>` (Windows 11 / Secure Boot)
 
 ---
 
