@@ -320,26 +320,19 @@ function vmAction(action, name) {
   });
 }
 
-// ANSI color code to HTML converter
-function ansiToHtml(text) {
-  var colors = {
-    '30':'#545862','31':'#e06c75','32':'#98c379','33':'#e5c07b','34':'#61afef','35':'#c678dd','36':'#56b6c2','37':'#c9d1d9',
-    '90':'#636d83','91':'#e06c75','92':'#98c379','93':'#e5c07b','94':'#61afef','95':'#c678dd','96':'#56b6c2','97':'#ffffff'
-  };
-  var esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return esc.replace(/\x1b\[([0-9;]*)m/g, function(_, codes) {
-    if (!codes || codes === '0') return '</span>';
-    var parts = codes.split(';'), style = '';
-    for (var i = 0; i < parts.length; i++) {
-      var c = parts[i];
-      if (c === '1') style += 'font-weight:bold;';
-      else if (c === '3') style += 'font-style:italic;';
-      else if (c === '4') style += 'text-decoration:underline;';
-      else if (colors[c]) style += 'color:' + colors[c] + ';';
-      else if (c >= '40' && c <= '47') style += 'background:' + (colors[''+(parseInt(c)-10)] || '') + ';';
-    }
-    return style ? '<span style="' + style + '">' : '';
-  });
+// Colorize console output (syntax highlighting for terminal display)
+function colorizeConsole(text) {
+  var h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Kernel messages: [    0.000000] ...
+  h = h.replace(/^(\[\s*[\d.]+\]\s.*)$/gm, '<span style="color:#636d83;">$1</span>');
+  // Prompts: name:/path# or name:/path$
+  h = h.replace(/^([a-z0-9\-]+:.*[#$])\s*/gm, '<span style="color:#98c379;">$1</span> ');
+  // Errors/warnings
+  h = h.replace(/(error|fail|fatal|panic)/gi, '<span style="color:#e06c75;">$1</span>');
+  h = h.replace(/(warning|warn)/gi, '<span style="color:#e5c07b;">$1</span>');
+  // Success keywords
+  h = h.replace(/(ok|success|ready|running|started|mounted)/gi, '<span style="color:#98c379;">$1</span>');
+  return h;
 }
 
 function vmConsole(name) {
@@ -396,7 +389,7 @@ function vmConsole(name) {
         $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_output', name: name}, function(data) {
           if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
           if (data && data.success && output) {
-            output.innerHTML = ansiToHtml(data.log || '(empty)');
+            output.innerHTML = colorizeConsole(data.log || '(empty)');
             if (shouldScroll) {
               output.scrollTop = output.scrollHeight;
               shouldScroll = false;
