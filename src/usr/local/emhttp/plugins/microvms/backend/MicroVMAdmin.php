@@ -1095,10 +1095,7 @@ SCRIPT;
                 if (count($cols) < 3) continue;
                 $snapKey = $cols[0];
                 $snapKind = $cols[2] ?? '';
-                $status = (strtolower($snapKind) === 'active') ? 'active' : 'committed';
-                // Only show Active snapshots (actual VM rootfs volumes)
-                // Committed layers are internal (managed by containerd GC)
-                if ($status !== 'active') continue;
+                $status = (strtolower($snapKind) === 'active') ? 'active' : 'layer';
                 // Determine which VM uses this snapshot
                 $usedBy = 'unused';
                 foreach ($vmConfigs as $vc) {
@@ -1401,16 +1398,53 @@ SCRIPT;
             $ns = trim($ns);
             if (empty($ns) || $ns === 'flintlock') continue;
             $imgList = shell_exec("ctr -a $sock -n $ns images ls -q 2>/dev/null");
-            if (!$imgList) continue;
-            foreach (array_filter(explode("\n", trim($imgList))) as $img) {
-                if (!isset($usedImages[$img])) {
-                    exec("ctr -a $sock -n $ns images rm " . escapeshellarg($img) . " 2>&1");
-                    $output[] = "[$ns] Removed image: $img";
-                    $removed++;
+            if ($imgList) {
+                foreach (array_filter(explode("\n", trim($imgList))) as $img) {
+                    if (!isset($usedImages[$img])) {
+                        exec("ctr -a $sock -n $ns images rm " . escapeshellarg($img) . " 2>&1");
+                        $output[] = "[$ns] Removed image: $img";
+                        $removed++;
+                    }
                 }
             }
             // Trigger GC for this namespace
             exec("ctr -a $sock -n $ns content garbage-collect 2>/dev/null");
+
+            // Clean orphaned committed snapshots (no parent image, not used by any VM)
+            $snapList = shell_exec("ctr -a $sock -n $ns snapshots --snapshotter devmapper list 2>/dev/null");
+            if ($snapList) {
+                $lines = explode("\n", trim($snapList));
+                array_shift($lines); // header
+                // Build child map
+                $hasChild = [];
+                foreach ($lines as $sline) {
+                    $scols = preg_split('/\s+/', trim($sline), 3);
+                    if (count($scols) >= 2 && !empty($scols[1])) {
+                        $hasChild[$scols[1]] = true;
+                    }
+                }
+                // Remove leaf committed snapshots not used by any VM
+                foreach ($lines as $sline) {
+                    $scols = preg_split('/\s+/', trim($sline), 3);
+                    if (count($scols) < 3) continue;
+                    $sKey = $scols[0];
+                    $sKind = strtolower($scols[2] ?? '');
+                    if ($sKind !== 'committed') continue;
+                    if (isset($hasChild[$sKey])) continue; // has children, skip
+                    // Check if any VM uses this
+                    $vmUsed = false;
+                    foreach ($vmConfigs as $vc) {
+                        if (strpos($sKey, $vc['name']) !== false) { $vmUsed = true; break; }
+                    }
+                    if (!$vmUsed) {
+                        exec("ctr -a $sock -n $ns snapshots --snapshotter devmapper rm " . escapeshellarg($sKey) . " 2>/dev/null", $srOut, $srRet);
+                        if ($srRet === 0) {
+                            $output[] = "[$ns] Removed orphan layer: " . substr($sKey, 0, 20) . "...";
+                            $removed++;
+                        }
+                    }
+                }
+            }
         }
         $output[] = "Garbage collection triggered.";
         microvm_log("RUN_GC: removed $removed images, GC triggered");
