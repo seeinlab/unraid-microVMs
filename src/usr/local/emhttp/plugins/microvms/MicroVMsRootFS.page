@@ -393,12 +393,15 @@ function pullAndConvert() {
     title: 'Pull & Convert to rootfs',
     html: true,
     text: '<div style="text-align:left;">'
-      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Image Reference:</label>'
-      + '<input id="swal-conv-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;margin-bottom:12px;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
-      + '<select id="swal-conv-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;margin-bottom:12px;">'
+      + '<select id="swal-conv-ns" onchange="loadNsImages()" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;margin-bottom:12px;">'
       + '<?=$nsOptions?>'
       + '</select>'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Image (select existing or enter new):</label>'
+      + '<select id="swal-conv-existing" onchange="if(this.value)document.getElementById(\'swal-conv-ref\').value=this.value" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;margin-bottom:6px;">'
+      + '<option value="">-- Pull new image --</option>'
+      + '</select>'
+      + '<input id="swal-conv-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;margin-bottom:12px;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Volume Name (for the rootfs):</label>'
       + '<input id="swal-conv-name" class="swal2-input" placeholder="e.g. my-nginx" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;margin-bottom:12px;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Storage Type:</label>'
@@ -406,7 +409,7 @@ function pullAndConvert() {
       + '<option value="thin">Thin (devmapper snapshot — shared layers, copy-on-write)</option>'
       + '<option value="raw">Raw (rootfs.raw file — standalone, portable)</option>'
       + '</select>'
-      + '<p style="margin-top:10px;font-size:0.8em;opacity:0.6;">Thin: pulls and mounts as devmapper snapshot (fast, shared layers).<br>Raw: pulls, extracts to raw ext4 image file (portable, no thin pool needed).</p>'
+      + '<p style="margin-top:10px;font-size:0.8em;opacity:0.6;">Select an existing image or enter a new ref to pull.<br>Thin: devmapper snapshot (fast). Raw: ext4 image file (portable).</p>'
       + '</div>',
     showCancelButton: true,
     confirmButtonText: 'Pull & Convert',
@@ -429,6 +432,28 @@ function pullAndConvert() {
         swal({title: 'Error', text: resp.error || 'Conversion failed', type: 'error'});
       }
     }).fail(function() { swal({title: 'Error', text: 'Request failed', type: 'error'}); });
+  });
+  // Load images for initial namespace
+  setTimeout(loadNsImages, 200);
+}
+
+function loadNsImages() {
+  var ns = document.getElementById('swal-conv-ns');
+  if (!ns) return;
+  var sel = document.getElementById('swal-conv-existing');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- loading... --</option>';
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'storage_info'}, function(resp) {
+    if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+    var html = '<option value="">-- Pull new image --</option>';
+    if (resp.success && resp.data && resp.data.images) {
+      resp.data.images.forEach(function(img) {
+        if (img.namespace === ns.value) {
+          html += '<option value="' + escAttr(img.ref) + '">' + escHtml(img.ref) + '</option>';
+        }
+      });
+    }
+    sel.innerHTML = html;
   });
 }
 
