@@ -64,6 +64,9 @@
   - Auto-suggest next available IP from subnet
   - Gateway auto-fill from bridge config
 - [x] ~~Storage tab improvements~~ — FIXED: full redesign (Thin Pool status bars, Volumes table, Images table, Pull & Convert, Run GC, per-namespace)
+- [ ] Create from JSON — full create flow (pull image, create rootfs, inject init/env/mounts, register containerd, autostart)
+  - Currently `create_json` only writes config file to disk, doesn't build VM
+  - Should reuse same logic as `create` command but accept a JSON config object
 - [ ] Update root README.md for GitHub
 
 ### Priority 3: Future
