@@ -70,13 +70,14 @@ _(Enable Liquidmetal)_:
 _(Crane Registry Storage)_:
 : <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt">
 
-_(Flintlockd gRPC Port)_:
-: <input type="number" name="FLINTLOCKD_GRPC_PORT" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>" min="1024" max="65535" class="narrow">
-
+<?php
+$flintlockd_defaults = '--grpc-endpoint 0.0.0.0:9090 --containerd-socket /var/run/microvms/containerd.sock --bridge-name br0 --parent-iface br0 --cloudhypervisor-bin /usr/local/bin/cloud-hypervisor --firecracker-bin /usr/local/bin/firecracker --state-dir /var/run/microvms/flintlockd-state --log-output /var/log/microvms/flintlockd.log --insecure --default-provider cloudhypervisor --verbosity 0';
+$flintlockd_flags = $cfg['FLINTLOCKD_FLAGS'] ?? $flintlockd_defaults;
+?>
 _(Flintlockd Flags)_:
-: <textarea name="FLINTLOCKD_FLAGS" rows="3" cols="60" placeholder="--grpc-endpoint 0.0.0.0:9090 --insecure --default-provider cloudhypervisor --verbosity 0" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_FLAGS'] ?? '')?></textarea>
+: <textarea name="FLINTLOCKD_FLAGS" rows="4" cols="80" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($flintlockd_flags)?></textarea>
 
-> All command-line flags passed to `flintlockd run`. Leave empty for defaults.
+> All flags passed to `flintlockd run`. Clear and Apply to reset to defaults.
 
 <?php endif; ?>
 
