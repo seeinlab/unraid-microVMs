@@ -73,10 +73,10 @@ _(Crane Registry Storage)_:
 _(Flintlockd gRPC Port)_:
 : <input type="number" name="FLINTLOCKD_GRPC_PORT" value="<?=htmlspecialchars($cfg['FLINTLOCKD_GRPC_PORT'] ?? '9090')?>" min="1024" max="65535" class="narrow">
 
-_(Flintlockd Extra Flags)_:
-: <textarea name="FLINTLOCKD_EXTRA_FLAGS" rows="3" cols="60" placeholder="--insecure --default-provider cloudhypervisor" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_EXTRA_FLAGS'] ?? '--insecure --default-provider cloudhypervisor')?></textarea>
+_(Flintlockd Flags)_:
+: <textarea name="FLINTLOCKD_FLAGS" rows="3" cols="60" placeholder="--grpc-endpoint 0.0.0.0:9090 --insecure --default-provider cloudhypervisor --verbosity 0" style="font-family:monospace; font-size:0.85em;"><?=htmlspecialchars($cfg['FLINTLOCKD_FLAGS'] ?? '')?></textarea>
 
-> Command-line flags passed to flintlockd on startup.
+> All command-line flags passed to `flintlockd run`. Leave empty for defaults.
 
 <?php endif; ?>
 

@@ -41,7 +41,7 @@ THINPOOL_DATA_SIZE="${THINPOOL_DATA_SIZE_GB}G"
 THINPOOL_META_SIZE="${THINPOOL_META_SIZE:-500M}"
 FLINTLOCKD="${FLINTLOCKD:-disable}"
 FLINTLOCKD_GRPC_PORT="${FLINTLOCKD_GRPC_PORT:-9090}"
-FLINTLOCKD_EXTRA_FLAGS="${FLINTLOCKD_EXTRA_FLAGS:---insecure --default-provider cloudhypervisor}"
+FLINTLOCKD_FLAGS="${FLINTLOCKD_FLAGS:---grpc-endpoint 0.0.0.0:${FLINTLOCKD_GRPC_PORT} --containerd-socket ${CONTAINERD_SOCK} --bridge-name ${BRIDGE} --parent-iface ${BRIDGE} --cloudhypervisor-bin ${CH_BIN} --firecracker-bin ${FC_BIN} --state-dir ${RUNTIME_DIR}/flintlockd-state --log-output ${FLINTLOCKD_LOG} --insecure --default-provider cloudhypervisor --verbosity 0}"
 DEVMAPPER="${DEVMAPPER:-enable}"
 CH_ENABLED="${CH_ENABLED:-yes}"
 FC_ENABLED="${FC_ENABLED:-no}"
@@ -387,16 +387,13 @@ start_flintlockd() {
   # Create state directory
   mkdir -p "${RUNTIME_DIR}/flintlockd-state"
 
+  # Flintlockd has a known bug: tight error loop on containerd event service
+  # spams "error from event service: %!s(<nil>)" filling /var/log tmpfs.
+  # Redirect logs to a fixed-size file, truncated on start.
+  : > "$FLINTLOCKD_LOG"
   "$FLINTLOCKD_BIN" run \
-    --grpc-endpoint "0.0.0.0:${FLINTLOCKD_GRPC_PORT}" \
-    --containerd-socket "$CONTAINERD_SOCK" \
-    --bridge-name "$BRIDGE" \
-    --parent-iface "$BRIDGE" \
-    --cloudhypervisor-bin "$CH_BIN" \
-    --firecracker-bin "$FC_BIN" \
-    --state-dir "${RUNTIME_DIR}/flintlockd-state" \
-    $FLINTLOCKD_EXTRA_FLAGS \
-    >> "$FLINTLOCKD_LOG" 2>&1 &
+    $FLINTLOCKD_FLAGS \
+    >/dev/null 2>&1 &
   local pid=$!
 
   echo "$pid" > "$FLINTLOCKD_PID"
