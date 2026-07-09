@@ -112,6 +112,17 @@ if ($fc_enabled) {
 $lines[] = "++-- runtime";
 if ($enabled) {
     $lines[] = "+++--- containerd       : " . ($containerd_running ? '<span class="green">running</span>' : '<span class="red">stopped</span>') . " — " . htmlspecialchars($containerd_version ?: 'unknown');
+    // Namespaces (sub of containerd)
+    $ns_list = [];
+    $ns_raw = trim(shell_exec("ctr -a /var/run/microvms/containerd.sock namespaces list -q 2>/dev/null"));
+    if (!empty($ns_raw)) $ns_list = explode("\n", $ns_raw);
+    $ns_roles = ['default'=>'fallback','ch'=>'Cloud Hypervisor','fc'=>'Firecracker','flintlock'=>'Liquidmetal'];
+    $ns_parts = [];
+    foreach ($ns_list as $ns) {
+        $role = $ns_roles[trim($ns)] ?? 'custom';
+        $ns_parts[] = trim($ns) . ' <span class="grey">(' . $role . ')</span>';
+    }
+    $lines[] = "++++---- namespaces     : " . (empty($ns_parts) ? '<span class="grey">none</span>' : implode(', ', $ns_parts));
 } else {
     $lines[] = '+++--- containerd       : <span class="grey">disabled</span>';
 }
@@ -130,17 +141,6 @@ if ($flintlockd_enabled) {
 } else {
     $lines[] = '+++--- status           : <span class="grey">disabled</span>';
 }
-// Namespaces (loaded from containerd)
-$ns_list = [];
-$ns_raw = trim(shell_exec("ctr -a /var/run/microvms/containerd.sock namespaces list -q 2>/dev/null"));
-if (!empty($ns_raw)) $ns_list = explode("\n", $ns_raw);
-$ns_roles = ['default'=>'fallback','ch'=>'Cloud Hypervisor','fc'=>'Firecracker','flintlock'=>'Liquidmetal'];
-$ns_parts = [];
-foreach ($ns_list as $ns) {
-    $role = $ns_roles[trim($ns)] ?? 'custom';
-    $ns_parts[] = trim($ns) . ' <span class="grey">(' . $role . ')</span>';
-}
-$lines[] = "++-- namespaces         : " . (empty($ns_parts) ? '<span class="grey">none</span>' : implode(', ', $ns_parts));
 echo implode("\n", $lines);
 ?></div>
   <div class="mvm-btn-grp">
