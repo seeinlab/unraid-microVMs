@@ -37,6 +37,23 @@
 | Prune unused OCI images | ✅ Done | ✅ | ✅ |
 | Delete VM (with thin cleanup) | ✅ Done | ✅ | ✅ |
 | Live migration | 🚧 Planned | ✅ (CH supports) | ❌ |
+| WebGUI Storage tab (4-panel) | ✅ Done | ✅ | ✅ |
+| Live VM stats (CPU/RAM/IO) | ✅ Done | ✅ | ✅ |
+
+---
+
+### Storage Tab (WebGUI)
+
+The Storage tab (`MicroVMsRootFS.page`) provides a unified view of all storage resources across namespaces. It is organized into 4 sections:
+
+| Section | Data Source | Actions |
+|---------|-------------|---------|
+| **Thin Pool Status** | `storage_info` → `thin_pool` | Refresh (shows data/meta usage bars, device name) |
+| **Volumes** | `storage_info` → `volumes[]` | Export to .raw (`export_rootfs`), Remove (`remove_volume`) |
+| **Images** | `storage_info` → `images[]` | Pull Image (`pull_image`), Pull & Convert (`pull_rootfs`), Remove (`remove_image`) |
+| **Garbage Collection** | — | Run GC (`run_gc`) — removes unused images + orphan layers |
+
+All data is loaded via a single `storage_info` AJAX call on page load, with per-action commands for mutations. Volumes show type (thin/raw), size, device path, active/committed status, and which VM uses them. Images show reference, namespace, size, and which VMs reference them.
 
 ---
 
@@ -241,6 +258,7 @@ Parameters sent via `$_REQUEST` (supports both GET and POST).
 | `vm_log` | `name`, `engine` | `{success, log}` | Per-VMM log (CH: `.serial.log`, FC: `.log`) |
 | `console_output` | `name` | `{success, log}` | Last 100 lines of serial log (ANSI stripped) |
 | `view_log` | `service` | `{success, log}` | View service or VM log (200 lines, ANSI stripped) |
+| `vm_stats` | — | `{success, stats: [{name, vmm, pid, tap, vcpus, mem_current, mem_max, cpu_percent, rss_mb, disk_read_mb, disk_write_mb, net_rx_mb, net_tx_mb, uptime}]}` | Live resource stats for all running VMs (polled by AJAX) |
 
 #### Console
 
@@ -301,7 +319,27 @@ Parameters sent via `$_REQUEST` (supports both GET and POST).
 
 | Command | Parameters | Response | Description |
 |---------|-----------|----------|-------------|
-| `prune_images` | — | `{success, message}` | Remove unused OCI images from containerd |
+| `prune_images` | `namespace?` (default: `"all"`) | `{success, message}` | Remove unused OCI images from containerd |
+| `run_gc` | `namespace?` (default: `"all"`) | `{success, message}` | Remove unused images + trigger containerd GC + clean orphan committed layers |
+
+#### Storage Management
+
+| Command | Parameters | Response | Description |
+|---------|-----------|----------|-------------|
+| `storage_info` | — | `{success, data: {thin_pool, volumes: [], images: []}}` | Thin pool status + all volumes (thin & raw) + all images across namespaces |
+| `pull_image` | `image`, `namespace?` | `{success, message, output}` | Pull OCI image into containerd namespace (normalizes Docker Hub refs) |
+| `pull_rootfs` | `name`, `image`, `namespace?`, `storage_type?` | `{success, message}` | Pull OCI image + create rootfs volume (thin snapshot or raw ext4 file) |
+| `export_rootfs` | `name`, `namespace?` | `{success, message}` | Export thin volume to `.raw` file via `dd` from devmapper device |
+| `remove_image` | `image`, `namespace` | `{success, message}` | Remove specific image from namespace + trigger GC |
+| `remove_volume` | `name`, `namespace?`, `type?` | `{success, message}` | Remove thin snapshot (with cascade) or raw rootfs file |
+
+#### Liquidmetal Per-VM Operations
+
+| Command | Parameters | Response | Description |
+|---------|-----------|----------|-------------|
+| `flintlock_start` | `uid` | `{success, message}` | Restart flintlockd to force immediate reconcile (resync pending VMs) |
+| `flintlock_force_stop` | `name` | `{success, message}` | Kill flintlockd VM process directly (`kill -9`); flintlockd may restart it on next reconcile |
+| `flintlock_delete` | `uid` | `{success, message, output}` | Delete VM via gRPC `DeleteMicroVM` API call |
 
 
 
@@ -638,7 +676,7 @@ PATCH /vm → {state: "Resumed"}
 ├── event/stopping_svcs               ← Unraid shutdown hook
 ├── MicroVMs.page                     ← Main menu entry
 ├── MicroVMsMachines.page             ← VM list + context menu
-├── MicroVMsRootFS.page               ← RootFS management
+├── MicroVMsRootFS.page               ← Storage tab (thin pool, volumes, images, GC)
 ├── MicroVMsStats.page                ← Statistics view
 ├── AddMicroVMs.page                  ← Create VM form
 ├── MicroVMsSettings.page             ← Settings tab container (Type=xmenu)
