@@ -1798,7 +1798,6 @@ INIT;
         }
         if (file_exists($logfile)) {
             $log = shell_exec("tail -100 " . escapeshellarg($logfile) . " 2>/dev/null");
-            $log = preg_replace('/\033\[[0-9;]*[a-zA-Z]/', '', $log ?: '');
             echo json_encode(['success' => true, 'log' => $log ?: '(empty)']);
         } else {
             echo json_encode(['success' => true, 'log' => '(no output yet)']);
