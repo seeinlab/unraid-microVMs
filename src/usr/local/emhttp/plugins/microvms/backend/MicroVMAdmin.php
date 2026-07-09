@@ -1096,6 +1096,9 @@ SCRIPT;
                 $snapKey = $cols[0];
                 $snapKind = $cols[2] ?? '';
                 $status = (strtolower($snapKind) === 'active') ? 'active' : 'committed';
+                // Only show Active snapshots (actual VM rootfs volumes)
+                // Committed layers are internal (managed by containerd GC)
+                if ($status !== 'active') continue;
                 // Determine which VM uses this snapshot
                 $usedBy = 'unused';
                 foreach ($vmConfigs as $vc) {
@@ -1364,6 +1367,8 @@ SCRIPT;
         break;
 
     case 'prune_images':
+    case 'run_gc':
+        // Remove unused images + trigger containerd garbage collection
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
         $pruneNs = $_REQUEST['namespace'] ?? 'all';
@@ -1383,7 +1388,6 @@ SCRIPT;
             $content = @file_get_contents($f);
             if ($content && preg_match('/"ref"\s*:\s*"([^"]+)"/', $content, $m)) {
                 $ref = str_replace('\\/', '/', $m[1]);
-                // Normalize
                 if (!str_contains($ref, '/')) $ref = "docker.io/library/$ref";
                 elseif (preg_match('#^docker\.io/([^/]+)$#', $ref, $rm)) $ref = "docker.io/library/" . $rm[1];
                 if (!str_contains($ref, ':')) $ref .= ':latest';
@@ -1391,7 +1395,7 @@ SCRIPT;
             }
         }
 
-        // Remove images not in usedImages
+        // Remove images not used by any VM
         $removed = 0;
         foreach ($namespaces as $ns) {
             $ns = trim($ns);
@@ -1400,17 +1404,21 @@ SCRIPT;
             if (!$imgList) continue;
             foreach (array_filter(explode("\n", trim($imgList))) as $img) {
                 if (!isset($usedImages[$img])) {
-                    exec("ctr -a $sock -n $ns images rm " . escapeshellarg($img) . " 2>&1", $rmOut);
-                    $output[] = "[$ns] Removed: $img";
+                    exec("ctr -a $sock -n $ns images rm " . escapeshellarg($img) . " 2>&1");
+                    $output[] = "[$ns] Removed image: $img";
                     $removed++;
                 }
             }
+            // Trigger GC for this namespace
+            exec("ctr -a $sock -n $ns content garbage-collect 2>/dev/null");
         }
-        echo json_encode(['success' => true, 'message' => $removed > 0 ? implode("\n", $output) : 'No unused images to prune (all images are used by VMs)']);
+        $output[] = "Garbage collection triggered.";
+        microvm_log("RUN_GC: removed $removed images, GC triggered");
+        echo json_encode(['success' => true, 'message' => $removed > 0 ? implode("\n", $output) : "No unused images found. Garbage collection triggered."]);
         break;
 
     case 'remove_image':
-        // Remove a specific image by ref from a namespace
+        // Remove a specific image by ref from a namespace, then trigger GC
         $sock = '/var/run/microvms/containerd.sock';
         $ref = $_REQUEST['image'] ?? '';
         $ns = $_REQUEST['namespace'] ?? '';
@@ -1419,9 +1427,11 @@ SCRIPT;
             break;
         }
         exec("ctr -a $sock -n " . escapeshellarg($ns) . " images rm " . escapeshellarg($ref) . " 2>&1", $rmOut, $rmRet);
+        // Trigger garbage collection to clean orphaned snapshots/content
+        exec("ctr -a $sock -n " . escapeshellarg($ns) . " content garbage-collect 2>/dev/null");
         if ($rmRet === 0) {
-            microvm_log("REMOVE_IMAGE: $ref from $ns");
-            echo json_encode(['success' => true, 'message' => "Removed: $ref from namespace $ns"]);
+            microvm_log("REMOVE_IMAGE: $ref from $ns (GC triggered)");
+            echo json_encode(['success' => true, 'message' => "Removed: $ref from namespace $ns\nGarbage collection triggered."]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Remove failed: ' . implode(' ', $rmOut)]);
         }
@@ -1493,7 +1503,7 @@ SCRIPT;
         break;
 
     case 'remove_volume':
-        // Remove a volume: thin (unmount snapshot) or raw (delete file)
+        // Remove a volume: thin (unmount/remove snapshot chain) or raw (delete file)
         $sock = '/var/run/microvms/containerd.sock';
         $volName = $_REQUEST['name'] ?? '';
         $volNs = $_REQUEST['namespace'] ?? 'default';
@@ -1505,15 +1515,49 @@ SCRIPT;
         }
 
         if ($volType === 'thin') {
-            // Unmount the active snapshot
-            exec("ctr -a $sock -n " . escapeshellarg($volNs) . " images unmount " . escapeshellarg($volName) . " 2>&1", $umOut, $umRet);
-            // Also try removing the snapshot key
+            $output = [];
+            // If it's an active mount, unmount first
+            if (strpos($volName, '/tmp/microvm-mount-') === 0) {
+                exec("ctr -a $sock -n " . escapeshellarg($volNs) . " images unmount " . escapeshellarg($volName) . " 2>&1", $umOut);
+                $output[] = "Unmounted: $volName";
+            }
+            // Try direct snapshot removal
             exec("ctr -a $sock -n " . escapeshellarg($volNs) . " snapshots --snapshotter devmapper rm " . escapeshellarg($volName) . " 2>&1", $rmOut, $rmRet);
-            if ($umRet === 0 || $rmRet === 0) {
+            if ($rmRet === 0) {
+                $output[] = "Snapshot removed: $volName";
                 microvm_log("REMOVE_VOLUME (thin): $volName from $volNs");
-                echo json_encode(['success' => true, 'message' => "Thin volume '$volName' removed from namespace $volNs"]);
+                echo json_encode(['success' => true, 'message' => implode("\n", $output)]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Remove failed: ' . implode(' ', array_merge($umOut, $rmOut))]);
+                // Has children — need to remove children first (bottom-up)
+                // Get full snapshot tree, find and remove leaf children first
+                $allSnaps = shell_exec("ctr -a $sock -n " . escapeshellarg($volNs) . " snapshots --snapshotter devmapper list 2>/dev/null");
+                $children = [];
+                if ($allSnaps) {
+                    foreach (explode("\n", trim($allSnaps)) as $sline) {
+                        $scols = preg_split('/\s+/', trim($sline), 3);
+                        if (count($scols) >= 2 && $scols[1] === $volName) {
+                            $children[] = $scols[0];
+                        }
+                    }
+                }
+                if (!empty($children)) {
+                    // Remove children first (recursive-ish, one level)
+                    foreach ($children as $child) {
+                        exec("ctr -a $sock -n " . escapeshellarg($volNs) . " snapshots --snapshotter devmapper rm " . escapeshellarg($child) . " 2>/dev/null");
+                        $output[] = "Removed child: $child";
+                    }
+                    // Retry parent
+                    exec("ctr -a $sock -n " . escapeshellarg($volNs) . " snapshots --snapshotter devmapper rm " . escapeshellarg($volName) . " 2>&1", $rm2Out, $rm2Ret);
+                    if ($rm2Ret === 0) {
+                        $output[] = "Snapshot removed: $volName";
+                        microvm_log("REMOVE_VOLUME (thin cascade): $volName from $volNs");
+                        echo json_encode(['success' => true, 'message' => implode("\n", $output)]);
+                    } else {
+                        echo json_encode(['success' => false, 'error' => "Cannot remove: still has dependencies. Remove the image first.\n" . implode(' ', $rm2Out)]);
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Remove failed: ' . implode(' ', $rmOut)]);
+                }
             }
         } else {
             // Raw: delete the rootfs.raw file

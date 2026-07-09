@@ -105,7 +105,7 @@ if (empty($nsOptions)) $nsOptions = '<option value="default">default</option><op
   <span style="float:right;">
     <input type="button" onclick="pullImage()" value="Pull Image">
     <input type="button" onclick="pullAndConvert()" value="Pull & Convert to rootfs">
-    <input type="button" onclick="pruneImages()" value="Prune Unused">
+    <input type="button" onclick="runGC()" value="Run GC">
   </span>
 </td></tr></thead>
 </table>
@@ -215,10 +215,9 @@ function renderVolumes(volumes) {
       : '<span class="tag-unused">unused</span>';
     var sizeStr = v.size_mb > 0 ? formatSize(v.size_mb) : '—';
     var canRemove = false;
-    // Only allow remove for: raw files (any unused) or active mount snapshots (unmount)
     if (v.type === 'raw' && (!v.used_by || v.used_by === 'unused')) {
       canRemove = true;
-    } else if (v.type === 'thin' && v.status === 'active' && v.name.indexOf('/tmp/microvm-mount-') === 0 && (!v.used_by || v.used_by === 'unused')) {
+    } else if (v.type === 'thin' && (!v.used_by || v.used_by === 'unused')) {
       canRemove = true;
     }
     var actions = '';
@@ -313,31 +312,32 @@ function pullImage() {
   });
 }
 
-function pruneImages() {
+function runGC() {
   swal({
-    title: 'Prune Unused Images',
+    title: 'Run Garbage Collection',
     html: true,
     text: '<div style="text-align:left;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
-      + '<select id="swal-prune-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
+      + '<select id="swal-gc-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
       + '<option value="all">All namespaces</option>'
       + '<?=$nsOptions?>'
       + '</select>'
-      + '<p style="margin-top:10px;font-size:0.85em;opacity:0.7;">This removes images not used by any VM.</p>'
+      + '<p style="margin-top:10px;font-size:0.85em;opacity:0.7;">Removes images not used by any VM, then triggers containerd garbage collection to clean orphaned snapshots and layers.</p>'
       + '</div>',
     showCancelButton: true,
-    confirmButtonText: 'Prune',
+    confirmButtonText: 'Run GC',
     cancelButtonText: 'Cancel',
     closeOnConfirm: false
   }, function(confirmed) {
     if (!confirmed) return;
-    var ns = document.getElementById('swal-prune-ns').value;
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: ns}, function(resp) {
+    var ns = document.getElementById('swal-gc-ns').value;
+    swal({title: 'Running...', text: 'Removing unused images and running GC...', type: 'info', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'run_gc', namespace: ns}, function(resp) {
       if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
       if (resp.success) {
-        swal({title: 'Done', text: resp.message || 'Prune complete', type: 'success'}, function() { refreshStorage(); });
+        swal({title: 'Done', text: resp.message || 'GC complete', type: 'success'}, function() { refreshStorage(); });
       } else {
-        swal({title: 'Error', text: resp.error || 'Prune failed', type: 'error'});
+        swal({title: 'Error', text: resp.error || 'GC failed', type: 'error'});
       }
     }).fail(function() {
       swal({title: 'Error', text: 'Request failed', type: 'error'});
