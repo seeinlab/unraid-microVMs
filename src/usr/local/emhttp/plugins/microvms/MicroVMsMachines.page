@@ -320,9 +320,31 @@ function vmAction(action, name) {
   });
 }
 
+// ANSI color code to HTML converter
+function ansiToHtml(text) {
+  var colors = {
+    '30':'#545862','31':'#e06c75','32':'#98c379','33':'#e5c07b','34':'#61afef','35':'#c678dd','36':'#56b6c2','37':'#c9d1d9',
+    '90':'#636d83','91':'#e06c75','92':'#98c379','93':'#e5c07b','94':'#61afef','95':'#c678dd','96':'#56b6c2','97':'#ffffff'
+  };
+  var esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/\x1b\[([0-9;]*)m/g, function(_, codes) {
+    if (!codes || codes === '0') return '</span>';
+    var parts = codes.split(';'), style = '';
+    for (var i = 0; i < parts.length; i++) {
+      var c = parts[i];
+      if (c === '1') style += 'font-weight:bold;';
+      else if (c === '3') style += 'font-style:italic;';
+      else if (c === '4') style += 'text-decoration:underline;';
+      else if (colors[c]) style += 'color:' + colors[c] + ';';
+      else if (c >= '40' && c <= '47') style += 'background:' + (colors[''+(parseInt(c)-10)] || '') + ';';
+    }
+    return style ? '<span style="' + style + '">' : '';
+  });
+}
+
 function vmConsole(name) {
   var html = '<div id="console-wrap" style="text-align:left;width:100%;">' +
-    '<pre id="console-output" style="height:400px;overflow-y:scroll;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#0d1117;padding:12px;border-radius:4px;color:#c9d1d9;border:1px solid #30363d;"></pre>' +
+    '<pre id="console-output" style="height:400px;overflow-y:scroll;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-all;background:#0d1117;padding:12px;border-radius:4px;color:#c9d1d9;border:1px solid #30363d;"></pre>' +
     '<div id="console-input-row" style="margin-top:8px;display:flex;gap:8px;align-items:center;width:100%;"></div>' +
   '</div>';
 
@@ -374,7 +396,7 @@ function vmConsole(name) {
         $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'console_output', name: name}, function(data) {
           if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
           if (data && data.success && output) {
-            output.textContent = data.log || '';
+            output.innerHTML = ansiToHtml(data.log || '(empty)');
             if (shouldScroll) {
               output.scrollTop = output.scrollHeight;
               shouldScroll = false;
