@@ -1160,6 +1160,7 @@ SCRIPT;
                     'device' => "devmapper/$snapKey",
                     'status' => $status,
                     'used_by' => $usedBy,
+                    'has_children' => $hasChildren,
                 ];
             }
         }

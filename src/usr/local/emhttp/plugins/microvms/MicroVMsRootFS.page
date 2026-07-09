@@ -214,11 +214,12 @@ function renderVolumes(volumes) {
     var canRemove = false;
     // Only allow remove for:
     // - Raw files that are unused
-    // - Active thin snapshots that are unused (unmount)
+    // - Active thin snapshots that are unused AND have no children (unmount)
     // - Layer snapshots: NEVER (managed by GC after VM delete)
+    // - Parent snapshots (has_children): NEVER (would break child snapshots)
     if (v.type === 'raw' && (!v.used_by || v.used_by === 'unused')) {
       canRemove = true;
-    } else if (v.type === 'thin' && v.status === 'active' && (!v.used_by || v.used_by === 'unused')) {
+    } else if (v.type === 'thin' && v.status === 'active' && (!v.used_by || v.used_by === 'unused') && !v.has_children) {
       canRemove = true;
     }
     // Layers (committed) are never manually removable — use Run GC after deleting VM
