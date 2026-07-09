@@ -1054,14 +1054,21 @@ SCRIPT;
                     $dataTotal = intval($m[2]);
                 }
             }
-            // Each block = 512 bytes (sectors)
+            // Get block size from dmsetup table (sectors per block)
+            $dmTable = trim(shell_exec("dmsetup table microvms-thinpool 2>/dev/null"));
+            $tParts = preg_split('/\s+/', $dmTable);
+            $blockSectors = intval($tParts[5] ?? 128); // default 128 sectors = 64KB
+            $blockBytes = $blockSectors * 512;
+            // Meta blocks are always 4KB (fixed by device-mapper)
+            $metaBlockBytes = 4096;
+
             $result['thin_pool'] = [
                 'status' => 'active',
-                'data_used_mb' => round($dataUsed * 512 / 1048576, 1),
-                'data_total_mb' => round($dataTotal * 512 / 1048576, 1),
+                'data_used_mb' => round($dataUsed * $blockBytes / 1048576, 1),
+                'data_total_mb' => round($dataTotal * $blockBytes / 1048576, 1),
                 'data_percent' => $dataTotal > 0 ? round($dataUsed / $dataTotal * 100, 1) : 0,
-                'meta_used_mb' => round($metaUsed * 512 / 1048576, 2),
-                'meta_total_mb' => round($metaTotal * 512 / 1048576, 2),
+                'meta_used_mb' => round($metaUsed * $metaBlockBytes / 1048576, 2),
+                'meta_total_mb' => round($metaTotal * $metaBlockBytes / 1048576, 2),
                 'device' => 'microvms-thinpool',
             ];
         } else {
