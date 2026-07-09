@@ -135,6 +135,10 @@ echo implode("\n", $lines);
   <div class="mvm-btn-grp">
     <input type="button" value="Refresh Status" onclick="location.reload()">
   </div>
+  <div style="margin-top:12px;">
+    <strong>Namespaces:</strong>
+    <span id="namespace-list" style="font-family:monospace;font-size:0.9rem;"></span>
+  </div>
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
 
@@ -207,26 +211,17 @@ _(Thin Pool Size)_ (GB):
 : <span class="inline-block"><input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 </form>
 
-<div style="margin-top:20px;">
-<strong>Namespaces</strong>
-<div id="namespace-list" style="margin-top:8px;font-family:monospace;font-size:0.9rem;"></div>
-</div>
-
 <script>
-function loadNamespaces() {
+$(function(){
   $.post('/plugins/microvms/backend/MicroVMAdmin.php', {cmd: 'list_namespaces'}, function(data) {
     if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
     if (data && data.success) {
-      var html = '<table class="tablesorter" style="width:auto;"><thead><tr><th>Namespace</th><th>Role</th></tr></thead><tbody>';
       var roles = {'default': 'fallback', 'ch': 'Cloud Hypervisor', 'fc': 'Firecracker', 'flintlock': 'Liquidmetal'};
-      (data.namespaces || []).forEach(function(ns) {
-        var role = roles[ns] || 'custom';
-        html += '<tr><td>' + ns + '</td><td style="color:#888;">' + role + '</td></tr>';
+      var parts = (data.namespaces || []).map(function(ns) {
+        return '<b>' + ns + '</b> <span style="color:#888;">(' + (roles[ns] || 'custom') + ')</span>';
       });
-      html += '</tbody></table>';
-      document.getElementById('namespace-list').innerHTML = html;
+      document.getElementById('namespace-list').innerHTML = parts.join(' &nbsp;·&nbsp; ');
     }
   });
-}
-$(function(){ loadNamespaces(); });
+});
 </script>
