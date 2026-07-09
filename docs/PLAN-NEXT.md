@@ -110,7 +110,12 @@
 - [ ] Community Applications submission
 - [ ] Multi-NIC support (CH: `ch-remote add-net` hotplug)
 - [ ] VM migration between hosts (requires shared storage)
-- [ ] OpenBao/Vault secrets integration (encrypted secrets layer, resolved at VM start, not baked into rootfs)
+- [ ] **OpenBao/Vault secrets + SSH** integration
+  - Encrypted secrets layer, resolved at VM start (not baked into rootfs)
+  - Inject secrets as env vars via `/fly/env.sh` from OpenBao KV store
+  - SSH CA: sign ephemeral SSH keys per VM (no static keys on disk)
+  - Manage SSH access per VM/namespace via OpenBao policies
+  - Rotate secrets without VM restart (agent-based or periodic refresh)
 
 ---
 
