@@ -105,19 +105,12 @@
   - Requires IOMMU groups, vfio-pci binding, device picker UI
 - [ ] **Live Migration** (CH only) — `ch-remote send-migration`
   - Move running VM between Unraid hosts without downtime
-- [ ] **UEFI Firmware Boot** (CH only) — `--firmware CLOUDHV.fd`
-  - Boot standard cloud images without custom kernel
-- [ ] **MMDS** (FC only) — metadata service at 169.254.169.254
-  - Cloud-init compatible config injection
-- [ ] **CPU Templates** (FC only) — `"cpu_template": "T2"`
-  - Named presets for snapshot/restore across CPU generations
 - [ ] Multi-container per VM (Fly.io rate-limiter-demo pattern)
 - [ ] TLS/auth for flintlockd
 - [ ] Community Applications submission
 - [ ] Multi-NIC support (CH: `ch-remote add-net` hotplug)
 - [ ] VM migration between hosts (requires shared storage)
 - [ ] OpenBao/Vault secrets integration (encrypted secrets layer, resolved at VM start, not baked into rootfs)
-- [ ] TPM support (CH only) — `--tpm socket=<swtpm_path>` (Windows 11 / Secure Boot)
 
 ---
 
