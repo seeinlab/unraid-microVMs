@@ -891,6 +891,7 @@ FCEOF
           /usr/local/sbin/virtiofsd \
             --socket-path="$vfs_sock" \
             --shared-dir="$vfs_host_path" \
+            --sandbox=none \
             --cache=never &
           local vfs_pid=$!
           echo "$vfs_pid" > "${vfs_dir}/vfs-${vfs_tag}.pid"
