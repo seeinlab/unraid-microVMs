@@ -1,16 +1,16 @@
-# Graph Report - unraid-microVMs  (2026-07-09)
+# Graph Report - unraid-microVMs  (2026-07-08)
 
 ## Corpus Check
-- 136 files · ~121,974 words
+- 135 files · ~116,029 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1617 nodes · 1539 edges · 178 communities (127 shown, 51 thin omitted)
+- 1582 nodes · 1505 edges · 177 communities (126 shown, 51 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9c194451`
+- Built from commit: `6bfd2534`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -177,7 +177,6 @@
 - [[_COMMUNITY_ValidationError (class)|ValidationError (class)]]
 - [[_COMMUNITY_Backend Commands (MicroVMAdmin.php)|Backend Commands (MicroVMAdmin.php)]]
 - [[_COMMUNITY_microVMs Plugin Documentation|microVMs Plugin Documentation]]
-- [[_COMMUNITY_5. Recommendations for Our Plugin|5. Recommendations for Our Plugin]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `compilerOptions` - 26 edges
@@ -186,10 +185,10 @@
 4. `Testing Skills With Subagents` - 16 edges
 5. `Code Review Reception` - 15 edges
 6. `Test-Driven Development (TDD)` - 15 edges
-7. `microVMs Plugin — Verified Architecture` - 14 edges
-8. `Init Process Architecture (Research)` - 14 edges
-9. `PLAN: Init Refactor — /fly/run.json Pattern` - 14 edges
-10. `Session Resume Context — microVM Liquidmetal Unraid Plugin` - 13 edges
+7. `Init Process Architecture (Research)` - 14 edges
+8. `PLAN: Init Refactor — /fly/run.json Pattern` - 14 edges
+9. `Session Resume Context — microVM Liquidmetal Unraid Plugin` - 13 edges
+10. `Deploying with Laravel Cloud CLI` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
 - None detected - all connections are within the same source files.
@@ -197,7 +196,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (178 total, 51 thin omitted)
+## Communities (177 total, 51 thin omitted)
 
 ### Community 0 - "compilerOptions"
 Cohesion: 0.06
@@ -300,8 +299,8 @@ Cohesion: 0.09
 Nodes (22): AWS Lambda MicroVMs, Container Init Systems Comparison, Date: 2026-07-06, Fly.io (superfly), Future:, History (from git archaeology), Init Process Research Notes, Key URLs (+14 more)
 
 ### Community 61 - "microVMs Plugin — Verified Architecture"
-Cohesion: 0.08
-Nodes (25): Cloud Hypervisor, Console Model, Containerd Role, Create, Date: 2026-07-08, Design: Plugin + Flintlockd Coexistence, Firecracker, Guest Init Architecture (+17 more)
+Cohesion: 0.09
+Nodes (21): Containerd Role (limited, focused), Create, Date: 2026-07-08, Design: Plugin + Flintlockd Coexistence, File Layout, Guest Init Architecture, How to support both WebGUI and flintlockd:, Implementation plan: (+13 more)
 
 ### Community 62 - "Enterprise Patterns Reference"
 Cohesion: 0.09
@@ -643,12 +642,8 @@ Nodes (44): API Reference, Architecture, Backend Commands (MicroVMAdmin.php), Cl
 Cohesion: 0.40
 Nodes (5): API Reference, Architecture & Design, microVMs Plugin Documentation, Progress, Research
 
-### Community 177 - "5. Recommendations for Our Plugin"
-Cohesion: 0.06
-Nodes (30): 1. AWS (firecracker-containerd), 2. Fly.io, 3. Kata Containers, 4. Common Patterns, 5. Recommendations for Our Plugin, Adopt for V2 (Quality of Life), Adopt Immediately, Containerd Config Template for Plugin (+22 more)
-
 ## Knowledge Gaps
-- **1115 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1110 more)
+- **1088 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1083 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -656,16 +651,16 @@ Nodes (30): 1. AWS (firecracker-containerd), 2. Fly.io, 3. Kata Containers, 4. C
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Mastering Modern TypeScript` connect `Mastering Modern TypeScript` to `NestJS Integration Reference`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `TypeScript Type System Reference` connect `TypeScript Type System Reference` to `NestJS Integration Reference`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
-- **Why does `microVMs Plugin — Design Patterns` connect `microVMs Plugin — Design Patterns` to `README.md`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `mcp-remote`, `start-server.sh script`, `stop-server.sh script` to the rest of the system?**
-  _1115 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1088 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._
 - **Should `NestJS Integration Reference` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `common.php` be split into smaller, more focused modules?**
   _Cohesion score 0.13636363636363635 - nodes in this community are weakly interconnected._
+- **Should `Testing Skills With Subagents` be split into smaller, more focused modules?**
+  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._

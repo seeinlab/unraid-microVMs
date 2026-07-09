@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php": {
-    "mtime": 1783568366.6891756,
-    "ast_hash": "e629999e58c461ebc3c2cf8d72a3feb3",
+    "mtime": 1783490811.9056194,
+    "ast_hash": "0a1870a0033a47a7c532d142b87ddad1",
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/event/array_started": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/include/common.php": {
-    "mtime": 1783544670.6874776,
-    "ast_hash": "d336f8ebd3ceccf33d362236357b0d82",
+    "mtime": 1783491034.6392019,
+    "ast_hash": "866256323daefb469dcbf32d5ca45886",
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/restart.sh": {
@@ -585,8 +585,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1783494298.3820338,
-    "ast_hash": "0cddbbbfaf12beb7e2bf054989d72c75",
+    "mtime": 1783492465.8590822,
+    "ast_hash": "1121685ac2a53763ce956a92fd4f04d6",
     "semantic_hash": ""
   },
   "README.md": {
@@ -595,13 +595,13 @@
     "semantic_hash": ""
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1783495577.899989,
-    "ast_hash": "6193e22f58e90b3ad23e19f53f6b9c7a",
+    "mtime": 1783476779.7063925,
+    "ast_hash": "60e2e8743588f37370caf2d7ebaf93e1",
     "semantic_hash": ""
   },
   "docs/PLAN-NEXT.md": {
-    "mtime": 1783504993.4357195,
-    "ast_hash": "f2dcdd86a68173f2c7eea7601646407e",
+    "mtime": 1783491253.220806,
+    "ast_hash": "ce326b2e3efe238f2bec092a9dc60f11",
     "semantic_hash": ""
   },
   "docs/PLAN-console.md": {
@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "docs/flintlockd-grpc-api.md": {
-    "mtime": 1783502971.627161,
-    "ast_hash": "267ec1067454a8b925ce42a7f2fedb8b",
+    "mtime": 1783218324.771133,
+    "ast_hash": "9a9c9230c2f5b9e5b6206d543b3ad6f8",
     "semantic_hash": ""
   },
   "docs/kata-containers-research.md": {
@@ -700,13 +700,8 @@
     "semantic_hash": ""
   },
   "docs/FEATURES-AND-DATA-MODELS.md": {
-    "mtime": 1783495430.366972,
-    "ast_hash": "d8a36ed34f325e00a506519b94c7bc37",
-    "semantic_hash": ""
-  },
-  "docs/RESEARCH-containerd-storage.md": {
-    "mtime": 1783566728.512139,
-    "ast_hash": "460a35dc4782ad4217af7fa14c0f6dc9",
+    "mtime": 1783492697.7580502,
+    "ast_hash": "a48ea70e5ac2c428030d567824ce18aa",
     "semantic_hash": ""
   }
 }
