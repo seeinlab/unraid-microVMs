@@ -400,8 +400,13 @@ function pullAndConvert() {
       + '<?=$nsOptions?>'
       + '</select>'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Volume Name (for the rootfs):</label>'
-      + '<input id="swal-conv-name" class="swal2-input" placeholder="e.g. my-nginx" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
-      + '<p style="margin-top:10px;font-size:0.8em;opacity:0.6;">Pulls image, creates thin snapshot, and mounts as ready-to-use rootfs volume.</p>'
+      + '<input id="swal-conv-name" class="swal2-input" placeholder="e.g. my-nginx" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;margin-bottom:12px;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Storage Type:</label>'
+      + '<select id="swal-conv-type" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
+      + '<option value="thin">Thin (devmapper snapshot — shared layers, copy-on-write)</option>'
+      + '<option value="raw">Raw (rootfs.raw file — standalone, portable)</option>'
+      + '</select>'
+      + '<p style="margin-top:10px;font-size:0.8em;opacity:0.6;">Thin: pulls and mounts as devmapper snapshot (fast, shared layers).<br>Raw: pulls, extracts to raw ext4 image file (portable, no thin pool needed).</p>'
       + '</div>',
     showCancelButton: true,
     confirmButtonText: 'Pull & Convert',
@@ -412,10 +417,11 @@ function pullAndConvert() {
     var ref = document.getElementById('swal-conv-ref').value.trim();
     var ns = document.getElementById('swal-conv-ns').value;
     var volName = document.getElementById('swal-conv-name').value.trim();
+    var storageType = document.getElementById('swal-conv-type').value;
     if (!ref) { swal.showInputError('Please enter an image reference'); return false; }
     if (!volName) { swal.showInputError('Please enter a volume name'); return false; }
-    swal({title: 'Converting...', text: 'Pulling ' + ref + ' and creating rootfs volume...', type: 'info', showConfirmButton: false});
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'pull_rootfs', image: ref, namespace: ns, name: volName}, function(resp) {
+    swal({title: 'Converting...', text: 'Pulling ' + ref + ' and creating ' + storageType + ' rootfs volume...', type: 'info', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'pull_rootfs', image: ref, namespace: ns, name: volName, storage_type: storageType}, function(resp) {
       if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
       if (resp.success) {
         swal({title: 'Success', text: resp.message || 'rootfs volume created', type: 'success'}, function() { refreshStorage(); });

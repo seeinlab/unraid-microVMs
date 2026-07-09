@@ -1236,11 +1236,12 @@ SCRIPT;
         break;
 
     case 'pull_rootfs':
-        // Pull image and mount as thin rootfs volume (ready to use)
+        // Pull image and create rootfs volume (thin snapshot or raw file)
         $sock = '/var/run/microvms/containerd.sock';
         $image = $_REQUEST['image'] ?? '';
         $pullNs = $_REQUEST['namespace'] ?? 'ch';
         $volName = preg_replace('/[^a-z0-9\-]/', '', strtolower($_REQUEST['name'] ?? ''));
+        $storageType = $_REQUEST['storage_type'] ?? 'thin';
 
         if (empty($image) || empty($volName)) {
             echo json_encode(['success' => false, 'error' => 'Image reference and volume name required']);
@@ -1253,27 +1254,57 @@ SCRIPT;
         elseif (preg_match('#^docker\.io/([^/]+)$#', $ref, $m)) $ref = "docker.io/library/" . $m[1];
         if (!str_contains($ref, ':')) $ref .= ':latest';
 
+        $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
         exec("ctr -a $sock namespaces create " . escapeshellarg($pullNs) . " 2>/dev/null");
 
         // Pull
-        microvm_log("PULL_ROOTFS: $ref → $volName (ns=$pullNs)");
+        microvm_log("PULL_ROOTFS: $ref → $volName (ns=$pullNs, type=$storageType)");
         exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images pull --platform linux/amd64 " . escapeshellarg($ref) . " 2>&1", $pullOut, $pullRet);
         if ($pullRet !== 0) {
             echo json_encode(['success' => false, 'error' => 'Pull failed: ' . implode("\n", $pullOut)]);
             break;
         }
 
-        // Mount as writable thin snapshot
-        $mountPoint = "/tmp/microvm-mount-$volName";
-        exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($mountPoint) . " 2>/dev/null");
-        exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images mount --snapshotter devmapper --rw --platform linux/amd64 " . escapeshellarg($ref) . " " . escapeshellarg($mountPoint) . " 2>&1", $mountOut, $mountRet);
-        if ($mountRet !== 0) {
-            echo json_encode(['success' => false, 'error' => 'Mount failed: ' . implode("\n", $mountOut)]);
-            break;
+        if ($storageType === 'thin') {
+            // Mount as writable thin snapshot
+            $mountPoint = "/tmp/microvm-mount-$volName";
+            exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($mountPoint) . " 2>/dev/null");
+            exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images mount --snapshotter devmapper --rw --platform linux/amd64 " . escapeshellarg($ref) . " " . escapeshellarg($mountPoint) . " 2>&1", $mountOut, $mountRet);
+            if ($mountRet !== 0) {
+                echo json_encode(['success' => false, 'error' => 'Thin mount failed: ' . implode("\n", $mountOut)]);
+                break;
+            }
+            microvm_log("PULL_ROOTFS OK (thin): $volName mounted at $mountPoint");
+            echo json_encode(['success' => true, 'message' => "Thin volume '$volName' created from $ref\nMounted at: $mountPoint"]);
+        } else {
+            // Export to raw ext4 file
+            $outDir = "$vmdir/$pullNs/$volName";
+            @mkdir($outDir, 0755, true);
+            $rawFile = "$outDir/rootfs.raw";
+            $diskSize = 512; // MB default
+            // Create sparse raw, format, mount, extract image layers, unmount
+            exec("truncate -s {$diskSize}M " . escapeshellarg($rawFile) . " 2>&1", $o1);
+            exec("mkfs.ext4 -q -F " . escapeshellarg($rawFile) . " 2>&1", $o2);
+            $tmpMount = "/tmp/microvm-rawmount-$volName";
+            @mkdir($tmpMount, 0755, true);
+            exec("mount -o loop " . escapeshellarg($rawFile) . " " . escapeshellarg($tmpMount) . " 2>&1", $o3, $mntRet);
+            if ($mntRet !== 0) {
+                echo json_encode(['success' => false, 'error' => 'Failed to mount raw image: ' . implode(' ', $o3)]);
+                break;
+            }
+            // Extract image layers using crane
+            exec("crane export " . escapeshellarg($ref) . " - 2>/dev/null | tar -xf - -C " . escapeshellarg($tmpMount) . " 2>&1", $extractOut, $extractRet);
+            exec("umount " . escapeshellarg($tmpMount) . " 2>/dev/null");
+            @rmdir($tmpMount);
+            if ($extractRet !== 0) {
+                echo json_encode(['success' => false, 'error' => 'Extract failed: ' . implode("\n", $extractOut)]);
+                break;
+            }
+            $size = filesize($rawFile);
+            microvm_log("PULL_ROOTFS OK (raw): $rawFile (" . round($size/1048576) . " MB)");
+            echo json_encode(['success' => true, 'message' => "Raw rootfs created: $rawFile (" . round($size/1048576) . " MB)"]);
         }
-
-        microvm_log("PULL_ROOTFS OK: $volName mounted at $mountPoint");
-        echo json_encode(['success' => true, 'message' => "rootfs volume '$volName' created from $ref\nMounted at: $mountPoint"]);
         break;
 
     case 'export_rootfs':
