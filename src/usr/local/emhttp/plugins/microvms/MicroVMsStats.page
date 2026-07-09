@@ -18,28 +18,22 @@ $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
 ?>
 
 <style>
-.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin:12px 0; }
-.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:6px; padding:10px; text-align:center; }
-.stat-card .number { font-size:1.6em; font-weight:bold; color:#89b4fa; }
-.stat-card .label { font-size:0.75em; opacity:0.7; margin-top:3px; }
-.stat-card.running .number { color:#4CAF50; }
-.stat-card.stopped .number { color:#f44336; }
 #vm-usage td { font-size:0.85rem; }
-#vm-usage .bar-bg { background:#333; border-radius:3px; height:14px; position:relative; min-width:60px; }
-#vm-usage .bar-fill { background:#4CAF50; border-radius:3px; height:100%; transition:width 0.5s; }
-#vm-usage .bar-text { position:absolute; top:0; left:4px; font-size:10px; line-height:14px; color:#fff; }
+#vm-usage .usage-disk { margin:0; }
+.section-card { display:inline-block; margin:5px 15px 5px 0; font-size:0.95em; }
+.section-card b { font-size:1.4em; }
 </style>
 
 <table class="tablesorter shift ups">
 <thead><tr><td>Overview</td></tr></thead>
 </table>
 
-<div class="stat-grid">
-  <div class="stat-card"><div class="number"><?=$total_vms?></div><div class="label">Total microVMs</div></div>
-  <div class="stat-card running"><div class="number"><?=$running_count?></div><div class="label">Running</div></div>
-  <div class="stat-card stopped"><div class="number"><?=$stopped_count?></div><div class="label">Stopped</div></div>
-  <div class="stat-card"><div class="number"><?=$host_cpus?></div><div class="label">Host CPUs</div></div>
-  <div class="stat-card"><div class="number"><?=round($host_mem/1024, 1)?>G</div><div class="label">Host RAM</div></div>
+<div style="padding:5px 10px;">
+  <span class="section-card">Total: <b><?=$total_vms?></b></span>
+  <span class="section-card">Running: <b style="color:#4CAF50;"><?=$running_count?></b></span>
+  <span class="section-card">Stopped: <b style="color:#f44336;"><?=$stopped_count?></b></span>
+  <span class="section-card">Host CPUs: <b><?=$host_cpus?></b></span>
+  <span class="section-card">Host RAM: <b><?=round($host_mem/1024, 1)?>G</b></span>
 </div>
 
 <table class="tablesorter shift ups" id="vm-usage">
@@ -133,8 +127,7 @@ function formatUptime(s) {
 
 function makeBar(percent, label) {
   var p = Math.min(percent, 100);
-  var color = p > 80 ? '#f44336' : p > 50 ? '#ff9800' : '#4CAF50';
-  return '<div class="bar-bg"><div class="bar-fill" style="width:' + p + '%;background:' + color + '"></div><div class="bar-text">' + label + '</div></div>';
+  return '<span>' + label + '</span><div class="usage-disk mm"><span style="width:' + p + '%"> </span><span></span></div>';
 }
 
 function refreshStats() {

@@ -28,12 +28,8 @@ if (empty($nsOptions)) $nsOptions = '<option value="default">default</option><op
 .stat-card .label { font-size:0.75em; opacity:0.7; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
 .stat-card .value { font-size:1.1em; font-weight:bold; color:#e2e2e2; font-family:monospace; }
 .stat-card .device { font-size:0.8em; opacity:0.6; font-family:monospace; margin-top:4px; }
-.pool-bar { background:#333; border-radius:3px; height:18px; position:relative; margin-top:6px; overflow:hidden; }
-.pool-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
-.pool-bar-fill.green { background:#4CAF50; }
-.pool-bar-fill.yellow { background:#ff9800; }
-.pool-bar-fill.red { background:#f44336; }
-.pool-bar-text { position:absolute; top:0; left:6px; font-size:10px; line-height:18px; color:#fff; font-weight:bold; }
+.pool-bar { position:relative; height:1.8rem; margin-top:6px; }
+.pool-bar .usage-disk { margin:0; }
 .pool-inactive { color:#f44336; font-weight:bold; }
 .mono { font-family:monospace; font-size:0.85em; }
 .badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:0.75em; font-weight:bold; text-transform:uppercase; }
@@ -64,17 +60,17 @@ if (empty($nsOptions)) $nsOptions = '<option value="default">default</option><op
   <div class="stat-card">
     <div class="label">Data Usage</div>
     <div class="value" id="pool-data-text">—</div>
-    <div class="pool-bar"><div class="pool-bar-fill green" id="pool-data-bar" style="width:0%"></div><span class="pool-bar-text" id="pool-data-pct"></span></div>
+    <div class="pool-bar"><div class="usage-disk mm"><span id="pool-data-bar" style="width:0%"> </span><span id="pool-data-pct"></span></div></div>
   </div>
   <div class="stat-card">
     <div class="label">Metadata Usage</div>
     <div class="value" id="pool-meta-text">—</div>
-    <div class="pool-bar"><div class="pool-bar-fill green" id="pool-meta-bar" style="width:0%"></div><span class="pool-bar-text" id="pool-meta-pct"></span></div>
+    <div class="pool-bar"><div class="usage-disk mm"><span id="pool-meta-bar" style="width:0%"> </span><span id="pool-meta-pct"></span></div></div>
   </div>
   <div class="stat-card">
     <div class="label">Thin Pool</div>
     <div class="value" id="pool-device" style="font-size:0.9em;">—</div>
-    <div class="pool-bar"><div class="pool-bar-fill green" id="pool-usage-bar" style="width:0%"></div><span class="pool-bar-text" id="pool-usage-pct"></span></div>
+    <div class="pool-bar"><div class="usage-disk mm"><span id="pool-usage-bar" style="width:0%"> </span><span id="pool-usage-pct"></span></div></div>
   </div>
 </div>
 
@@ -170,19 +166,19 @@ function renderPool(pool) {
   // Data
   var dataPct = pool.data_percent || 0;
   $('#pool-data-text').text(formatSize(pool.data_used_mb) + ' / ' + formatSize(pool.data_total_mb));
-  $('#pool-data-bar').css('width', dataPct + '%').attr('class', 'pool-bar-fill ' + barColor(dataPct));
+  $('#pool-data-bar').css('width', dataPct + '%');
   $('#pool-data-pct').text(dataPct + '%');
 
   // Meta
   var metaPct = pool.meta_total_mb > 0 ? Math.round(pool.meta_used_mb / pool.meta_total_mb * 100 * 10) / 10 : 0;
   $('#pool-meta-text').text(pool.meta_used_mb.toFixed(2) + ' MB / ' + pool.meta_total_mb.toFixed(2) + ' MB');
-  $('#pool-meta-bar').css('width', metaPct + '%').attr('class', 'pool-bar-fill ' + barColor(metaPct));
+  $('#pool-meta-bar').css('width', metaPct + '%');
   $('#pool-meta-pct').text(metaPct + '%');
 
   // Thin Pool card
   var poolPct = pool.data_percent || 0;
   $('#pool-device').text(formatSize(pool.data_used_mb) + ' / ' + formatSize(pool.data_total_mb));
-  $('#pool-usage-bar').css('width', poolPct + '%').attr('class', 'pool-bar-fill ' + barColor(poolPct));
+  $('#pool-usage-bar').css('width', poolPct + '%');
   $('#pool-usage-pct').text(poolPct + '%');
 }
 
