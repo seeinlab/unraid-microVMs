@@ -308,10 +308,10 @@ EOF
 
   log "microvms-containerd started (PID $pid)"
   # Ensure 'default' namespace exists
-  "" -a "$CONTAINERD_SOCK" namespaces create default 2>/dev/null
+  "$CTR_BIN" -a "$CONTAINERD_SOCK" namespaces create default 2>/dev/null
   # Create per-VMM namespaces based on enabled engines
-  [ "$CH_ENABLED" = "yes" ] && "" -a "$CONTAINERD_SOCK" namespaces create ch 2>/dev/null
-  [ "$FC_ENABLED" = "yes" ] && "" -a "$CONTAINERD_SOCK" namespaces create fc 2>/dev/null
+  [ "$CH_ENABLED" = "yes" ] && "$CTR_BIN" -a "$CONTAINERD_SOCK" namespaces create ch 2>/dev/null
+  [ "$FC_ENABLED" = "yes" ] && "$CTR_BIN" -a "$CONTAINERD_SOCK" namespaces create fc 2>/dev/null
   return 0
 }
 
@@ -380,8 +380,8 @@ start_flintlockd() {
 
   # Clean stale containerd leases from previous flintlockd crashes
   # (stale leases block the devmapper snapshotter)
-  for lease in $("" -a "$CONTAINERD_SOCK" -n flintlock leases list -q 2>/dev/null); do
-    "" -a "$CONTAINERD_SOCK" -n flintlock leases rm "$lease" 2>/dev/null
+  for lease in $("$CTR_BIN" -a "$CONTAINERD_SOCK" -n flintlock leases list -q 2>/dev/null); do
+    "$CTR_BIN" -a "$CONTAINERD_SOCK" -n flintlock leases rm "$lease" 2>/dev/null
     log "Cleaned stale lease: $lease"
   done
 
@@ -949,12 +949,12 @@ METAEOF
   fi
   [[ "$oci_ref" != *:* ]] && oci_ref="${oci_ref}:latest"
   # Ensure namespace and image exist
-  "" -a "$ctr_sock" namespaces create "$ns" 2>/dev/null
-  "" -a "$ctr_sock" -n "$ns" images pull "$oci_ref" 2>/dev/null
+  "$CTR_BIN" -a "$ctr_sock" namespaces create "$ns" 2>/dev/null
+  "$CTR_BIN" -a "$ctr_sock" -n "$ns" images pull "$oci_ref" 2>/dev/null
   # Remove existing entry if re-starting
-  "" -a "$ctr_sock" -n "$ns" containers rm "$name" 2>/dev/null
+  "$CTR_BIN" -a "$ctr_sock" -n "$ns" containers rm "$name" 2>/dev/null
   # Create container entry with microvm labels
-  "" -a "$ctr_sock" -n "$ns" containers create \
+  "$CTR_BIN" -a "$ctr_sock" -n "$ns" containers create \
     --label "microvm.vmm=$vmm" \
     --label "microvm.state=running" \
     --label "microvm.pid=$vm_pid" \
@@ -1067,8 +1067,8 @@ stop_vm() {
   local ctr_sock="/var/run/microvms/containerd.sock"
   if [ -S "$ctr_sock" ]; then
     # Try all namespaces (VM might be in default or custom ns)
-    for ns in $("" -a "$ctr_sock" namespaces list -q 2>/dev/null); do
-      "" -a "$ctr_sock" -n "$ns" containers label "$name" "microvm.state=stopped" "microvm.pid=0" 2>/dev/null && break
+    for ns in $("$CTR_BIN" -a "$ctr_sock" namespaces list -q 2>/dev/null); do
+      "$CTR_BIN" -a "$ctr_sock" -n "$ns" containers label "$name" "microvm.state=stopped" "microvm.pid=0" 2>/dev/null && break
     done
   fi
 

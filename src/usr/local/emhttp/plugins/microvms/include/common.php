@@ -230,6 +230,10 @@ function microvm_list_vms() {
             if ($state === 'running' && !isset($running_pids[$ctrName])) {
                 $state = 'crashed';
             }
+            // Promote: if label says created but process is running
+            if ($state === 'created' && isset($running_pids[$ctrName])) {
+                $state = 'running';
+            }
 
             // Enrich with config file for full detail
             $vmPath = microvm_resolve_vmpath($ctrName, $vmdir, $ns);
