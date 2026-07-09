@@ -73,6 +73,51 @@ $host_mem = intval(trim(shell_exec("free -m | awk '/^Mem:/{print \$2}'")));
 </tbody>
 </table>
 
+<!-- System Processes -->
+<table class="tablesorter shift ups">
+<thead><tr><td>System Processes</td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups">
+<thead><tr>
+  <th>Service</th>
+  <th>PID</th>
+  <th>Status</th>
+  <th>Uptime</th>
+</tr></thead>
+<tbody>
+<?php
+$services = [
+    'containerd' => ['bin' => 'microvms-containerd', 'label' => 'containerd'],
+    'flintlockd' => ['bin' => 'flintlockd', 'label' => 'flintlockd'],
+    'crane' => ['bin' => 'crane', 'label' => 'crane (registry)'],
+];
+$sysUptime = floatval(explode(' ', file_get_contents('/proc/uptime'))[0]);
+foreach ($services as $key => $svc) {
+    $pid = trim(shell_exec("pidof {$svc['bin']} 2>/dev/null"));
+    $status = $pid ? '<span style="color:#4CAF50;">● Running</span>' : '<span style="color:#f44336;">● Stopped</span>';
+    $upStr = '-';
+    if ($pid) {
+        $stat = @file_get_contents("/proc/$pid/stat");
+        if ($stat) {
+            $parts = preg_split('/\)\s+/', $stat, 2);
+            if (isset($parts[1])) {
+                $fields = explode(' ', $parts[1]);
+                $starttime = intval($fields[19] ?? 0);
+                $elapsed = round($sysUptime - ($starttime / 100));
+                if ($elapsed >= 86400) $upStr = floor($elapsed/86400) . 'd ' . floor(($elapsed%86400)/3600) . 'h';
+                elseif ($elapsed >= 3600) $upStr = floor($elapsed/3600) . 'h ' . floor(($elapsed%3600)/60) . 'm';
+                elseif ($elapsed >= 60) $upStr = floor($elapsed/60) . 'm';
+                else $upStr = $elapsed . 's';
+            }
+        }
+    }
+    echo "<tr><td><b>{$svc['label']}</b></td><td style='font-family:monospace;'>" . ($pid ?: '-') . "</td><td>$status</td><td>$upStr</td></tr>\n";
+}
+?>
+</tbody>
+</table>
+
 <script>
 var plugin = '<?=$plugin?>';
 var hostMem = <?=$host_mem?>;
