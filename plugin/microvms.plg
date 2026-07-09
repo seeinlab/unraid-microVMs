@@ -67,9 +67,9 @@ mkdir -p /boot/config/plugins/microvms/tmp
 <URL>https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.1/firecracker-v1.16.1-x86_64.tgz</URL>
 </FILE>
 
-<!-- containerd v1.7.27 -->
-<FILE Name="/boot/config/plugins/microvms/tmp/containerd-static-1.7.27-linux-amd64.tar.gz">
-<URL>https://github.com/containerd/containerd/releases/download/v1.7.27/containerd-static-1.7.27-linux-amd64.tar.gz</URL>
+<!-- containerd v1.7.33 (includes ctr) -->
+<FILE Name="/boot/config/plugins/microvms/tmp/containerd-static-1.7.33-linux-amd64.tar.gz">
+<URL>https://github.com/containerd/containerd/releases/download/v1.7.33/containerd-static-1.7.33-linux-amd64.tar.gz</URL>
 </FILE>
 
 <!-- crane (go-containerregistry) -->
@@ -106,13 +106,18 @@ if [ -f "${TMPDIR}/firecracker-v1.16.1-x86_64.tgz" ]; then
   fi
 fi
 
-# containerd → microvms-containerd
-if [ -f "${TMPDIR}/containerd-static-1.7.27-linux-amd64.tar.gz" ]; then
-  tar -xf "${TMPDIR}/containerd-static-1.7.27-linux-amd64.tar.gz" -C "${TMPDIR}/" bin/containerd 2>/dev/null
+# containerd → microvms-containerd + microvms-ctr
+if [ -f "${TMPDIR}/containerd-static-1.7.33-linux-amd64.tar.gz" ]; then
+  tar -xf "${TMPDIR}/containerd-static-1.7.33-linux-amd64.tar.gz" -C "${TMPDIR}/" bin/containerd bin/ctr 2>/dev/null
   if [ -f "${TMPDIR}/bin/containerd" ]; then
     cp "${TMPDIR}/bin/containerd" "${DESTDIR}/microvms-containerd"
     chmod 0755 "${DESTDIR}/microvms-containerd"
     echo "  microvms-containerd extracted OK"
+  fi
+  if [ -f "${TMPDIR}/bin/ctr" ]; then
+    cp "${TMPDIR}/bin/ctr" "${DESTDIR}/microvms-ctr"
+    chmod 0755 "${DESTDIR}/microvms-ctr"
+    echo "  microvms-ctr extracted OK"
   fi
 fi
 
@@ -169,7 +174,7 @@ rm -rf /usr/local/emhttp/plugins/${PLUGIN}
 tar -xf /boot/config/plugins/${PLUGIN}/${PLUGIN}-${VERSION}.tgz -C / 2>/dev/null
 
 # Install binaries
-for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd crane ttyd grpcurl catatonit; do
+for bin in cloud-hypervisor ch-remote firecracker flintlockd microvms-containerd microvms-ctr crane ttyd grpcurl catatonit; do
   [ -f "/boot/config/plugins/${PLUGIN}/$bin" ] && cp "/boot/config/plugins/${PLUGIN}/$bin" "/usr/local/bin/$bin" && chmod +x "/usr/local/bin/$bin"
 done
 

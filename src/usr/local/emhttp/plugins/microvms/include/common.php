@@ -21,6 +21,8 @@ define('MICROVM_PLUGIN', 'microvms');
 define('MICROVM_CFG_PATH', '/boot/config/plugins/' . MICROVM_PLUGIN . '/' . MICROVM_PLUGIN . '.controlplane.cfg');
 define('MICROVM_RUNTIME', '/var/run/microvms');
 define('MICROVM_SYSTEM', '/mnt/user/system/microvms');
+define('MICROVM_CTR_BIN', '/usr/local/bin/microvms-ctr');
+define('MICROVM_CTR_SOCK', '/var/run/microvms/containerd.sock');
 
 function microvm_load_config() {
     if (file_exists(MICROVM_CFG_PATH)) {
@@ -198,12 +200,12 @@ function microvm_list_vms() {
         }
     }
 
-    $nsList = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+    $nsList = trim(shell_exec(MICROVM_CTR_BIN . " -a $ctrSock namespaces list -q 2>/dev/null"));
     foreach (explode("\n", $nsList) as $ns) {
         $ns = trim($ns);
         if (empty($ns)) continue;
 
-        $ctrList = shell_exec("ctr -a $ctrSock -n $ns containers list 2>/dev/null");
+        $ctrList = shell_exec(MICROVM_CTR_BIN . " -a $ctrSock -n $ns containers list 2>/dev/null");
         if (!$ctrList) continue;
 
         foreach (explode("\n", trim($ctrList)) as $line) {
@@ -213,7 +215,7 @@ function microvm_list_vms() {
             $ctrName = $parts[0];
 
             // Get container labels (the VM metadata)
-            $ctrInfo = shell_exec("ctr -a $ctrSock -n $ns containers info $ctrName 2>/dev/null");
+            $ctrInfo = shell_exec(MICROVM_CTR_BIN . " -a $ctrSock -n $ns containers info $ctrName 2>/dev/null");
             $info = $ctrInfo ? json_decode($ctrInfo, true) : [];
             $labels = $info['Labels'] ?? [];
 

@@ -75,7 +75,7 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
   <dd><select id="vm_namespace" style="width:200px;">
     <?php
     $ctrSock = '/var/run/microvms/containerd.sock';
-    $nsOut = trim(shell_exec("ctr -a $ctrSock namespaces list -q 2>/dev/null"));
+    $nsOut = trim(shell_exec(MICROVM_CTR_BIN . " -a $ctrSock namespaces list -q 2>/dev/null"));
     $nsList = array_filter(explode("\n", $nsOut));
     foreach ($nsList as $ns) {
         $ns = trim($ns);

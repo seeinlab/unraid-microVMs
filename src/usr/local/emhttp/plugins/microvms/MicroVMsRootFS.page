@@ -12,7 +12,7 @@ $cfg = microvm_load_config();
 $sock = '/var/run/microvms/containerd.sock';
 $nsOptions = '';
 if (file_exists($sock)) {
-    $nsList = array_filter(explode("\n", trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"))));
+    $nsList = array_filter(explode("\n", trim(shell_exec(MICROVM_CTR_BIN . " -a $sock namespaces list -q 2>/dev/null"))));
     foreach ($nsList as $ns) {
         $ns = trim($ns);
         if (empty($ns) || $ns === 'flintlock') continue;
