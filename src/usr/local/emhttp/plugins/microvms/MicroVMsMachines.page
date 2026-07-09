@@ -104,7 +104,6 @@ img.vm-icon-stopped { opacity:0.4; }
   <th>Memory</th>
   <th>Storage</th>
   <th>IP Address</th>
-  <th>TAP</th>
   <th>Autostart</th>
 </tr></thead>
 <tbody>
@@ -167,8 +166,7 @@ img.vm-icon-stopped { opacity:0.4; }
     <td><?=$cpus?></td>
     <td><?=$mem_display?></td>
     <td><?=$storage_display?></td>
-    <td><?=$ip?></td>
-    <td style="font-family:monospace;font-size:0.85rem;"><?=htmlspecialchars($tap_display)?></td>
+    <td style="font-family:monospace;font-size:0.85rem;"><?=$tap_display?>: <?=$ip?>/24</td>
     <td><?php if ($managed_by === 'flintlockd'): ?><span style="color:#888;font-size:0.8em;" title="Managed by flintlockd (always reconciles)">auto</span><?php else: ?><input class="autostart" type="checkbox" name="auto_<?=$name?>" title="Toggle autostart" data-name="<?=$name?>" <?=$autostart ? 'checked' : ''?>><?php endif; ?></td>
   </tr>
   <?php endforeach; ?>
