@@ -1367,19 +1367,64 @@ SCRIPT;
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
         $pruneNs = $_REQUEST['namespace'] ?? 'all';
+        $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+
         if ($pruneNs === 'all') {
             $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
             $namespaces = array_filter(explode("\n", $nsList));
         } else {
             $namespaces = [trim($pruneNs)];
         }
+
+        // Build set of images used by VMs (from config files)
+        $usedImages = [];
+        foreach (glob("$vmdir/*/*/*.json") as $f) {
+            $content = @file_get_contents($f);
+            if ($content && preg_match('/"ref"\s*:\s*"([^"]+)"/', $content, $m)) {
+                $ref = str_replace('\\/', '/', $m[1]);
+                // Normalize
+                if (!str_contains($ref, '/')) $ref = "docker.io/library/$ref";
+                elseif (preg_match('#^docker\.io/([^/]+)$#', $ref, $rm)) $ref = "docker.io/library/" . $rm[1];
+                if (!str_contains($ref, ':')) $ref .= ':latest';
+                $usedImages[$ref] = true;
+            }
+        }
+
+        // Remove images not in usedImages
+        $removed = 0;
         foreach ($namespaces as $ns) {
             $ns = trim($ns);
-            if (empty($ns)) continue;
-            $out = shell_exec("ctr -a $sock -n $ns images prune --all 2>&1");
-            if ($out && trim($out)) $output[] = "[$ns] " . trim($out);
+            if (empty($ns) || $ns === 'flintlock') continue;
+            $imgList = shell_exec("ctr -a $sock -n $ns images ls -q 2>/dev/null");
+            if (!$imgList) continue;
+            foreach (array_filter(explode("\n", trim($imgList))) as $img) {
+                if (!isset($usedImages[$img])) {
+                    exec("ctr -a $sock -n $ns images rm " . escapeshellarg($img) . " 2>&1", $rmOut);
+                    $output[] = "[$ns] Removed: $img";
+                    $removed++;
+                }
+            }
         }
-        echo json_encode(['success' => true, 'message' => implode("\n", $output) ?: 'No unused images to prune']);
+        echo json_encode(['success' => true, 'message' => $removed > 0 ? implode("\n", $output) : 'No unused images to prune (all images are used by VMs)']);
+        break;
+
+    case 'remove_image':
+        // Remove a specific image by ref from a namespace
+        $sock = '/var/run/microvms/containerd.sock';
+        $ref = $_REQUEST['image'] ?? '';
+        $ns = $_REQUEST['namespace'] ?? '';
+        if (empty($ref) || empty($ns)) {
+            echo json_encode(['success' => false, 'error' => 'Image reference and namespace required']);
+            break;
+        }
+        exec("ctr -a $sock -n " . escapeshellarg($ns) . " images rm " . escapeshellarg($ref) . " 2>&1", $rmOut, $rmRet);
+        if ($rmRet === 0) {
+            microvm_log("REMOVE_IMAGE: $ref from $ns");
+            echo json_encode(['success' => true, 'message' => "Removed: $ref from namespace $ns"]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Remove failed: ' . implode(' ', $rmOut)]);
+        }
         break;
 
     case 'list_namespaces':

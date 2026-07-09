@@ -374,7 +374,7 @@ function removeImage(ref, ns) {
     closeOnConfirm: false
   }, function(confirmed) {
     if (!confirmed) return;
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: ns, image: ref}, function(resp) {
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'remove_image', namespace: ns, image: ref}, function(resp) {
       if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
       if (resp.success) {
         swal({title: 'Removed', text: resp.message || 'Image removed', type: 'success'}, function() { refreshStorage(); });
