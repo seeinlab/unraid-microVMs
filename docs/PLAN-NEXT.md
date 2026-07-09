@@ -63,10 +63,7 @@
 - [ ] IPAM (IP Address Management)
   - Auto-suggest next available IP from subnet
   - Gateway auto-fill from bridge config
-- [ ] Storage tab improvements
-  - Image inventory across namespaces
-  - Snapshot list with associated VMs
-  - Verify Prune button response handling
+- [x] ~~Storage tab improvements~~ — FIXED: full redesign (Thin Pool status bars, Volumes table, Images table, Pull & Convert, Run GC, per-namespace)
 - [ ] Update root README.md for GitHub
 
 ### Priority 3: Future
