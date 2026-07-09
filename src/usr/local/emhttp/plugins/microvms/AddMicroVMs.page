@@ -381,7 +381,11 @@ function submitForm() {
     if (tag && host && guest) mounts.push({tag: tag, host_path: host, guest_path: guest});
   });
 
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
+  $.ajax({
+    url: '/plugins/<?=$plugin?>/backend/MicroVMAdmin.php',
+    method: 'POST',
+    timeout: 180000,
+    data: {
     cmd: 'create',
     name: name,
     namespace: document.getElementById('vm_namespace').value,
@@ -401,7 +405,8 @@ function submitForm() {
     console: $('#vm_console').prop('checked') ? 'true' : 'false',
     env: JSON.stringify(env),
     mounts: JSON.stringify(mounts)
-  }, function(data) {
+  },
+  success: function(data) {
     var result = (typeof data === 'object') ? data : JSON.parse(data);
     setProgress(100);
     addLine('');
@@ -433,18 +438,24 @@ function submitForm() {
         log.parentNode.appendChild(btn);
       }, 300);
     }
-  }).fail(function(xhr) {
+  },
+  error: function(xhr) {
     setProgress(100);
     bar.style.background = '#f44336';
     addLine('');
-    addLine('✗ Request failed: ' + xhr.statusText, '#f44336');
+    if (xhr.statusText === 'timeout') {
+      addLine('⚠ Create is still running in background (timeout). Check Machines tab.', '#ff9800');
+    } else {
+      addLine('✗ Request failed: ' + xhr.statusText, '#f44336');
+    }
     setTimeout(function() {
       var btn = document.createElement('button');
       btn.textContent = 'CLOSE';
       btn.style.cssText = 'margin-top:12px;padding:8px 24px;border:1px solid #f44336;background:transparent;color:#f44336;border-radius:3px;cursor:pointer;font-weight:bold;';
-      btn.onclick = function() { swal.close(); };
+      btn.onclick = function() { swal.close(); location = '/MicroVMs'; };
       log.parentNode.appendChild(btn);
     }, 300);
+  }
   });
   return false;
 }
