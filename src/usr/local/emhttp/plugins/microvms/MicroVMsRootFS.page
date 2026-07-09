@@ -7,242 +7,391 @@ Markdown="false"
 $plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
-
 $cfg = microvm_load_config();
-$vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
-$sock = '/var/run/microvms/containerd.sock';
-
-// Check containerd socket exists
-$containerd_running = file_exists($sock);
-
-// Pulled images
-$images_list = [];
-$snapshots_list = [];
-if ($containerd_running) {
-    // Scan all namespaces for images and snapshots
-    $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
-    foreach (explode("\n", $nsList) as $ns) {
-        $ns = trim($ns);
-        if (empty($ns)) continue;
-        $img_out = shell_exec("ctr -a $sock -n $ns images list -q 2>/dev/null");
-        if ($img_out) {
-            foreach (array_filter(explode("\n", trim($img_out))) as $img) {
-                $images_list[] = ['ns' => $ns, 'ref' => $img];
-            }
-        }
-        $snap_out = shell_exec("ctr -a $sock -n $ns snapshots --snapshotter devmapper list 2>/dev/null");
-        if ($snap_out) {
-            $lines = array_filter(explode("\n", trim($snap_out)));
-            if (count($lines) > 1) {
-                array_shift($lines); // header
-                foreach ($lines as $line) {
-                    $snapshots_list[] = ['ns' => $ns, 'line' => $line];
-                }
-            }
-        }
-    }
-}
-
-// Existing rootfs images (legacy raw storage)
-$images = [];
-if (is_dir($vmdir)) {
-    foreach (glob("$vmdir/*/rootfs.{raw,ext4}", GLOB_BRACE) as $f) {
-        $name_vm = basename(dirname($f));
-        $size = filesize($f);
-        $images[] = ['name' => $name_vm, 'path' => $f, 'size' => $size];
-    }
-}
 ?>
 
-<?php if (!$containerd_running): ?>
-<div class="notice" style="padding:10px; margin-bottom:15px; border:1px solid #ff9800; background:#2e2a1a; border-radius:4px;">
-  <i class="fa fa-warning" style="color:#ff9800;"></i> containerd is not running. Start it from the Settings → Services tab.
-</div>
-<?php endif; ?>
+<style>
+.storage-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.storage-header h2 { margin:0; font-size:1.1em; }
+.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin:12px 0 20px 0; }
+.stat-card { background:#1e1e2e; border:1px solid #333; border-radius:6px; padding:14px; }
+.stat-card .label { font-size:0.75em; opacity:0.7; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
+.stat-card .value { font-size:1.1em; font-weight:bold; color:#e2e2e2; font-family:monospace; }
+.stat-card .device { font-size:0.8em; opacity:0.6; font-family:monospace; margin-top:4px; }
+.pool-bar { background:#333; border-radius:3px; height:18px; position:relative; margin-top:6px; overflow:hidden; }
+.pool-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
+.pool-bar-fill.green { background:#4CAF50; }
+.pool-bar-fill.yellow { background:#ff9800; }
+.pool-bar-fill.red { background:#f44336; }
+.pool-bar-text { position:absolute; top:0; left:6px; font-size:10px; line-height:18px; color:#fff; font-weight:bold; }
+.pool-inactive { color:#f44336; font-weight:bold; }
+.btn-row { margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+.vm-btn { padding:5px 16px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; text-transform:uppercase; font-size:0.8em; transition:background 0.2s; }
+.vm-btn:hover { background:#555; }
+.vm-btn.primary { background:#1a73e8; border-color:#1a73e8; color:#fff; }
+.vm-btn.primary:hover { background:#1557b0; }
+.vm-btn.danger { background:#c62828; border-color:#c62828; color:#fff; }
+.vm-btn.danger:hover { background:#8e0000; }
+.vm-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.mono { font-family:monospace; font-size:0.85em; }
+.badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:0.75em; font-weight:bold; text-transform:uppercase; }
+.badge-thin { background:#1a3a5c; color:#64b5f6; }
+.badge-raw { background:#3a2e1a; color:#ffb74d; }
+.badge-active { background:#1a3a1a; color:#81c784; }
+.badge-available { background:#2e2e2e; color:#aaa; }
+.tag-vm { display:inline-block; padding:1px 6px; border-radius:2px; font-size:0.75em; background:#2a2a3a; color:#a5d6a7; margin:1px; }
+.tag-unused { opacity:0.5; font-style:italic; font-size:0.85em; }
+.section-loading { text-align:center; padding:20px; opacity:0.5; }
+#storage-notice { padding:10px; margin-bottom:15px; border:1px solid #ff9800; background:#2e2a1a; border-radius:4px; display:none; }
+</style>
 
-<!-- Pulled Images Section -->
+<div id="storage-notice">
+  <i class="fa fa-warning" style="color:#ff9800;"></i> <span id="storage-notice-text"></span>
+</div>
+
+<!-- Section 1: Thin Pool Status -->
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="3"><b>Pulled Images (containerd)</b>
-  <span style="float:right;"><input type="button" value="Prune Unused" onclick="pruneImages()" class="vm-btn" style="font-size:0.8em;"></span>
+<thead><tr><td><b>Thin Pool Status</b>
+  <span style="float:right;">
+    <button class="vm-btn" onclick="refreshStorage()" title="Refresh storage info"><i class="fa fa-refresh"></i> Refresh</button>
+  </span>
 </td></tr></thead>
 </table>
 
+<div class="stat-grid" id="pool-stats">
+  <div class="stat-card">
+    <div class="label">Data Usage</div>
+    <div class="value" id="pool-data-text">—</div>
+    <div class="pool-bar"><div class="pool-bar-fill green" id="pool-data-bar" style="width:0%"></div><span class="pool-bar-text" id="pool-data-pct"></span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Metadata Usage</div>
+    <div class="value" id="pool-meta-text">—</div>
+    <div class="pool-bar"><div class="pool-bar-fill green" id="pool-meta-bar" style="width:0%"></div><span class="pool-bar-text" id="pool-meta-pct"></span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Device</div>
+    <div class="value" id="pool-device" style="font-size:0.9em;">—</div>
+    <div class="device" id="pool-status-label">—</div>
+  </div>
+</div>
+
+<!-- Section 2: Volumes -->
 <table class="tablesorter shift ups">
+<thead><tr><td><b>Volumes</b></td></tr></thead>
+</table>
+
+<table class="tablesorter shift ups" id="volumes-table">
 <thead><tr>
+  <th>Name</th>
   <th>Namespace</th>
-  <th>Image Reference</th>
-</tr></thead>
-<tbody>
-<?php if (empty($images_list)): ?>
-  <tr><td colspan="2" style="text-align:center;padding:15px;opacity:0.6;">No pulled images found in containerd.</td></tr>
-<?php else: ?>
-  <?php foreach ($images_list as $item): ?>
-  <tr>
-    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> <?=htmlspecialchars($item['ns'])?></span></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($item['ref'])?></td>
-  </tr>
-  <?php endforeach; ?>
-<?php endif; ?>
-</tbody>
-</table>
-
-<br>
-
-<!-- Active Snapshots Section -->
-<table class="tablesorter shift ups">
-<thead><tr><td colspan="4"><b>Active Snapshots (devmapper)</b></td></tr></thead>
-</table>
-
-<table class="tablesorter shift ups">
-<thead><tr>
-  <th>Namespace</th>
-  <th>Key</th>
-  <th>Parent</th>
-  <th>Kind</th>
-</tr></thead>
-<tbody>
-<?php if (empty($snapshots_list)): ?>
-  <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No active snapshots.</td></tr>
-<?php else: ?>
-  <?php foreach ($snapshots_list as $item):
-    $parts = preg_split('/\s+/', trim($item['line']), 4);
-    $key = $parts[0] ?? '';
-    $parent = $parts[1] ?? '';
-    $kind = $parts[2] ?? '';
-  ?>
-  <tr>
-    <td><span style="color:#58a6ff;"><i class="fa fa-cube"></i> <?=htmlspecialchars($item['ns'])?></span></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($key)?></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($parent)?></td>
-    <td><?=htmlspecialchars($kind)?></td>
-  </tr>
-  <?php endforeach; ?>
-<?php endif; ?>
-</tbody>
-</table>
-
-<br>
-
-<!-- Existing rootFS Images (raw storage) -->
-<table class="tablesorter shift ups">
-<thead><tr><td colspan="4"><b>Raw rootFS Images</b></td></tr></thead>
-</table>
-
-<table class="tablesorter shift ups">
-<thead><tr>
-  <th>VM Name</th>
-  <th>Path</th>
+  <th>Type</th>
   <th>Size</th>
-  <th>Actions</th>
+  <th>Device</th>
+  <th>Status</th>
+  <th>Used By</th>
+  <th style="width:80px;">Actions</th>
 </tr></thead>
-<tbody>
-<?php if (empty($images)): ?>
-  <tr><td colspan="4" style="text-align:center;padding:15px;opacity:0.6;">No raw rootfs images found.</td></tr>
-<?php else: ?>
-  <?php foreach ($images as $img): ?>
-  <tr>
-    <td><b><?=htmlspecialchars($img['name'])?></b></td>
-    <td style="font-family:monospace;font-size:0.85em;"><?=htmlspecialchars($img['path'])?></td>
-    <td><?=number_format($img['size'] / 1048576, 0)?> MB</td>
-    <td><button class="vm-btn" onclick="deleteRootfs('<?=htmlspecialchars($img['name'])?>', '<?=htmlspecialchars($img['path'])?>')">DELETE</button></td>
-  </tr>
-  <?php endforeach; ?>
-<?php endif; ?>
+<tbody id="volumes-body">
+  <tr><td colspan="8" class="section-loading">Loading...</td></tr>
 </tbody>
 </table>
 
-<br>
-
-<!-- Kernel Images -->
+<!-- Section 3: Images -->
 <table class="tablesorter shift ups">
-<thead><tr><td colspan="3"><b>Kernel Images</b></td></tr></thead>
+<thead><tr><td><b>Images</b>
+  <span style="float:right;">
+    <button class="vm-btn primary" onclick="pullImage()"><i class="fa fa-download"></i> Pull Image</button>
+    <button class="vm-btn" onclick="pruneImages()"><i class="fa fa-trash"></i> Prune Unused</button>
+  </span>
+</td></tr></thead>
 </table>
 
-<table class="tablesorter shift ups">
-<thead><tr><th>Engine</th><th>File</th><th>Size</th></tr></thead>
-<tbody>
-<?php
-$systemDir = '/mnt/user/system/microvms';
-$found = false;
-foreach (['cloud-hypervisor', 'firecracker'] as $engine) {
-    $kpath = "$systemDir/$engine/kernels/vmlinux";
-    if (is_file($kpath)) {
-        $found = true;
-        $engineLabel = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
-        echo "<tr><td>{$engineLabel}</td><td style='font-family:monospace;'>{$kpath}</td><td>".number_format(filesize($kpath)/1048576,0)." MB</td></tr>";
-    }
-}
-// Also check legacy path
-foreach (['cloud-hypervisor', 'firecracker'] as $engine) {
-    $kpath = "$vmdir/kernels/$engine/vmlinux";
-    if (is_file($kpath)) {
-        $found = true;
-        $engineLabel = ($engine === 'cloud-hypervisor') ? 'Cloud Hypervisor' : 'Firecracker';
-        echo "<tr><td>{$engineLabel}</td><td style='font-family:monospace;'>{$kpath}</td><td>".number_format(filesize($kpath)/1048576,0)." MB</td></tr>";
-    }
-}
-if (!$found) echo "<tr><td colspan='3' style='text-align:center;opacity:0.6;'>No kernels found</td></tr>";
-?>
+<table class="tablesorter shift ups" id="images-table">
+<thead><tr>
+  <th>Image Reference</th>
+  <th>Namespace</th>
+  <th>Size</th>
+  <th>Used By</th>
+  <th style="width:80px;">Actions</th>
+</tr></thead>
+<tbody id="images-body">
+  <tr><td colspan="5" class="section-loading">Loading...</td></tr>
 </tbody>
 </table>
-
-<div id="pruneOutput" style="display:none; margin-top:15px; padding:12px; background:#111; color:#0f0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border-radius:4px;"></div>
-
-<style>
-.vm-btn { padding:4px 14px; margin:2px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; text-transform:uppercase; font-size:0.85em; }
-.vm-btn:hover { background:#555; }
-</style>
 
 <script>
-var plugin = '<?=$plugin?>';
+var plugin = 'microvms';
+var storageData = null;
+
+$(function() {
+  refreshStorage();
+});
+
+function refreshStorage() {
+  $('#volumes-body').html('<tr><td colspan="8" class="section-loading"><i class="fa fa-spinner fa-spin"></i> Loading...</td></tr>');
+  $('#images-body').html('<tr><td colspan="5" class="section-loading"><i class="fa fa-spinner fa-spin"></i> Loading...</td></tr>');
+
+  $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'storage_info'}, function(resp) {
+    if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+    if (!resp.success) {
+      showNotice(resp.error || 'Failed to load storage info');
+      return;
+    }
+    storageData = resp.data;
+    renderPool(storageData.thin_pool);
+    renderVolumes(storageData.volumes);
+    renderImages(storageData.images);
+  }).fail(function() {
+    showNotice('AJAX request failed. Is the backend reachable?');
+  });
+}
+
+function showNotice(msg) {
+  $('#storage-notice-text').text(msg);
+  $('#storage-notice').show();
+}
+
+function hideNotice() {
+  $('#storage-notice').hide();
+}
+
+// --- Thin Pool ---
+function renderPool(pool) {
+  if (!pool || pool.status === 'inactive') {
+    $('#pool-data-text').text('Inactive');
+    $('#pool-meta-text').text('—');
+    $('#pool-device').html('<span class="pool-inactive">Not Active</span>');
+    $('#pool-status-label').text('Thin pool is not initialized');
+    return;
+  }
+  // Data
+  var dataPct = pool.data_percent || 0;
+  $('#pool-data-text').text(formatSize(pool.data_used_mb) + ' / ' + formatSize(pool.data_total_mb));
+  $('#pool-data-bar').css('width', dataPct + '%').attr('class', 'pool-bar-fill ' + barColor(dataPct));
+  $('#pool-data-pct').text(dataPct + '%');
+
+  // Meta
+  var metaPct = pool.meta_total_mb > 0 ? Math.round(pool.meta_used_mb / pool.meta_total_mb * 100 * 10) / 10 : 0;
+  $('#pool-meta-text').text(pool.meta_used_mb.toFixed(2) + ' MB / ' + pool.meta_total_mb.toFixed(2) + ' MB');
+  $('#pool-meta-bar').css('width', metaPct + '%').attr('class', 'pool-bar-fill ' + barColor(metaPct));
+  $('#pool-meta-pct').text(metaPct + '%');
+
+  // Device
+  $('#pool-device').text('/dev/mapper/' + pool.device);
+  $('#pool-status-label').html('<span style="color:#4CAF50;">● Active</span>');
+}
+
+function barColor(pct) {
+  if (pct >= 90) return 'red';
+  if (pct >= 70) return 'yellow';
+  return 'green';
+}
+
+function formatSize(mb) {
+  if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
+  return mb.toFixed(1) + ' MB';
+}
+
+// --- Volumes ---
+function renderVolumes(volumes) {
+  if (!volumes || volumes.length === 0) {
+    $('#volumes-body').html('<tr><td colspan="8" style="text-align:center;padding:15px;opacity:0.6;">No volumes found.</td></tr>');
+    return;
+  }
+  var html = '';
+  volumes.forEach(function(v) {
+    var typeBadge = v.type === 'thin'
+      ? '<span class="badge badge-thin">thin</span>'
+      : '<span class="badge badge-raw">raw</span>';
+    var statusBadge = v.status === 'active'
+      ? '<span class="badge badge-active">active</span>'
+      : '<span class="badge badge-available">available</span>';
+    var usedBy = v.used_by && v.used_by !== 'unused'
+      ? '<span class="tag-vm">' + escHtml(v.used_by) + '</span>'
+      : '<span class="tag-unused">unused</span>';
+    var sizeStr = v.size_mb > 0 ? formatSize(v.size_mb) : '—';
+    var canRemove = (!v.used_by || v.used_by === 'unused') && v.status !== 'active';
+    var actions = canRemove
+      ? '<button class="vm-btn danger" onclick="removeVolume(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\', \'' + escAttr(v.type) + '\')"><i class="fa fa-trash"></i></button>'
+      : '';
+
+    html += '<tr>'
+      + '<td class="mono">' + escHtml(v.name) + '</td>'
+      + '<td><i class="fa fa-cube" style="color:#58a6ff;"></i> ' + escHtml(v.namespace) + '</td>'
+      + '<td>' + typeBadge + '</td>'
+      + '<td>' + sizeStr + '</td>'
+      + '<td class="mono">' + escHtml(v.device) + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '<td>' + usedBy + '</td>'
+      + '<td>' + actions + '</td>'
+      + '</tr>';
+  });
+  $('#volumes-body').html(html);
+}
+
+// --- Images ---
+function renderImages(images) {
+  if (!images || images.length === 0) {
+    $('#images-body').html('<tr><td colspan="5" style="text-align:center;padding:15px;opacity:0.6;">No images found in containerd.</td></tr>');
+    return;
+  }
+  var html = '';
+  images.forEach(function(img) {
+    var usedBy = '';
+    if (img.used_by && img.used_by.length > 0) {
+      usedBy = img.used_by.map(function(n) { return '<span class="tag-vm">' + escHtml(n) + '</span>'; }).join(' ');
+    } else {
+      usedBy = '<span class="tag-unused">unused</span>';
+    }
+    var sizeStr = img.size_mb > 0 ? formatSize(img.size_mb) : '—';
+    var canRemove = !img.used_by || img.used_by.length === 0;
+    var actions = canRemove
+      ? '<button class="vm-btn danger" onclick="removeImage(\'' + escAttr(img.ref) + '\', \'' + escAttr(img.namespace) + '\')"><i class="fa fa-trash"></i></button>'
+      : '';
+
+    html += '<tr>'
+      + '<td class="mono">' + escHtml(img.ref) + '</td>'
+      + '<td><i class="fa fa-cube" style="color:#58a6ff;"></i> ' + escHtml(img.namespace) + '</td>'
+      + '<td>' + sizeStr + '</td>'
+      + '<td>' + usedBy + '</td>'
+      + '<td>' + actions + '</td>'
+      + '</tr>';
+  });
+  $('#images-body').html(html);
+}
+
+// --- Actions ---
+function pullImage() {
+  swal({
+    title: 'Pull Image',
+    html: true,
+    text: '<div style="text-align:left;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Image Reference:</label>'
+      + '<input id="swal-pull-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;margin-bottom:12px;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
+      + '<select id="swal-pull-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
+      + '<option value="default">default</option>'
+      + '<option value="ch">ch</option>'
+      + '<option value="fc">fc</option>'
+      + '</select>'
+      + '</div>',
+    showCancelButton: true,
+    confirmButtonText: 'Pull',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    var ref = document.getElementById('swal-pull-ref').value.trim();
+    var ns = document.getElementById('swal-pull-ns').value;
+    if (!ref) {
+      swal.showInputError('Please enter an image reference');
+      return false;
+    }
+    swal({title: 'Pulling...', text: 'Pulling ' + ref + ' into namespace "' + ns + '"...', type: 'info', showConfirmButton: false, showCancelButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'pull_image', image: ref, namespace: ns}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Success', text: resp.message || 'Image pulled successfully', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Pull failed', type: 'error'});
+      }
+    }).fail(function() {
+      swal({title: 'Error', text: 'Request failed', type: 'error'});
+    });
+  });
+}
 
 function pruneImages() {
   swal({
     title: 'Prune Unused Images',
-    text: 'Select namespace to prune:',
-    type: 'input',
-    inputValue: 'all',
-    inputPlaceholder: 'all, ch, fc, or default',
+    html: true,
+    text: '<div style="text-align:left;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
+      + '<select id="swal-prune-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
+      + '<option value="all">All namespaces</option>'
+      + '<option value="default">default</option>'
+      + '<option value="ch">ch</option>'
+      + '<option value="fc">fc</option>'
+      + '</select>'
+      + '<p style="margin-top:10px;font-size:0.85em;opacity:0.7;">This removes images not used by any VM.</p>'
+      + '</div>',
     showCancelButton: true,
     confirmButtonText: 'Prune',
     cancelButtonText: 'Cancel',
     closeOnConfirm: false
-  }, function(val) {
-    if (!val) return;
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: val}, function(data) {
-        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-        if (data.success) {
-          swal({title: 'Done', text: data.message || 'Prune complete', type: 'success'}, function() { location.reload(); });
-        } else {
-          swal({title: 'Error', text: data.error || 'Prune failed', type: 'error'});
-        }
-      }).fail(function() {
-        swal({title: 'Error', text: 'Request failed', type: 'error'});
-      });
-    }
+  }, function(confirmed) {
+    if (!confirmed) return;
+    var ns = document.getElementById('swal-prune-ns').value;
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: ns}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Done', text: resp.message || 'Prune complete', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Prune failed', type: 'error'});
+      }
+    }).fail(function() {
+      swal({title: 'Error', text: 'Request failed', type: 'error'});
+    });
   });
 }
 
-function deleteRootfs(name, path) {
+function removeVolume(name, ns, type) {
   swal({
-    title: 'Delete rootFS?',
-    text: 'Delete rootfs image for "' + name + '"?\n\nPath: ' + path + '\n\nNote: If the VM is running, it must be stopped first. The VM config will be kept.',
+    title: 'Remove Volume?',
+    text: 'Remove volume "' + name + '" from namespace "' + ns + '"?\n\nType: ' + type + '\nThis action cannot be undone.',
     type: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Delete',
+    confirmButtonText: 'Remove',
     cancelButtonText: 'Cancel',
     closeOnConfirm: false
   }, function(confirmed) {
-    if (confirmed) {
-      $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name}, function(data) {
-        if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-        if (data.success) {
-          swal({title: 'Deleted', text: data.message, type: 'success'}, function() { location.reload(); });
-        } else {
-          swal({title: 'Cannot Delete', text: data.error || 'Delete failed', type: 'error'});
-        }
-      });
-    }
+    if (!confirmed) return;
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name, namespace: ns, type: type}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Removed', text: resp.message || 'Volume removed', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Remove failed', type: 'error'});
+      }
+    }).fail(function() {
+      swal({title: 'Error', text: 'Request failed', type: 'error'});
+    });
   });
+}
+
+function removeImage(ref, ns) {
+  swal({
+    title: 'Remove Image?',
+    text: 'Remove image:\n' + ref + '\n\nFrom namespace "' + ns + '"?\nThis action cannot be undone.',
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Remove',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'prune_images', namespace: ns, image: ref}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Removed', text: resp.message || 'Image removed', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Remove failed', type: 'error'});
+      }
+    }).fail(function() {
+      swal({title: 'Error', text: 'Request failed', type: 'error'});
+    });
+  });
+}
+
+// --- Helpers ---
+function escHtml(s) {
+  var el = document.createElement('span');
+  el.textContent = s || '';
+  return el.innerHTML;
+}
+
+function escAttr(s) {
+  return (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 </script>
