@@ -1278,29 +1278,46 @@ SCRIPT;
             microvm_log("PULL_ROOTFS OK (thin): $volName mounted at $mountPoint");
             echo json_encode(['success' => true, 'message' => "Thin volume '$volName' created from $ref\nMounted at: $mountPoint"]);
         } else {
-            // Export to raw ext4 file
+            // Raw: mount thin snapshot temporarily, copy to raw ext4 file
             $outDir = "$vmdir/$pullNs/$volName";
             @mkdir($outDir, 0755, true);
             $rawFile = "$outDir/rootfs.raw";
             $diskSize = 512; // MB default
-            // Create sparse raw, format, mount, extract image layers, unmount
-            exec("truncate -s {$diskSize}M " . escapeshellarg($rawFile) . " 2>&1", $o1);
-            exec("mkfs.ext4 -q -F " . escapeshellarg($rawFile) . " 2>&1", $o2);
-            $tmpMount = "/tmp/microvm-rawmount-$volName";
-            @mkdir($tmpMount, 0755, true);
-            exec("mount -o loop " . escapeshellarg($rawFile) . " " . escapeshellarg($tmpMount) . " 2>&1", $o3, $mntRet);
+
+            // Step 1: Mount image as thin snapshot (same as thin mode, temporary)
+            $tmpSnap = "/tmp/microvm-mount-raw-$volName";
+            exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($tmpSnap) . " 2>/dev/null");
+            exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images mount --snapshotter devmapper --rw --platform linux/amd64 " . escapeshellarg($ref) . " " . escapeshellarg($tmpSnap) . " 2>&1", $snapOut, $snapRet);
+            if ($snapRet !== 0) {
+                echo json_encode(['success' => false, 'error' => 'Failed to mount image snapshot: ' . implode("\n", $snapOut)]);
+                break;
+            }
+
+            // Step 2: Create raw ext4 file, mount it, copy contents from snapshot
+            exec("truncate -s {$diskSize}M " . escapeshellarg($rawFile));
+            exec("mkfs.ext4 -q -F " . escapeshellarg($rawFile) . " 2>&1");
+            $rawMount = "/tmp/microvm-rawmount-$volName";
+            @mkdir($rawMount, 0755, true);
+            exec("mount -o loop " . escapeshellarg($rawFile) . " " . escapeshellarg($rawMount) . " 2>&1", $mntOut, $mntRet);
             if ($mntRet !== 0) {
-                echo json_encode(['success' => false, 'error' => 'Failed to mount raw image: ' . implode(' ', $o3)]);
+                exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($tmpSnap) . " 2>/dev/null");
+                echo json_encode(['success' => false, 'error' => 'Failed to mount raw image: ' . implode(' ', $mntOut)]);
                 break;
             }
-            // Extract image layers using crane
-            exec("crane export " . escapeshellarg($ref) . " - 2>/dev/null | tar -xf - -C " . escapeshellarg($tmpMount) . " 2>&1", $extractOut, $extractRet);
-            exec("umount " . escapeshellarg($tmpMount) . " 2>/dev/null");
-            @rmdir($tmpMount);
-            if ($extractRet !== 0) {
-                echo json_encode(['success' => false, 'error' => 'Extract failed: ' . implode("\n", $extractOut)]);
+
+            // Step 3: Copy files from snapshot to raw (using cp -a for permissions)
+            exec("cp -a " . escapeshellarg($tmpSnap) . "/. " . escapeshellarg($rawMount) . "/ 2>&1", $cpOut, $cpRet);
+
+            // Step 4: Cleanup mounts
+            exec("umount " . escapeshellarg($rawMount) . " 2>/dev/null");
+            @rmdir($rawMount);
+            exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($tmpSnap) . " 2>/dev/null");
+
+            if ($cpRet !== 0) {
+                echo json_encode(['success' => false, 'error' => 'Copy failed: ' . implode("\n", $cpOut)]);
                 break;
             }
+
             $size = filesize($rawFile);
             microvm_log("PULL_ROOTFS OK (raw): $rawFile (" . round($size/1048576) . " MB)");
             echo json_encode(['success' => true, 'message' => "Raw rootfs created: $rawFile (" . round($size/1048576) . " MB)"]);
