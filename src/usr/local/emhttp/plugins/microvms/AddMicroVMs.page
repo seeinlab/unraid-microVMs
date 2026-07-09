@@ -463,14 +463,27 @@ function submitForm() {
 function createFromJson() {
   var json = document.getElementById('jsonBox').value;
   try { JSON.parse(json); } catch(e) { alert('Invalid JSON: ' + e.message); return; }
-  showProgress('Creating from JSON...');
-  $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {cmd: 'create_json', config: json}, function(data) {
-    var r = (typeof data === 'object') ? data : JSON.parse(data);
-    if (r.success) {
-      showProgress('<b style="color:#4CAF50;">✓ Created!</b>');
-      setTimeout(function(){ location = '/MicroVMs'; }, 2000);
-    } else {
-      showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
+  showProgress('Creating from JSON (pulling image, building rootfs)...');
+  $.ajax({
+    url: '/plugins/<?=$plugin?>/backend/MicroVMAdmin.php',
+    method: 'POST',
+    timeout: 180000,
+    data: {cmd: 'create_json', config: json},
+    success: function(data) {
+      var r = (typeof data === 'object') ? data : JSON.parse(data);
+      if (r.success) {
+        showProgress('<b style="color:#4CAF50;">✓ ' + (r.message || 'Created!') + '</b>');
+        setTimeout(function(){ location = '/MicroVMs'; }, 2500);
+      } else {
+        showProgress('<b style="color:#f44336;">✗ ' + (r.error || 'Failed') + '</b>');
+      }
+    },
+    error: function(xhr) {
+      if (xhr.statusText === 'timeout') {
+        showProgress('<b style="color:#ff9800;">⚠ Create is still running in background (timeout). Check Machines tab.</b>');
+      } else {
+        showProgress('<b style="color:#f44336;">✗ Request failed: ' + xhr.statusText + '</b>');
+      }
     }
   });
 }

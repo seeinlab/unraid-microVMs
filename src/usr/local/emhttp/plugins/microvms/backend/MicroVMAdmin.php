@@ -382,6 +382,42 @@ switch ($cmd) {
         }
         break;
 
+    case 'create_json':
+        // Parse JSON config and map to $_POST fields, then fall through to 'create'
+        $json = $_REQUEST['config'] ?? '';
+        $config = json_decode($json, true);
+        if (!$config || empty($config['name'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid JSON or missing name']);
+            break;
+        }
+        // Map JSON fields to POST fields (same keys as form submit)
+        $_POST['name'] = $config['name'];
+        $_POST['namespace'] = $config['namespace'] ?? 'default';
+        $_POST['engine'] = $config['engine'] ?? $config['vmm'] ?? 'cloud-hypervisor';
+        $_POST['cpus'] = $config['cpus'] ?? '1';
+        $_POST['max_cpus'] = $config['max_cpus'] ?? $config['cpus'] ?? '2';
+        $_POST['memory'] = $config['memory'] ?? '256';
+        $_POST['max_memory'] = $config['max_memory'] ?? $config['memory'] ?? '512';
+        $_POST['ip'] = $config['ip'] ?? '';
+        $_POST['gateway'] = $config['gateway'] ?? '192.168.50.1';
+        $_POST['source'] = $config['source'] ?? 'oci';
+        $_POST['oci_image'] = $config['oci_image'] ?? '';
+        $_POST['disk_size'] = $config['disk_size'] ?? '256';
+        $_POST['storage_type'] = $config['storage_type'] ?? 'raw';
+        $_POST['rootfs_path'] = $config['rootfs_path'] ?? '';
+        $_POST['autostart'] = $config['autostart'] ?? 'true';
+        $_POST['console'] = $config['console'] ?? 'true';
+        $_POST['env'] = is_array($config['env'] ?? null) ? json_encode($config['env']) : ($config['env'] ?? '{}');
+        $_POST['mounts'] = is_array($config['mounts'] ?? null) ? json_encode($config['mounts']) : ($config['mounts'] ?? '[]');
+        // Also set $_REQUEST for Unraid compatibility
+        $_REQUEST = array_merge($_REQUEST, $_POST);
+        // Re-derive path variables since name/namespace changed from initial parse
+        $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['name']));
+        $namespace = $_POST['namespace'];
+        $vmpath = "$vmdir/$namespace/$name";
+        microvm_log("CREATE_JSON: mapped fields, falling through to create handler");
+        // Fall through to 'create' case (no break)
+
     case 'create':
         microvm_log("CREATE: " . json_encode($_POST));
         $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['name'] ?? ''));
@@ -730,22 +766,7 @@ SCRIPT;
         }
         break;
 
-    case 'create_json':
-        $json = $_POST['config'] ?? '';
-        $config = json_decode($json, true);
-        if (!$config || empty($config['name'])) {
-            echo json_encode(['success' => false, 'error' => 'Invalid JSON or missing name']);
-            break;
-        }
-        $name = preg_replace('/[^a-z0-9\-]/', '', strtolower($config['name']));
-        $vmm = $config['vmm'] ?? $config['engine'] ?? 'cloud-hypervisor';
-        $vmPath = "$vmpath";
-        @mkdir($vmPath, 0755, true);
-        // Write as {vmm}.json
-        $configFilename = "$vmPath/$vmm.json";
-        file_put_contents($configFilename, json_encode($config, JSON_PRETTY_PRINT));
-        echo json_encode(['success' => true, 'message' => "VM '$name' created from JSON."]);
-        break;
+    // create_json case moved to before 'create' case (fall-through)
 
     case 'console':
         // Serial console via ttyd + unix socket (proxied by Unraid nginx at /logterminal/)
