@@ -547,6 +547,18 @@ switch ($cmd) {
             $mountCmd = ($storageType === 'thin') ? "true" : "mount $mountDev \$MOUNT";
             $precleanCmd = ($storageType === 'thin') ? "true" : "umount \$MOUNT 2>/dev/null || true";
 
+            // Generate /fly/mounts content (tab-separated: tag\tguest_path)
+            $mountsFileContent = '';
+            if (!empty($mounts)) {
+                foreach ($mounts as $m) {
+                    $mountsFileContent .= $m['tag'] . "\t" . $m['guest_path'] . "\n";
+                }
+            }
+            $mountsInjection = '';
+            if (!empty($mountsFileContent)) {
+                $mountsInjection = "cat > \$MOUNT/fly/mounts << 'MOUNTSEOF'\n{$mountsFileContent}MOUNTSEOF\nchmod 644 \$MOUNT/fly/mounts";
+            }
+
             $createScript = <<<SCRIPT
 #!/bin/bash
 set -e
@@ -571,6 +583,7 @@ ln -sf /fly/init \$MOUNT/init
 cat > \$MOUNT/fly/run.json << 'RUNJSONEOF'
 $runJson
 RUNJSONEOF
+$mountsInjection
 $umountCmd
 trap - EXIT
 rmdir \$MOUNT 2>/dev/null
@@ -600,6 +613,23 @@ SCRIPT;
             $storageConfig['size_mb'] = $diskSize;
         }
 
+        // Parse mounts from POST (JSON array of {tag, host_path, guest_path})
+        $mounts = [];
+        if (!empty($_POST['mounts'])) {
+            $mountsInput = is_string($_POST['mounts']) ? json_decode($_POST['mounts'], true) : $_POST['mounts'];
+            if (is_array($mountsInput)) {
+                foreach ($mountsInput as $m) {
+                    if (!empty($m['tag']) && !empty($m['host_path']) && !empty($m['guest_path'])) {
+                        $mounts[] = [
+                            'tag' => preg_replace('/[^a-z0-9\-_]/', '', strtolower($m['tag'])),
+                            'host_path' => $m['host_path'],
+                            'guest_path' => $m['guest_path'],
+                        ];
+                    }
+                }
+            }
+        }
+
         $config = [
             'name' => $name,
             'namespace' => ($_REQUEST['namespace'] ?? 'default') === 'flintlock' ? 'default' : ($_REQUEST['namespace'] ?? 'default'),
@@ -622,6 +652,7 @@ SCRIPT;
             'kernel' => [
                 'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/fly/init',
             ],
+            'mounts' => $mounts, // [{tag, host_path, guest_path}] virtiofs shares (CH only)
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
             'console' => $enableConsole,
         ];

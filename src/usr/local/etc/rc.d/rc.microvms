@@ -874,15 +874,52 @@ FCEOF
     local hotplug_size=$((max_memory - memory))
     [ $hotplug_size -lt 0 ] && hotplug_size=$memory
 
+    # --- Virtiofs mounts (Cloud Hypervisor only) ---
+    local fs_flags=""
+    local memory_shared=""
+    if [ "$vmm" = "cloud-hypervisor" ]; then
+      local mounts_json
+      mounts_json=$(php -r '$c=json_decode(file_get_contents("'"$config"'"),true); foreach(($c["mounts"]??[]) as $m) echo $m["tag"]."\t".$m["host_path"]."\t".$m["guest_path"]."\n";' 2>/dev/null)
+      if [ -n "$mounts_json" ]; then
+        memory_shared=",shared=on"
+        local vfs_dir="/var/run/microvms/${ns}/${name}"
+        mkdir -p "$vfs_dir"
+        while IFS=$'\t' read -r vfs_tag vfs_host_path vfs_guest_path; do
+          [ -z "$vfs_tag" ] && continue
+          local vfs_sock="${vfs_dir}/vfs-${vfs_tag}.sock"
+          # Launch virtiofsd daemon
+          /usr/local/sbin/virtiofsd \
+            --socket-path="$vfs_sock" \
+            --shared-dir="$vfs_host_path" \
+            --cache=never &
+          local vfs_pid=$!
+          echo "$vfs_pid" > "${vfs_dir}/vfs-${vfs_tag}.pid"
+          # Wait for socket to appear (max 5s)
+          local vfs_wait=0
+          while [ ! -S "$vfs_sock" ] && [ $vfs_wait -lt 50 ]; do
+            sleep 0.1
+            vfs_wait=$((vfs_wait + 1))
+          done
+          if [ -S "$vfs_sock" ]; then
+            fs_flags="${fs_flags} --fs tag=${vfs_tag},socket=${vfs_sock},num_queues=1,queue_size=512"
+            log "virtiofsd started: tag=$vfs_tag host=$vfs_host_path (PID $vfs_pid)"
+          else
+            log "WARNING: virtiofsd socket not created for tag=$vfs_tag (PID $vfs_pid)"
+          fi
+        done <<< "$mounts_json"
+      fi
+    fi
+
     "$CH_BIN" \
       --api-socket "$sock" \
       --kernel "$kernel" \
       --disk "path=$disk,readonly=false,image_type=raw" \
       --cmdline "$ch_cmdline" \
       --cpus "boot=$cpus,max=$max_cpus" \
-      --memory "size=${memory}M,hotplug_size=${hotplug_size}M" \
+      --memory "size=${memory}M,hotplug_size=${hotplug_size}M${memory_shared}" \
       --net "tap=$tap_name,mac=$mac" \
       --serial pty --console off \
+      ${fs_flags} \
       -v >> "/var/log/microvms/cloud-hypervisor/${name}.log" 2>&1 &
   fi
 
@@ -991,6 +1028,19 @@ stop_vm() {
   rm -f "/tmp/microvms-${name}.fifo"
   rm -f "/var/tmp/microvms-${name}.fifo"
   rm -f "/var/tmp/microvms-${name}.pty"
+
+  # Kill virtiofsd processes for this VM
+  for vfs_pid_file in /var/run/microvms/*/${name}/vfs-*.pid; do
+    [ -f "$vfs_pid_file" ] || continue
+    local vfs_pid=$(cat "$vfs_pid_file")
+    if [ -n "$vfs_pid" ] && kill -0 "$vfs_pid" 2>/dev/null; then
+      kill "$vfs_pid" 2>/dev/null
+      log "Stopped virtiofsd (PID $vfs_pid) for $name"
+    fi
+    rm -f "$vfs_pid_file"
+  done
+  # Remove virtiofsd sockets
+  rm -f /var/run/microvms/*/${name}/vfs-*.sock
 
   # Update state directory
   for state_dir in /var/run/microvms/*/; do

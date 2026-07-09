@@ -43,6 +43,16 @@ for ns in $DNS; do
 done
 [ ! -s /etc/resolv.conf ] && echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
+# 4b. Mount virtiofs shares (from /fly/mounts: tab-separated tag\tguest_path)
+if [ -f /fly/mounts ]; then
+  while IFS=$(printf '\t') read -r tag guest_path; do
+    [ -n "$tag" ] && [ -n "$guest_path" ] && {
+      mkdir -p "$guest_path"
+      mount -t virtiofs "$tag" "$guest_path" 2>/dev/null && echo "Mounted virtiofs: $tag -> $guest_path"
+    }
+  done < /fly/mounts
+fi
+
 # 5. Set environment
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HOME=/root
