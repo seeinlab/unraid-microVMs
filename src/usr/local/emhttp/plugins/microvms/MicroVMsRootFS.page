@@ -214,10 +214,16 @@ function renderVolumes(volumes) {
       ? '<span class="tag-vm">' + escHtml(v.used_by) + '</span>'
       : '<span class="tag-unused">unused</span>';
     var sizeStr = v.size_mb > 0 ? formatSize(v.size_mb) : '—';
-    var canRemove = (!v.used_by || v.used_by === 'unused') && v.status !== 'active';
+    var canRemove = false;
+    // Only allow remove for: raw files (any unused) or active mount snapshots (unmount)
+    if (v.type === 'raw' && (!v.used_by || v.used_by === 'unused')) {
+      canRemove = true;
+    } else if (v.type === 'thin' && v.status === 'active' && v.name.indexOf('/tmp/microvm-mount-') === 0 && (!v.used_by || v.used_by === 'unused')) {
+      canRemove = true;
+    }
     var actions = '';
     if (v.type === 'thin' && v.status === 'active') {
-      actions += '<input type="button" onclick="downloadRootfs(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\')" value="Download .raw">';
+      actions += '<input type="button" onclick="downloadRootfs(\'' + escAttr(v.used_by || v.name) + '\', \'' + escAttr(v.namespace) + '\')" value="Download .raw">';
     }
     if (canRemove) {
       actions += ' <input type="button" onclick="removeVolume(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\', \'' + escAttr(v.type) + '\')" value="Remove">';
@@ -350,7 +356,7 @@ function removeVolume(name, ns, type) {
     closeOnConfirm: false
   }, function(confirmed) {
     if (!confirmed) return;
-    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'delete_rootfs', name: name, namespace: ns, type: type}, function(resp) {
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'remove_volume', name: name, namespace: ns, type: type}, function(resp) {
       if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
       if (resp.success) {
         swal({title: 'Removed', text: resp.message || 'Volume removed', type: 'success'}, function() { refreshStorage(); });

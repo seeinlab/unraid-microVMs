@@ -1492,6 +1492,44 @@ SCRIPT;
         echo json_encode(['success' => $deleted, 'message' => $deleted ? "RootFS deleted for '$name'" : "No rootfs found"]);
         break;
 
+    case 'remove_volume':
+        // Remove a volume: thin (unmount snapshot) or raw (delete file)
+        $sock = '/var/run/microvms/containerd.sock';
+        $volName = $_REQUEST['name'] ?? '';
+        $volNs = $_REQUEST['namespace'] ?? 'default';
+        $volType = $_REQUEST['type'] ?? 'thin';
+
+        if (empty($volName)) {
+            echo json_encode(['success' => false, 'error' => 'Volume name required']);
+            break;
+        }
+
+        if ($volType === 'thin') {
+            // Unmount the active snapshot
+            exec("ctr -a $sock -n " . escapeshellarg($volNs) . " images unmount " . escapeshellarg($volName) . " 2>&1", $umOut, $umRet);
+            // Also try removing the snapshot key
+            exec("ctr -a $sock -n " . escapeshellarg($volNs) . " snapshots --snapshotter devmapper rm " . escapeshellarg($volName) . " 2>&1", $rmOut, $rmRet);
+            if ($umRet === 0 || $rmRet === 0) {
+                microvm_log("REMOVE_VOLUME (thin): $volName from $volNs");
+                echo json_encode(['success' => true, 'message' => "Thin volume '$volName' removed from namespace $volNs"]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Remove failed: ' . implode(' ', array_merge($umOut, $rmOut))]);
+            }
+        } else {
+            // Raw: delete the rootfs.raw file
+            $cfg2 = microvm_load_config();
+            $vd = $cfg2['VMDIR'] ?? '/mnt/user/microvms';
+            $rawFile = "$vd/$volNs/$volName/rootfs.raw";
+            if (file_exists($rawFile)) {
+                unlink($rawFile);
+                microvm_log("REMOVE_VOLUME (raw): $rawFile");
+                echo json_encode(['success' => true, 'message' => "Raw volume removed: $rawFile"]);
+            } else {
+                echo json_encode(['success' => false, 'error' => "File not found: $rawFile"]);
+            }
+        }
+        break;
+
     case 'pull_rootfs':
         $image = $_POST['image'] ?? 'nginx:alpine';
         $pullName = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['name'] ?? ''));
