@@ -1,16 +1,16 @@
 # Graph Report - unraid-microVMs  (2026-07-09)
 
 ## Corpus Check
-- 136 files · ~121,974 words
+- 136 files · ~121,885 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1617 nodes · 1539 edges · 178 communities (127 shown, 51 thin omitted)
+- 1602 nodes · 1524 edges · 177 communities (126 shown, 51 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9c194451`
+- Built from commit: `a18d0c37`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -126,7 +126,6 @@
 - [[_COMMUNITY_Bulletproofing Skills Against Rationalization|Bulletproofing Skills Against Rationalization]]
 - [[_COMMUNITY_Data Models|Data Models]]
 - [[_COMMUNITY_PHP Conventions|PHP Conventions]]
-- [[_COMMUNITY_Key Patterns from References|Key Patterns from References]]
 - [[_COMMUNITY_Methods|Methods]]
 - [[_COMMUNITY_Elements and Size for LCP|Elements and Size for LCP]]
 - [[_COMMUNITY_Pressure Test 1 Emergency Production Fix|Pressure Test 1: Emergency Production Fix]]
@@ -187,9 +186,9 @@
 5. `Code Review Reception` - 15 edges
 6. `Test-Driven Development (TDD)` - 15 edges
 7. `microVMs Plugin — Verified Architecture` - 14 edges
-8. `Init Process Architecture (Research)` - 14 edges
-9. `PLAN: Init Refactor — /fly/run.json Pattern` - 14 edges
-10. `Session Resume Context — microVM Liquidmetal Unraid Plugin` - 13 edges
+8. `PLAN: Init Refactor — /fly/run.json Pattern` - 14 edges
+9. `Session Resume Context — microVM Liquidmetal Unraid Plugin` - 13 edges
+10. `Deploying with Laravel Cloud CLI` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
 - None detected - all connections are within the same source files.
@@ -197,7 +196,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (178 total, 51 thin omitted)
+## Communities (177 total, 51 thin omitted)
 
 ### Community 0 - "compilerOptions"
 Cohesion: 0.06
@@ -244,7 +243,7 @@ Cohesion: 0.07
 Nodes (30): Assets, Basic Generic Function, Common Mistakes, Conditional Types, Constrained Generics, Cross-Language Comparison, ESLint Flat Config (ESLint 9+), Framework Integration (+22 more)
 
 ### Community 32 - "microVMs Plugin — Design Patterns"
-Cohesion: 0.08
+Cohesion: 0.07
 Nodes (26): AJAX Backend, Boot Sequence (rc.microvms start), Compatibility Matrix, Config Format (Infra-as-Code), Containerd Namespaces, Direct Mode (WebGUI), Directory Structure, File: `cloud-hypervisor.json` or `firecracker.json` (+18 more)
 
 ### Community 33 - "Endpoints"
@@ -256,8 +255,8 @@ Cohesion: 0.07
 Nodes (28): Advanced Template Patterns, Basic Conditional Types, Basic Generic Function, Basic Mapped Types, Basic Template Literals, Basic Variadic Tuples, Built-in Utility Types Reference, Conditional Types (+20 more)
 
 ### Community 35 - "Init Process Architecture (Research)"
-Cohesion: 0.07
-Nodes (26): Architecture (same for both VMMs):, Available Tools on Unraid, CH Changes:, CH Garbled Output, CH Serial Options (from documentation), CH: Use `--serial socket=` (BEST), Comparison, Console Architecture - Research & Recommendation (+18 more)
+Cohesion: 0.22
+Nodes (8): Cloud Hypervisor, Console Architecture — Final Implementation, Firecracker, How It Works, Init Architecture, Key Decisions, Status: ✅ Complete (v0.1), UI (swal popup)
 
 ### Community 36 - "Development Notes"
 Cohesion: 0.17
@@ -268,8 +267,8 @@ Cohesion: 0.13
 Nodes (14): CH Disk Config, Cleanup, Config JSON, Create VM (Thin Pool), Delete VM (Thin Pool), Final Implementation, Image Reference Normalization, Init Script Injection (+6 more)
 
 ### Community 38 - "v2026.07.06 — Current (Verified Working)"
-Cohesion: 0.12
-Nodes (16): Binaries, ✅ Critical Bugs Fixed, ✅ Full Plugin Lifecycle, ✅ Init Script Injection, Pre-refactor versions, Progress Log — microVMs Plugin for Unraid, Remaining Work, ✅ Settings Page (+8 more)
+Cohesion: 0.22
+Nodes (9): Binaries, ✅ Critical Bugs Fixed, ✅ Full Plugin Lifecycle, ✅ Init Script Injection, ✅ Settings Page, ✅ Storage, v2026.07.06 — Current (Verified Working), ✅ VM Operations (Cloud Hypervisor) (+1 more)
 
 ### Community 39 - "Filtering Configuration"
 Cohesion: 0.07
@@ -284,8 +283,8 @@ Cohesion: 0.08
 Nodes (26): Basic Commands, Build Tool (Vite), Common Rules Explained, Complete Project Setup, Contents, Example Tests, Flat Config Format, Formatting (Prettier) (+18 more)
 
 ### Community 46 - "Cloud Hypervisor API Reference (v52.0)"
-Cohesion: 0.20
-Nodes (10): Access Pattern, ch-remote CLI Commands (v52.0), CLI Boot (Direct Start without API), Cloud Hypervisor API Reference (v52.0), Comparison: Direct CLI vs API, Overview, PTY Path Discovery, Serial/Console Options (+2 more)
+Cohesion: 0.08
+Nodes (25): Access Pattern, ch-remote CLI Commands (v52.0), CLI Boot (Direct Start without API), Cloud Hypervisor API Reference (v52.0), Comparison: Direct CLI vs API, DiskConfig (add-disk), Endpoints, Hot-add Devices (+17 more)
 
 ### Community 48 - "What You Must Do When Invoked"
 Cohesion: 0.08
@@ -549,11 +548,7 @@ Nodes (4): Controlplane Config (microvms.controlplane.cfg), Data Models, Filesys
 
 ### Community 123 - "PHP Conventions"
 Cohesion: 0.25
-Nodes (8): DiskConfig (add-disk), Key Request Bodies, NetConfig (add-net), Restore (CLI only — boot arg), Snapshot, VmConfig (vm.create), VmResize, VmResizeDisk
-
-### Community 124 - "Key Patterns from References"
-Cohesion: 0.29
-Nodes (7): Endpoints, Hot-add Devices, Live Resize, Migration, Snapshots, VM Lifecycle, VMM Management
+Nodes (7): Pre-refactor versions, Progress Log — microVMs Plugin for Unraid, Remaining Work, v40-v49 — Initial CH, WebGUI, TAP networking, autostart, v50-v59 — CH snapshot/restore, OCI pull, rootFS page, v60-v69 — Firecracker, dual-engine, context menu, console, resize, v70-v71 — FC snapshot, code cleanup
 
 ### Community 125 - "Methods"
 Cohesion: 0.40
@@ -637,7 +632,7 @@ Nodes (4): Pattern, Reference, Skill Types, Technique
 
 ### Community 175 - "Backend Commands (MicroVMAdmin.php)"
 Cohesion: 0.04
-Nodes (44): API Reference, Architecture, Backend Commands (MicroVMAdmin.php), Cloud Hypervisor, Cloud Hypervisor, Configuration & Services, Console, Console Model (+36 more)
+Nodes (47): API Reference, Architecture, Backend Commands (MicroVMAdmin.php), Cloud Hypervisor, Cloud Hypervisor, Configuration & Services, Console, Console Model (+39 more)
 
 ### Community 176 - "microVMs Plugin Documentation"
 Cohesion: 0.40
@@ -648,7 +643,7 @@ Cohesion: 0.06
 Nodes (30): 1. AWS (firecracker-containerd), 2. Fly.io, 3. Kata Containers, 4. Common Patterns, 5. Recommendations for Our Plugin, Adopt for V2 (Quality of Life), Adopt Immediately, Containerd Config Template for Plugin (+22 more)
 
 ## Knowledge Gaps
-- **1115 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1110 more)
+- **1101 isolated node(s):** `mcp-remote`, `start-server.sh script`, `stop-server.sh script`, `$schema`, `target` (+1096 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -656,16 +651,16 @@ Nodes (30): 1. AWS (firecracker-containerd), 2. Fly.io, 3. Kata Containers, 4. C
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Mastering Modern TypeScript` connect `Mastering Modern TypeScript` to `NestJS Integration Reference`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `TypeScript Type System Reference` connect `TypeScript Type System Reference` to `NestJS Integration Reference`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
-- **Why does `microVMs Plugin — Design Patterns` connect `microVMs Plugin — Design Patterns` to `README.md`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **What connects `mcp-remote`, `start-server.sh script`, `stop-server.sh script` to the rest of the system?**
-  _1115 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1101 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._
 - **Should `NestJS Integration Reference` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `common.php` be split into smaller, more focused modules?**
   _Cohesion score 0.13636363636363635 - nodes in this community are weakly interconnected._
+- **Should `Testing Skills With Subagents` be split into smaller, more focused modules?**
+  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
+- **Should `TypeScript Type System Reference` be split into smaller, more focused modules?**
+  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._

@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/backend/MicroVMAdmin.php": {
-    "mtime": 1783568366.6891756,
-    "ast_hash": "e629999e58c461ebc3c2cf8d72a3feb3",
+    "mtime": 1783588477.1191497,
+    "ast_hash": "1edd65832c41f791cf0417408636932c",
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/event/array_started": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/include/common.php": {
-    "mtime": 1783544670.6874776,
-    "ast_hash": "d336f8ebd3ceccf33d362236357b0d82",
+    "mtime": 1783588411.733551,
+    "ast_hash": "24429690ecf99db77d196136be011a8e",
     "semantic_hash": ""
   },
   "src/usr/local/emhttp/plugins/microvms/restart.sh": {
@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "src/usr/local/share/microvms/fly-init": {
-    "mtime": 1783380475.4815364,
-    "ast_hash": "4e1f020a4d56be6cdcf15d34d026b8ea",
+    "mtime": 1783583958.4539585,
+    "ast_hash": "c3c520803a189e79374ecdba443ff1e4",
     "semantic_hash": ""
   },
   ".agents/summary/architecture.md": {
@@ -600,13 +600,13 @@
     "semantic_hash": ""
   },
   "docs/PLAN-NEXT.md": {
-    "mtime": 1783504993.4357195,
-    "ast_hash": "f2dcdd86a68173f2c7eea7601646407e",
+    "mtime": 1783586913.546329,
+    "ast_hash": "768819e3cd82f506853ac74f5d399332",
     "semantic_hash": ""
   },
   "docs/PLAN-console.md": {
-    "mtime": 1783348195.8663166,
-    "ast_hash": "7a17ce8dfeb7dc3b5532ebca119b45b1",
+    "mtime": 1783569735.2607045,
+    "ast_hash": "9de22459e6d09fac93aeb6efbbe9e183",
     "semantic_hash": ""
   },
   "docs/PLAN-init-refactor.md": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "docs/FEATURES-AND-DATA-MODELS.md": {
-    "mtime": 1783495430.366972,
-    "ast_hash": "d8a36ed34f325e00a506519b94c7bc37",
+    "mtime": 1783573467.8147502,
+    "ast_hash": "d7b6ab1e018ac26ccbdbc52c4888291d",
     "semantic_hash": ""
   },
   "docs/RESEARCH-containerd-storage.md": {

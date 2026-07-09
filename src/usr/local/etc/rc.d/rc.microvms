@@ -583,7 +583,7 @@ create_thin_rootfs() {
   local size_mb="$2"
   local vmm="${3:-$DEFAULT_VMM}"
   local snapshot_key="vm-${name}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
+  local ctr_cmd="$CTR_BIN -a ${CONTAINERD_SOCK} -n ${vmm}"
 
   # Prepare snapshot (creates thin device)
   $ctr_cmd snapshots --snapshotter devmapper prepare "$snapshot_key" "" 2>/dev/null
@@ -640,7 +640,7 @@ delete_thin_rootfs() {
   local name="$1"
   local vmm="${2:-$DEFAULT_VMM}"
   local snapshot_key="vm-${name}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${vmm}"
+  local ctr_cmd="$CTR_BIN -a ${CONTAINERD_SOCK} -n ${vmm}"
 
   $ctr_cmd snapshots --snapshotter devmapper remove "$snapshot_key" 2>/dev/null
   log "Deleted snapshot: $snapshot_key (namespace: $vmm)"
@@ -655,7 +655,7 @@ activate_thin_rootfs() {
   local name="$1"
   local vmm="${2:-$DEFAULT_VMM}"
   local ns="${3:-default}"
-  local ctr_cmd="ctr -a ${CONTAINERD_SOCK} -n ${ns}"
+  local ctr_cmd="$CTR_BIN -a ${CONTAINERD_SOCK} -n ${ns}"
   local device_path=""
 
   # Try mount-path based key first (new format from ctr images mount)
