@@ -37,6 +37,7 @@
 | Prune unused OCI images | ✅ Done | ✅ | ✅ |
 | Delete VM (with thin cleanup) | ✅ Done | ✅ | ✅ |
 | Live migration | 🚧 Planned | ✅ (CH supports) | ❌ |
+| Virtiofs host path sharing | ✅ Done | ✅ (virtiofsd + --fs) | ❌ Not supported |
 | WebGUI Storage tab (4-panel) | ✅ Done | ✅ | ✅ |
 | Live VM stats (CPU/RAM/IO) | ✅ Done | ✅ | ✅ |
 
@@ -114,6 +115,15 @@ Each VM is stored as `{vmm}.json` in its directory. The filename determines the 
   // Behavior
   "autostart": "boolean",        // Auto-start on array start (default: false)
   "console": "boolean",          // Enable serial console (default: true)
+
+  // Virtiofs mounts (Cloud Hypervisor only)
+  "mounts": [                    // Array of host path shares (default: [])
+    {
+      "tag": "string",           // Mount tag (alphanumeric + hyphens/underscores, used as virtiofs tag)
+      "host_path": "string",     // Absolute path on host (e.g. "/mnt/user/appdata/nginx")
+      "guest_path": "string"     // Mount point inside VM (e.g. "/mnt/appdata")
+    }
+  ],
 
   // Liquidmetal (optional, set when created via flintlockd)
   "flintlock_uid": "string",     // Flintlockd-assigned UID
