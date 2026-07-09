@@ -41,7 +41,7 @@
   - Scan configs for used IPs before allocating
 - [ ] ctr client v2.2.3 vs server v1.7.27 version mismatch warnings
   - Cosmetic but noisy — investigate if newer ctr binary is available for Unraid
-- [ ] CH serial capture inconsistency
+- [x] ~~CH serial capture inconsistency~~ — FIXED: console_input writes directly to PTY (bypasses FIFO)
   - Normal start: `tail -f FIFO → PTY` (works)
   - Restore: direct PTY write (different approach)
   - Should unify to one approach for maintainability
