@@ -73,6 +73,7 @@
 - [ ] Multi-NIC support
 - [ ] VM migration between hosts
 - [ ] Suspend/Resume as user-facing feature (CH: ch-remote pause/resume, FC: PATCH /vm state. Add `paused` state + Pause/Resume buttons in context menu)
+- [ ] OpenBao/Vault secrets integration (encrypted secrets layer, resolved at VM start, not baked into rootfs)
 
 ---
 

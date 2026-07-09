@@ -564,6 +564,13 @@ switch ($cmd) {
                 }
             }
 
+            // Parse env vars from POST (JSON object {KEY: VALUE})
+            $env = [];
+            if (!empty($_POST['env'])) {
+                $envInput = is_string($_POST['env']) ? json_decode($_POST['env'], true) : $_POST['env'];
+                if (is_array($envInput)) $env = $envInput;
+            }
+
             // Generate /fly/mounts content (tab-separated: tag\tguest_path)
             $mountsFileContent = '';
             if (!empty($mounts)) {
@@ -574,6 +581,17 @@ switch ($cmd) {
             $mountsInjection = '';
             if (!empty($mountsFileContent)) {
                 $mountsInjection = "cat > \$MOUNT/fly/mounts << 'MOUNTSEOF'\n{$mountsFileContent}MOUNTSEOF\nchmod 644 \$MOUNT/fly/mounts";
+            }
+
+            $envInjection = '';
+            if (!empty($env)) {
+                $envSh = '';
+                foreach ($env as $k => $v) {
+                    $safeK = preg_replace('/[^A-Za-z0-9_]/', '', $k);
+                    $safeV = str_replace("'", "'\"'\"'", $v);
+                    $envSh .= "export {$safeK}='{$safeV}'\n";
+                }
+                $envInjection = "cat > \$MOUNT/fly/env.sh << 'ENVEOF'\n{$envSh}ENVEOF\nchmod 644 \$MOUNT/fly/env.sh";
             }
 
             $createScript = <<<SCRIPT
@@ -601,6 +619,7 @@ cat > \$MOUNT/fly/run.json << 'RUNJSONEOF'
 $runJson
 RUNJSONEOF
 $mountsInjection
+$envInjection
 $umountCmd
 trap - EXIT
 rmdir \$MOUNT 2>/dev/null
@@ -653,6 +672,7 @@ SCRIPT;
                 'cmdline' => 'console=ttyS0 root=/dev/vda rw init=/fly/init',
             ],
             'mounts' => $mounts, // [{tag, host_path, guest_path}] virtiofs shares (CH only)
+            'env' => $env,
             'autostart' => (($_POST['autostart'] ?? 'false') === 'true'),
             'console' => $enableConsole,
         ];

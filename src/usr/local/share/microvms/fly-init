@@ -59,6 +59,8 @@ export HOME=/root
 export TERM=dumb
 export COLUMNS=200
 export LINES=50
+# Source user-defined env vars (Fly.io pattern)
+[ -f /fly/env.sh ] && . /fly/env.sh
 
 # 6. Build exec command from entrypoint + cmd
 # Generate /fly/run.sh with properly quoted args

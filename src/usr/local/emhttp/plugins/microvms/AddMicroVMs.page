@@ -189,6 +189,24 @@ $fc_enabled = ($cfg['FC_ENABLED'] ?? 'no') === 'yes';
 </dl>
 </div>
 
+<dl>
+  <dt>Environment Variables:</dt>
+  <dd>
+    <div id="env-vars">
+      <div class="env-row"><input type="text" placeholder="KEY" class="env-key" style="width:150px;"> = <input type="text" placeholder="VALUE" class="env-val" style="width:250px;"> <input type="button" value="+" onclick="addEnvRow()" style="width:30px;"></div>
+    </div>
+  </dd>
+</dl>
+
+<dl id="row_mounts">
+  <dt>Host Path Mounts (CH only):</dt>
+  <dd>
+    <div id="mounts-list">
+      <div class="mount-row"><input type="text" placeholder="Tag" class="mount-tag" style="width:100px;"> <input type="text" placeholder="/host/path" class="mount-host" style="width:200px;"> <input type="text" placeholder="/guest/path" class="mount-guest" style="width:200px;"> <input type="button" value="+" onclick="addMountRow()" style="width:30px;"></div>
+    </div>
+  </dd>
+</dl>
+
 <br>
 <dl>
   <dt>&nbsp;</dt>
@@ -210,6 +228,19 @@ $(function() {
   $('.autostart-add').switchButton({labels_placement:'right', on_label:'YES', off_label:'NO'});
   $('.console-add').switchButton({labels_placement:'right', on_label:'YES', off_label:'NO'});
 });
+
+function addEnvRow() {
+  var div = document.createElement('div');
+  div.className = 'env-row';
+  div.innerHTML = '<input type="text" placeholder="KEY" class="env-key" style="width:150px;"> = <input type="text" placeholder="VALUE" class="env-val" style="width:250px;"> <input type="button" value="-" onclick="this.parentElement.remove()" style="width:30px;">';
+  document.getElementById('env-vars').appendChild(div);
+}
+function addMountRow() {
+  var div = document.createElement('div');
+  div.className = 'mount-row';
+  div.innerHTML = '<input type="text" placeholder="Tag" class="mount-tag" style="width:100px;"> <input type="text" placeholder="/host/path" class="mount-host" style="width:200px;"> <input type="text" placeholder="/guest/path" class="mount-guest" style="width:200px;"> <input type="button" value="-" onclick="this.parentElement.remove()" style="width:30px;">';
+  document.getElementById('mounts-list').appendChild(div);
+}
 
 function toggleSource(val) {
   document.getElementById('section_oci').style.display = val === 'oci' ? '' : 'none';
@@ -334,6 +365,22 @@ function submitForm() {
   addLine('Creating rootfs and config...');
   setProgress(20);
 
+  // Collect env vars
+  var env = {};
+  $('.env-row').each(function() {
+    var k = $(this).find('.env-key').val().trim();
+    var v = $(this).find('.env-val').val();
+    if (k) env[k] = v || '';
+  });
+  // Collect mounts
+  var mounts = [];
+  $('.mount-row').each(function() {
+    var tag = $(this).find('.mount-tag').val().trim();
+    var host = $(this).find('.mount-host').val().trim();
+    var guest = $(this).find('.mount-guest').val().trim();
+    if (tag && host && guest) mounts.push({tag: tag, host_path: host, guest_path: guest});
+  });
+
   $.post('/plugins/<?=$plugin?>/backend/MicroVMAdmin.php', {
     cmd: 'create',
     name: name,
@@ -351,7 +398,9 @@ function submitForm() {
     storage_type: document.getElementById('vm_storage_type').value,
     rootfs_path: document.getElementById('vm_rootfs_path').value,
     autostart: $('#vm_autostart').prop('checked') ? 'true' : 'false',
-    console: $('#vm_console').prop('checked') ? 'true' : 'false'
+    console: $('#vm_console').prop('checked') ? 'true' : 'false',
+    env: JSON.stringify(env),
+    mounts: JSON.stringify(mounts)
   }, function(data) {
     var result = (typeof data === 'object') ? data : JSON.parse(data);
     setProgress(100);
@@ -425,12 +474,14 @@ $('input[name="engine"]').change(function() {
     $('#label_ch').css({'border-color': '#4CAF50', 'background': '#1a2e1a'});
     $('#row_max_memory').show();
     $('#row_max_cpus').show();
+    $('#row_mounts').show();
     // Default namespace to 'ch' for Cloud Hypervisor
     if (nsSel.querySelector('option[value="ch"]')) nsSel.value = 'ch';
   } else {
     $('#label_fc').css({'border-color': '#ff9800', 'background': '#2e2a1a'});
     $('#row_max_memory').hide();
     $('#row_max_cpus').hide();
+    $('#row_mounts').hide();
     // Default namespace to 'fc' for Firecracker
     if (nsSel.querySelector('option[value="fc"]')) nsSel.value = 'fc';
   }
@@ -440,6 +491,7 @@ $('input[name="engine"]').change(function() {
 $(function() {
   if ($('#engine_fc').is(':checked')) {
     $('#row_max_memory').hide();
+    $('#row_mounts').hide();
   }
   // Set initial namespace based on selected engine
   var nsSel = document.getElementById('vm_namespace');
