@@ -11,8 +11,6 @@ $cfg = microvm_load_config();
 ?>
 
 <style>
-.storage-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-.storage-header h2 { margin:0; font-size:1.1em; }
 .stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin:12px 0 20px 0; }
 .stat-card { background:#1e1e2e; border:1px solid #333; border-radius:6px; padding:14px; }
 .stat-card .label { font-size:0.75em; opacity:0.7; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
@@ -25,14 +23,6 @@ $cfg = microvm_load_config();
 .pool-bar-fill.red { background:#f44336; }
 .pool-bar-text { position:absolute; top:0; left:6px; font-size:10px; line-height:18px; color:#fff; font-weight:bold; }
 .pool-inactive { color:#f44336; font-weight:bold; }
-.btn-row { margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
-.vm-btn { padding:5px 16px; cursor:pointer; border:1px solid #555; border-radius:3px; background:#333; color:#ddd; text-transform:uppercase; font-size:0.8em; transition:background 0.2s; }
-.vm-btn:hover { background:#555; }
-.vm-btn.primary { background:#1a73e8; border-color:#1a73e8; color:#fff; }
-.vm-btn.primary:hover { background:#1557b0; }
-.vm-btn.danger { background:#c62828; border-color:#c62828; color:#fff; }
-.vm-btn.danger:hover { background:#8e0000; }
-.vm-btn:disabled { opacity:0.4; cursor:not-allowed; }
 .mono { font-family:monospace; font-size:0.85em; }
 .badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:0.75em; font-weight:bold; text-transform:uppercase; }
 .badge-thin { background:#1a3a5c; color:#64b5f6; }
@@ -53,7 +43,7 @@ $cfg = microvm_load_config();
 <table class="tablesorter shift ups">
 <thead><tr><td><b>Thin Pool Status</b>
   <span style="float:right;">
-    <button class="vm-btn" onclick="refreshStorage()" title="Refresh storage info"><i class="fa fa-refresh"></i> Refresh</button>
+    <input type="button" onclick="refreshStorage()" value="Refresh">
   </span>
 </td></tr></thead>
 </table>
@@ -101,8 +91,9 @@ $cfg = microvm_load_config();
 <table class="tablesorter shift ups">
 <thead><tr><td><b>Images</b>
   <span style="float:right;">
-    <button class="vm-btn primary" onclick="pullImage()"><i class="fa fa-download"></i> Pull Image</button>
-    <button class="vm-btn" onclick="pruneImages()"><i class="fa fa-trash"></i> Prune Unused</button>
+    <input type="button" onclick="pullImage()" value="Pull Image">
+    <input type="button" onclick="pullAndConvert()" value="Pull & Convert to rootfs">
+    <input type="button" onclick="pruneImages()" value="Prune Unused">
   </span>
 </td></tr></thead>
 </table>
@@ -212,9 +203,13 @@ function renderVolumes(volumes) {
       : '<span class="tag-unused">unused</span>';
     var sizeStr = v.size_mb > 0 ? formatSize(v.size_mb) : '—';
     var canRemove = (!v.used_by || v.used_by === 'unused') && v.status !== 'active';
-    var actions = canRemove
-      ? '<button class="vm-btn danger" onclick="removeVolume(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\', \'' + escAttr(v.type) + '\')"><i class="fa fa-trash"></i></button>'
-      : '';
+    var actions = '';
+    if (v.type === 'thin' && v.status === 'active') {
+      actions += '<input type="button" onclick="downloadRootfs(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\')" value="Download .raw">';
+    }
+    if (canRemove) {
+      actions += ' <input type="button" onclick="removeVolume(\'' + escAttr(v.name) + '\', \'' + escAttr(v.namespace) + '\', \'' + escAttr(v.type) + '\')" value="Remove">';
+    }
 
     html += '<tr>'
       + '<td class="mono">' + escHtml(v.name) + '</td>'
@@ -247,7 +242,7 @@ function renderImages(images) {
     var sizeStr = img.size_mb > 0 ? formatSize(img.size_mb) : '—';
     var canRemove = !img.used_by || img.used_by.length === 0;
     var actions = canRemove
-      ? '<button class="vm-btn danger" onclick="removeImage(\'' + escAttr(img.ref) + '\', \'' + escAttr(img.namespace) + '\')"><i class="fa fa-trash"></i></button>'
+      ? '<input type="button" onclick="removeImage(\'' + escAttr(img.ref) + '\', \'' + escAttr(img.namespace) + '\')" value="Remove">'
       : '';
 
     html += '<tr>'
@@ -381,6 +376,71 @@ function removeImage(ref, ns) {
     }).fail(function() {
       swal({title: 'Error', text: 'Request failed', type: 'error'});
     });
+  });
+}
+
+// --- Pull & Convert to rootfs ---
+function pullAndConvert() {
+  swal({
+    title: 'Pull & Convert to rootfs',
+    html: true,
+    text: '<div style="text-align:left;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Image Reference:</label>'
+      + '<input id="swal-conv-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;margin-bottom:12px;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
+      + '<select id="swal-conv-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;margin-bottom:12px;">'
+      + '<option value="ch">ch</option>'
+      + '<option value="fc">fc</option>'
+      + '<option value="default">default</option>'
+      + '</select>'
+      + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Volume Name (for the rootfs):</label>'
+      + '<input id="swal-conv-name" class="swal2-input" placeholder="e.g. my-nginx" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
+      + '<p style="margin-top:10px;font-size:0.8em;opacity:0.6;">Pulls image, creates thin snapshot, and mounts as ready-to-use rootfs volume.</p>'
+      + '</div>',
+    showCancelButton: true,
+    confirmButtonText: 'Pull & Convert',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    var ref = document.getElementById('swal-conv-ref').value.trim();
+    var ns = document.getElementById('swal-conv-ns').value;
+    var volName = document.getElementById('swal-conv-name').value.trim();
+    if (!ref) { swal.showInputError('Please enter an image reference'); return false; }
+    if (!volName) { swal.showInputError('Please enter a volume name'); return false; }
+    swal({title: 'Converting...', text: 'Pulling ' + ref + ' and creating rootfs volume...', type: 'info', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'pull_rootfs', image: ref, namespace: ns, name: volName}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Success', text: resp.message || 'rootfs volume created', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Conversion failed', type: 'error'});
+      }
+    }).fail(function() { swal({title: 'Error', text: 'Request failed', type: 'error'}); });
+  });
+}
+
+// --- Download rootfs.raw ---
+function downloadRootfs(name, ns) {
+  swal({
+    title: 'Download rootfs.raw',
+    text: 'Export thin volume "' + name + '" to a .raw file?\n\nThis copies the block device to $VMDIR/' + ns + '/' + name + '/rootfs.raw\nThe file can then be downloaded or used with raw storage mode.',
+    type: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Export',
+    cancelButtonText: 'Cancel',
+    closeOnConfirm: false
+  }, function(confirmed) {
+    if (!confirmed) return;
+    swal({title: 'Exporting...', text: 'Copying block device to raw file...', type: 'info', showConfirmButton: false});
+    $.post('/plugins/' + plugin + '/backend/MicroVMAdmin.php', {cmd: 'export_rootfs', name: name, namespace: ns}, function(resp) {
+      if (typeof resp === 'string') try { resp = JSON.parse(resp); } catch(e) {}
+      if (resp.success) {
+        swal({title: 'Exported', text: resp.message || 'rootfs.raw created', type: 'success'}, function() { refreshStorage(); });
+      } else {
+        swal({title: 'Error', text: resp.error || 'Export failed', type: 'error'});
+      }
+    }).fail(function() { swal({title: 'Error', text: 'Request failed', type: 'error'}); });
   });
 }
 

@@ -1032,6 +1032,289 @@ SCRIPT;
         }
         break;
 
+    case 'storage_info':
+        // Return thin pool status, volumes, and images across all namespaces
+        $sock = '/var/run/microvms/containerd.sock';
+        $result = ['thin_pool' => null, 'volumes' => [], 'images' => []];
+
+        // --- Thin Pool ---
+        $dmStatus = trim(shell_exec("dmsetup status microvms-thinpool 2>/dev/null"));
+        if ($dmStatus) {
+            // Format: 0 <total_sectors> thin-pool <transaction_id> <used_meta>/<total_meta> <used_data>/<total_data> ...
+            $parts = preg_split('/\s+/', $dmStatus);
+            $dataUsed = 0; $dataTotal = 0; $metaUsed = 0; $metaTotal = 0;
+            if (count($parts) >= 7) {
+                // parts[4] = used_meta/total_meta, parts[5] = used_data/total_data
+                if (preg_match('#^(\d+)/(\d+)$#', $parts[4], $m)) {
+                    $metaUsed = intval($m[1]);
+                    $metaTotal = intval($m[2]);
+                }
+                if (preg_match('#^(\d+)/(\d+)$#', $parts[5], $m)) {
+                    $dataUsed = intval($m[1]);
+                    $dataTotal = intval($m[2]);
+                }
+            }
+            // Each block = 512 bytes (sectors)
+            $result['thin_pool'] = [
+                'status' => 'active',
+                'data_used_mb' => round($dataUsed * 512 / 1048576, 1),
+                'data_total_mb' => round($dataTotal * 512 / 1048576, 1),
+                'data_percent' => $dataTotal > 0 ? round($dataUsed / $dataTotal * 100, 1) : 0,
+                'meta_used_mb' => round($metaUsed * 512 / 1048576, 2),
+                'meta_total_mb' => round($metaTotal * 512 / 1048576, 2),
+                'device' => 'microvms-thinpool',
+            ];
+        } else {
+            $result['thin_pool'] = ['status' => 'inactive', 'data_used_mb' => 0, 'data_total_mb' => 0, 'data_percent' => 0, 'meta_used_mb' => 0, 'meta_total_mb' => 0, 'device' => 'microvms-thinpool'];
+        }
+
+        // --- Volumes (thin snapshots + raw files) ---
+        // Load all VM configs to map volumes to VMs
+        $vmConfigs = [];
+        foreach (glob("$vmdir/*/*/*.json") as $cfgFile) {
+            $vc = json_decode(file_get_contents($cfgFile), true);
+            if ($vc && !empty($vc['name'])) {
+                $vcNs = basename(dirname(dirname($cfgFile)));
+                $vmConfigs[] = ['name' => $vc['name'], 'namespace' => $vcNs, 'config' => $vc];
+            }
+        }
+
+        // Thin volumes from containerd devmapper snapshots
+        $nsList = trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"));
+        $namespaces = array_filter(explode("\n", $nsList));
+        foreach ($namespaces as $ns) {
+            $ns = trim($ns);
+            if (empty($ns)) continue;
+            $snapList = shell_exec("ctr -a $sock -n " . escapeshellarg($ns) . " snapshots --snapshotter devmapper list 2>/dev/null");
+            if (!$snapList) continue;
+            $lines = explode("\n", trim($snapList));
+            // First line is header: KEY PARENT KIND
+            array_shift($lines);
+            foreach ($lines as $line) {
+                $cols = preg_split('/\s+/', trim($line), 3);
+                if (count($cols) < 3) continue;
+                $snapKey = $cols[0];
+                $snapKind = $cols[2] ?? '';
+                $status = (strtolower($snapKind) === 'active') ? 'active' : 'committed';
+                // Determine which VM uses this snapshot
+                $usedBy = 'unused';
+                foreach ($vmConfigs as $vc) {
+                    if (strpos($snapKey, $vc['name']) !== false) {
+                        $usedBy = $vc['name'];
+                        break;
+                    }
+                }
+                $result['volumes'][] = [
+                    'name' => $snapKey,
+                    'namespace' => $ns,
+                    'type' => 'thin',
+                    'size_mb' => 0,
+                    'device' => "devmapper/$snapKey",
+                    'status' => $status,
+                    'used_by' => $usedBy,
+                ];
+            }
+        }
+
+        // Raw volumes: scan $vmdir/*/*/rootfs.raw
+        foreach (glob("$vmdir/*/*/rootfs.raw") as $rawFile) {
+            $vmName = basename(dirname($rawFile));
+            $nsName = basename(dirname(dirname($rawFile)));
+            $sizeMb = round(filesize($rawFile) / 1048576, 1);
+            // Check if VM is running
+            $running = file_exists("/tmp/microvms-{$vmName}.sock");
+            $result['volumes'][] = [
+                'name' => "$vmName/rootfs.raw",
+                'namespace' => $nsName,
+                'type' => 'raw',
+                'size_mb' => $sizeMb,
+                'device' => $rawFile,
+                'status' => $running ? 'active' : 'committed',
+                'used_by' => $vmName,
+            ];
+        }
+
+        // --- Images ---
+        foreach ($namespaces as $ns) {
+            $ns = trim($ns);
+            if (empty($ns)) continue;
+            $imgList = shell_exec("ctr -a $sock -n " . escapeshellarg($ns) . " images list 2>/dev/null");
+            if (!$imgList) continue;
+            $lines = explode("\n", trim($imgList));
+            // First line is header: REF TYPE DIGEST SIZE PLATFORMS LABELS
+            array_shift($lines);
+            foreach ($lines as $line) {
+                $cols = preg_split('/\s+/', trim($line));
+                if (count($cols) < 4) continue;
+                $ref = $cols[0];
+                // Size is 4th column (e.g. "5.2 MiB" or "45.1 MiB")
+                $sizeStr = $cols[3] ?? '0';
+                $sizeMb = 0;
+                if (preg_match('/^([\d.]+)\s*$/i', $sizeStr, $sm)) {
+                    // Next col might be unit
+                    $unit = $cols[4] ?? 'B';
+                    if (stripos($unit, 'MiB') !== false || stripos($unit, 'MB') !== false) {
+                        $sizeMb = floatval($sm[1]);
+                    } elseif (stripos($unit, 'GiB') !== false || stripos($unit, 'GB') !== false) {
+                        $sizeMb = floatval($sm[1]) * 1024;
+                    } elseif (stripos($unit, 'KiB') !== false || stripos($unit, 'KB') !== false) {
+                        $sizeMb = round(floatval($sm[1]) / 1024, 2);
+                    }
+                }
+                // Match image to VMs
+                $usedByVms = [];
+                foreach ($vmConfigs as $vc) {
+                    $imgRef = $vc['config']['image']['ref'] ?? '';
+                    $storageRef = $vc['config']['storage']['image_ref'] ?? '';
+                    if ($imgRef === $ref || $storageRef === $ref || strpos($ref, $imgRef) !== false) {
+                        $usedByVms[] = $vc['name'];
+                    }
+                }
+                $result['images'][] = [
+                    'ref' => $ref,
+                    'namespace' => $ns,
+                    'size_mb' => $sizeMb,
+                    'used_by' => $usedByVms,
+                ];
+            }
+        }
+
+        microvm_log("STORAGE_INFO: pool=" . ($result['thin_pool']['status'] ?? 'unknown') . " volumes=" . count($result['volumes']) . " images=" . count($result['images']));
+        echo json_encode(['success' => true, 'data' => $result]);
+        break;
+
+    case 'pull_image':
+        // Pull an OCI image into containerd
+        $sock = '/var/run/microvms/containerd.sock';
+        $image = $_REQUEST['image'] ?? '';
+        $pullNs = $_REQUEST['namespace'] ?? 'default';
+
+        if (empty($image)) {
+            echo json_encode(['success' => false, 'error' => 'No image reference provided']);
+            break;
+        }
+
+        // Normalize image reference
+        $ref = $image;
+        // Add docker.io/ prefix if no registry specified
+        if (!str_contains($ref, '/')) {
+            $ref = "docker.io/library/$ref";
+        } elseif (preg_match('#^docker\.io/([^/]+)$#', $ref, $m)) {
+            // docker.io/nginx → docker.io/library/nginx
+            $ref = "docker.io/library/" . $m[1];
+        } elseif (!str_contains($ref, '.') && substr_count($ref, '/') === 1) {
+            // user/image with no dots = Docker Hub
+            $ref = "docker.io/$ref";
+        }
+        // Add :latest if no tag
+        if (!str_contains($ref, ':')) $ref .= ':latest';
+
+        // Validate namespace
+        if (!preg_match('/^[a-z0-9\-]+$/', $pullNs)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid namespace']);
+            break;
+        }
+
+        microvm_log("PULL_IMAGE: $ref into namespace $pullNs");
+
+        // Ensure namespace exists
+        exec("ctr -a $sock namespaces create " . escapeshellarg($pullNs) . " 2>/dev/null");
+
+        // Pull image
+        $cmd = "ctr -a " . escapeshellarg($sock) . " -n " . escapeshellarg($pullNs)
+            . " images pull --platform linux/amd64 " . escapeshellarg($ref) . " 2>&1";
+        exec($cmd, $output, $ret);
+        $outputStr = implode("\n", $output);
+
+        if ($ret === 0) {
+            microvm_log("PULL_IMAGE OK: $ref");
+            echo json_encode(['success' => true, 'message' => "Image pulled: $ref", 'output' => $outputStr]);
+        } else {
+            microvm_log("PULL_IMAGE FAILED: $ref (exit=$ret) $outputStr");
+            echo json_encode(['success' => false, 'error' => "Pull failed (exit=$ret): $outputStr"]);
+        }
+        break;
+
+    case 'pull_rootfs':
+        // Pull image and mount as thin rootfs volume (ready to use)
+        $sock = '/var/run/microvms/containerd.sock';
+        $image = $_REQUEST['image'] ?? '';
+        $pullNs = $_REQUEST['namespace'] ?? 'ch';
+        $volName = preg_replace('/[^a-z0-9\-]/', '', strtolower($_REQUEST['name'] ?? ''));
+
+        if (empty($image) || empty($volName)) {
+            echo json_encode(['success' => false, 'error' => 'Image reference and volume name required']);
+            break;
+        }
+
+        // Normalize
+        $ref = $image;
+        if (!str_contains($ref, '/')) $ref = "docker.io/library/$ref";
+        elseif (preg_match('#^docker\.io/([^/]+)$#', $ref, $m)) $ref = "docker.io/library/" . $m[1];
+        if (!str_contains($ref, ':')) $ref .= ':latest';
+
+        exec("ctr -a $sock namespaces create " . escapeshellarg($pullNs) . " 2>/dev/null");
+
+        // Pull
+        microvm_log("PULL_ROOTFS: $ref → $volName (ns=$pullNs)");
+        exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images pull --platform linux/amd64 " . escapeshellarg($ref) . " 2>&1", $pullOut, $pullRet);
+        if ($pullRet !== 0) {
+            echo json_encode(['success' => false, 'error' => 'Pull failed: ' . implode("\n", $pullOut)]);
+            break;
+        }
+
+        // Mount as writable thin snapshot
+        $mountPoint = "/tmp/microvm-mount-$volName";
+        exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images unmount " . escapeshellarg($mountPoint) . " 2>/dev/null");
+        exec("ctr -a $sock -n " . escapeshellarg($pullNs) . " images mount --snapshotter devmapper --rw --platform linux/amd64 " . escapeshellarg($ref) . " " . escapeshellarg($mountPoint) . " 2>&1", $mountOut, $mountRet);
+        if ($mountRet !== 0) {
+            echo json_encode(['success' => false, 'error' => 'Mount failed: ' . implode("\n", $mountOut)]);
+            break;
+        }
+
+        microvm_log("PULL_ROOTFS OK: $volName mounted at $mountPoint");
+        echo json_encode(['success' => true, 'message' => "rootfs volume '$volName' created from $ref\nMounted at: $mountPoint"]);
+        break;
+
+    case 'export_rootfs':
+        // Export thin volume to raw file (dd from devmapper device)
+        $sock = '/var/run/microvms/containerd.sock';
+        $volName = preg_replace('/[^a-z0-9\-]/', '', strtolower($_REQUEST['name'] ?? ''));
+        $ns = $_REQUEST['namespace'] ?? 'ch';
+        $cfg = microvm_load_config();
+        $vmdir = $cfg['VMDIR'] ?? '/mnt/user/microvms';
+
+        if (empty($volName)) {
+            echo json_encode(['success' => false, 'error' => 'Volume name required']);
+            break;
+        }
+
+        // Find the devmapper device for this volume
+        $snapshotKey = "/tmp/microvm-mount-$volName";
+        $mounts = trim(shell_exec("ctr -a $sock -n " . escapeshellarg($ns) . " snapshots --snapshotter devmapper mounts /tmp " . escapeshellarg($snapshotKey) . " 2>/dev/null"));
+        $device = '';
+        if (preg_match('#/dev/mapper/\S+#', $mounts, $m)) $device = $m[0];
+
+        if (empty($device) || !file_exists($device)) {
+            echo json_encode(['success' => false, 'error' => "No active thin device found for '$volName'"]);
+            break;
+        }
+
+        // Export to raw file
+        $outPath = "$vmdir/$ns/$volName";
+        @mkdir($outPath, 0755, true);
+        $rawFile = "$outPath/rootfs.raw";
+        microvm_log("EXPORT_ROOTFS: $device → $rawFile");
+        exec("dd if=" . escapeshellarg($device) . " of=" . escapeshellarg($rawFile) . " bs=4M status=none 2>&1", $ddOut, $ddRet);
+        if ($ddRet !== 0) {
+            echo json_encode(['success' => false, 'error' => 'dd failed: ' . implode("\n", $ddOut)]);
+            break;
+        }
+
+        $size = filesize($rawFile);
+        echo json_encode(['success' => true, 'message' => "Exported to $rawFile (" . round($size/1048576) . " MB)"]);
+        break;
+
     case 'prune_images':
         $sock = '/var/run/microvms/containerd.sock';
         $output = [];
