@@ -1090,12 +1090,22 @@ SCRIPT;
             $lines = explode("\n", trim($snapList));
             // First line is header: KEY PARENT KIND
             array_shift($lines);
+            // Build parent→children map
+            $childMap = [];
+            foreach ($lines as $line) {
+                $c = preg_split('/\s+/', trim($line), 3);
+                if (count($c) >= 2 && !empty($c[1])) {
+                    $childMap[$c[1]] = true;
+                }
+            }
             foreach ($lines as $line) {
                 $cols = preg_split('/\s+/', trim($line), 3);
                 if (count($cols) < 3) continue;
                 $snapKey = $cols[0];
+                $snapParent = $cols[1] ?? '';
                 $snapKind = $cols[2] ?? '';
                 $status = (strtolower($snapKind) === 'active') ? 'active' : 'layer';
+                $hasChildren = isset($childMap[$snapKey]);
                 // Determine which VM uses this snapshot
                 $usedBy = 'unused';
                 foreach ($vmConfigs as $vc) {

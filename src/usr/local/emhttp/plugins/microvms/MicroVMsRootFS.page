@@ -214,7 +214,17 @@ function renderVolumes(volumes) {
       ? '<span class="tag-vm">' + escHtml(v.used_by) + '</span>'
       : '<span class="tag-unused">unused</span>';
     var sizeStr = v.size_mb > 0 ? formatSize(v.size_mb) : '—';
-    var canRemove = (!v.used_by || v.used_by === 'unused');
+    var canRemove = false;
+    // Only allow remove for:
+    // - Raw files that are unused
+    // - Active thin snapshots that are unused (unmount)
+    // - Layer snapshots: NEVER (managed by GC after VM delete)
+    if (v.type === 'raw' && (!v.used_by || v.used_by === 'unused')) {
+      canRemove = true;
+    } else if (v.type === 'thin' && v.status === 'active' && (!v.used_by || v.used_by === 'unused')) {
+      canRemove = true;
+    }
+    // Layers (committed) are never manually removable — use Run GC after deleting VM
     var actions = '';
     if (v.type === 'thin' && v.status === 'active') {
       actions += '<input type="button" onclick="downloadRootfs(\'' + escAttr(v.used_by || v.name) + '\', \'' + escAttr(v.namespace) + '\')" value="Download .raw">';
