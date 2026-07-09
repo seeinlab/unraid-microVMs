@@ -71,7 +71,7 @@ _(Crane Registry Storage)_:
 : <input type="text" name="CRANE_REGISTRY_DIR" value="<?=htmlspecialchars($cfg['CRANE_REGISTRY_DIR'] ?? '/mnt/user/system/microvms/crane/registry')?>" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt">
 
 <?php
-$flintlockd_defaults = '--grpc-endpoint 0.0.0.0:9090 --containerd-socket /var/run/microvms/containerd.sock --bridge-name br0 --parent-iface br0 --cloudhypervisor-bin /usr/local/bin/cloud-hypervisor --firecracker-bin /usr/local/bin/firecracker --state-dir /var/run/microvms/flintlockd-state --log-output /var/log/microvms/flintlockd.log --insecure --default-provider cloudhypervisor --verbosity 0';
+$flintlockd_defaults = '--grpc-endpoint 0.0.0.0:9090 --containerd-socket /var/run/microvms/containerd.sock --bridge-name br0 --parent-iface br0 --cloudhypervisor-bin /usr/local/bin/cloud-hypervisor --firecracker-bin /usr/local/bin/firecracker --state-dir /var/run/microvms/flintlockd-state --log-output /var/log/microvms/flintlockd.log --insecure --default-provider cloudhypervisor';
 $flintlockd_flags = $cfg['FLINTLOCKD_FLAGS'] ?? $flintlockd_defaults;
 ?>
 _(Flintlockd Flags)_:

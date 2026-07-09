@@ -130,14 +130,21 @@ if ($flintlockd_enabled) {
 } else {
     $lines[] = '+++--- status           : <span class="grey">disabled</span>';
 }
+// Namespaces (loaded from containerd)
+$ns_list = [];
+$ns_raw = trim(shell_exec("ctr -a /var/run/microvms/containerd.sock namespaces list -q 2>/dev/null"));
+if (!empty($ns_raw)) $ns_list = explode("\n", $ns_raw);
+$ns_roles = ['default'=>'fallback','ch'=>'Cloud Hypervisor','fc'=>'Firecracker','flintlock'=>'Liquidmetal'];
+$ns_parts = [];
+foreach ($ns_list as $ns) {
+    $role = $ns_roles[trim($ns)] ?? 'custom';
+    $ns_parts[] = trim($ns) . ' <span class="grey">(' . $role . ')</span>';
+}
+$lines[] = "++-- namespaces         : " . (empty($ns_parts) ? '<span class="grey">none</span>' : implode(', ', $ns_parts));
 echo implode("\n", $lines);
 ?></div>
   <div class="mvm-btn-grp">
     <input type="button" value="Refresh Status" onclick="location.reload()">
-  </div>
-  <div style="margin-top:12px;">
-    <strong>Namespaces:</strong>
-    <span id="namespace-list" style="font-family:monospace;font-size:0.9rem;"></span>
   </div>
   <div class="mvm-help">View the current status of microVMs services.</div>
 </div>
@@ -211,17 +218,4 @@ _(Thin Pool Size)_ (GB):
 : <span class="inline-block"><input type="submit" value="_(Apply)_"><input type="button" value="_(Done)_" onclick="done()"></span>
 </form>
 
-<script>
-$(function(){
-  $.post('/plugins/microvms/backend/MicroVMAdmin.php', {cmd: 'list_namespaces'}, function(data) {
-    if (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}
-    if (data && data.success) {
-      var roles = {'default': 'fallback', 'ch': 'Cloud Hypervisor', 'fc': 'Firecracker', 'flintlock': 'Liquidmetal'};
-      var parts = (data.namespaces || []).map(function(ns) {
-        return '<b>' + ns + '</b> <span style="color:#888;">(' + (roles[ns] || 'custom') + ')</span>';
-      });
-      document.getElementById('namespace-list').innerHTML = parts.join(' &nbsp;·&nbsp; ');
-    }
-  });
-});
-</script>
+
