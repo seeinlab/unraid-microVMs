@@ -8,6 +8,18 @@ $plugin = "microvms";
 $docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 require_once "$docroot/plugins/$plugin/include/common.php";
 $cfg = microvm_load_config();
+// Get available namespaces for dropdowns
+$sock = '/var/run/microvms/containerd.sock';
+$nsOptions = '';
+if (file_exists($sock)) {
+    $nsList = array_filter(explode("\n", trim(shell_exec("ctr -a $sock namespaces list -q 2>/dev/null"))));
+    foreach ($nsList as $ns) {
+        $ns = trim($ns);
+        if (empty($ns) || $ns === 'flintlock') continue;
+        $nsOptions .= "<option value=\"$ns\">$ns</option>";
+    }
+}
+if (empty($nsOptions)) $nsOptions = '<option value="default">default</option><option value="ch">ch</option><option value="fc">fc</option>';
 ?>
 
 <style>
@@ -266,9 +278,7 @@ function pullImage() {
       + '<input id="swal-pull-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;margin-bottom:12px;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
       + '<select id="swal-pull-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
-      + '<option value="default">default</option>'
-      + '<option value="ch">ch</option>'
-      + '<option value="fc">fc</option>'
+      + '<?=$nsOptions?>'
       + '</select>'
       + '</div>',
     showCancelButton: true,
@@ -305,9 +315,7 @@ function pruneImages() {
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
       + '<select id="swal-prune-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;">'
       + '<option value="all">All namespaces</option>'
-      + '<option value="default">default</option>'
-      + '<option value="ch">ch</option>'
-      + '<option value="fc">fc</option>'
+      + '<?=$nsOptions?>'
       + '</select>'
       + '<p style="margin-top:10px;font-size:0.85em;opacity:0.7;">This removes images not used by any VM.</p>'
       + '</div>',
@@ -389,9 +397,7 @@ function pullAndConvert() {
       + '<input id="swal-conv-ref" class="swal2-input" placeholder="e.g. nginx:alpine, ubuntu:22.04" style="width:100%;margin-bottom:12px;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Namespace:</label>'
       + '<select id="swal-conv-ns" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;margin-bottom:12px;">'
-      + '<option value="ch">ch</option>'
-      + '<option value="fc">fc</option>'
-      + '<option value="default">default</option>'
+      + '<?=$nsOptions?>'
       + '</select>'
       + '<label style="display:block;margin-bottom:4px;font-size:0.85em;">Volume Name (for the rootfs):</label>'
       + '<input id="swal-conv-name" class="swal2-input" placeholder="e.g. my-nginx" style="width:100%;padding:8px;background:#222;border:1px solid #555;color:#ddd;border-radius:3px;font-family:monospace;">'
