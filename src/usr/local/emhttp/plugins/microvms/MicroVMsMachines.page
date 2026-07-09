@@ -323,15 +323,27 @@ function vmAction(action, name) {
 // Colorize console output (syntax highlighting for terminal display)
 function colorizeConsole(text) {
   var h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Kernel messages: [    0.000000] ...
-  h = h.replace(/^(\[\s*[\d.]+\]\s.*)$/gm, '<span style="color:#636d83;">$1</span>');
-  // Prompts: name:/path# or name:/path$
-  h = h.replace(/^([a-z0-9\-]+:.*[#$])\s*/gm, '<span style="color:#98c379;">$1</span> ');
-  // Errors/warnings
-  h = h.replace(/(error|fail|fatal|panic)/gi, '<span style="color:#e06c75;">$1</span>');
-  h = h.replace(/(warning|warn)/gi, '<span style="color:#e5c07b;">$1</span>');
-  // Success keywords
-  h = h.replace(/(ok|success|ready|running|started|mounted)/gi, '<span style="color:#98c379;">$1</span>');
+  // Strip carriage returns
+  h = h.replace(/\r/g, '');
+  // Timestamps: 2026-07-09T14:24:05.665 or [    0.000000]
+  h = h.replace(/(\d{4}-\d{2}-\d{2}T[\d:.]+)/g, '<span style="color:#5c6370;">$1</span>');
+  h = h.replace(/^(\[\s*[\d.]+\])/gm, '<span style="color:#5c6370;">$1</span>');
+  // Log levels / brackets: [fc-sto-1:main] [anonymous-instance:...]
+  h = h.replace(/(\[[a-z0-9_\-:]+\])/gi, '<span style="color:#61afef;">$1</span>');
+  // Errors (word boundary, case insensitive)
+  h = h.replace(/\b(Error|Failed|FAIL|fatal|panic|StorageFull)\b/g, '<span style="color:#e06c75;font-weight:bold;">$1</span>');
+  // Warnings
+  h = h.replace(/\b(Warning|WARN|Killed|Terminated)\b/g, '<span style="color:#e5c07b;">$1</span>');
+  // Success
+  h = h.replace(/\b(Running|started|ready|OK|mounted|Listening)\b/g, '<span style="color:#98c379;">$1</span>');
+  // Paths: /something/...
+  h = h.replace(/(\/[a-zA-Z0-9._\-\/]+)/g, '<span style="color:#c678dd;">$1</span>');
+  // Prompts: name:/path# 
+  h = h.replace(/^([a-z][a-z0-9\-]*:~?[^\s]*[#$])/gm, '<span style="color:#98c379;font-weight:bold;">$1</span>');
+  // IPs
+  h = h.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?)/g, '<span style="color:#56b6c2;">$1</span>');
+  // Version strings: v1.16.1, v52.0
+  h = h.replace(/\b(v\d+[\d.]*)\b/g, '<span style="color:#d19a66;">$1</span>');
   return h;
 }
 
